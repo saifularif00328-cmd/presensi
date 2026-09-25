@@ -37,7 +37,18 @@ WARNA = {
     "oranye": ("Oranye", "#c2410c"),
     "emas": ("Emas", "#a16207"),
 }
-DEFAULT = {"template": "modern", "orientasi": "h", "warna": "biru"}
+BELAKANG = {
+    "ketentuan": ("Syarat & Ketentuan", "Aturan penggunaan kartu", "SYARAT & KETENTUAN"),
+    "visimisi": ("Visi & Misi", "Visi dan misi sekolah", "VISI & MISI"),
+    "profil": ("Profil Sekolah", "Alamat, kontak, NPSN, akreditasi", "PROFIL SEKOLAH"),
+    "ditemukan": ("Kontak & Kartu Ditemukan", "Alamat pengembalian + kontak orang tua",
+                  "INFORMASI & KONTAK"),
+    "jadwal": ("Jam Sekolah & Tata Tertib", "Jam masuk/pulang kelas siswa + tata tertib",
+               "JAM SEKOLAH & TATA TERTIB"),
+}
+SISI = {"depan": "Depan saja", "keduanya": "Depan & belakang", "belakang": "Belakang saja"}
+KERTAS = {"a4": "Kertas A4 (grid, dipotong)", "pvc": "Printer kartu PVC (1 kartu/halaman)"}
+DEFAULT = {"template": "modern", "orientasi": "h", "warna": "biru", "belakang": "ketentuan"}
 
 CARD_LONG, CARD_SHORT = 85.6, 54.0  # mm
 PT = 25.4 / 72  # 1 pt dalam mm (kartu digambar dalam satuan mm, ukuran font dalam pt)
@@ -77,11 +88,12 @@ DARK_BG = colors.HexColor("#0b1220")
 class Ctx:
     """Data bersama untuk menggambar satu kartu."""
 
-    def __init__(self, s, sekolah, alamat, logo, accent_hex, db):
+    def __init__(self, s, info, accent_hex, db=None):
         self.s = s
-        self.sekolah = sekolah or ""
-        self.alamat = alamat or ""
-        self.logo = logo
+        self.info = info
+        self.sekolah = info.get("sekolah") or ""
+        self.alamat = info.get("alamat") or ""
+        self.logo = info.get("logo")
         self.accent = colors.HexColor(accent_hex)
         self.dark = _mix(self.accent, colors.black, .35)
         self.soft = _mix(self.accent, WHITE, .88)
@@ -104,6 +116,12 @@ class Ctx:
     @property
     def nisn(self):
         return self.s["nisn"] or "-"
+
+    def get(self, key):
+        try:
+            return self.s[key]
+        except (KeyError, IndexError):
+            return None
 
 
 def _load_foto(rel):
@@ -520,25 +538,259 @@ def normalize(template=None, orientasi=None, warna=None):
             warna if warna in WARNA else DEFAULT["warna"])
 
 
-def kartu_pdf(siswa_rows, sekolah, template="modern", orientasi="h", warna="biru", alamat="",
-              logo=None, db=None, single=False):
-    """PDF kartu. `single=True` → satu kartu per halaman seukuran kartu (untuk pratinjau)."""
+# =================================================================== SISI BELAKANG
+def _konten(k, jenis):
+    """Isi sisi belakang sebagai daftar seksi: (jenis, judul, data).
+    jenis: "p" paragraf, "ol" daftar bernomor, "kv" pasangan label–nilai."""
+    info = k.info
+    if jenis == "visimisi":
+        return [("p", "VISI", info.get("visi") or "-"), ("ol", "MISI", info.get("misi") or [])]
+    if jenis == "profil":
+        rows = [("Sekolah", k.sekolah), ("NPSN", info.get("npsn")), ("Akreditasi", info.get("akreditasi")),
+                ("Alamat", k.alamat), ("Telepon", info.get("telepon")), ("Email", info.get("email")),
+                ("Website", info.get("website")), ("Kepala", info.get("kepsek"))]
+        return [("kv", None, [(a, b) for a, b in rows if b])]
+    if jenis == "ditemukan":
+        sekolah = [(a, b) for a, b in (("Sekolah", k.sekolah), ("Alamat", k.alamat),
+                                         ("Telepon", info.get("telepon"))) if b]
+        ortu = [(a, k.get(key)) for a, key in (("Ayah", "wa_ayah"), ("Ibu", "wa_ibu"),
+                                                 ("Wali", "wa_wali")) if k.get(key)]
+        out = [("p", None, "Jika Anda menemukan kartu ini, mohon kembalikan ke:"),
+               ("kv", None, sekolah)]
+        if ortu:
+            out.append(("kv", "KONTAK ORANG TUA / WALI", ortu))
+        return out
+    if jenis == "jadwal":
+        a = info.get("aturan_fn")(k) if info.get("aturan_fn") else None
+        rows = [("Hari", info.get("hari") or "-")]
+        if a:
+            rows += [("Masuk", f"{a['jam_masuk']}  (terlambat > {a['batas_telat']})"),
+                     ("Pulang", a["jam_pulang"])]
+        out = [("kv", "JAM SEKOLAH", rows)]
+        if info.get("tatib"):
+            out.append(("ol", "TATA TERTIB", info["tatib"][:5]))
+        return out
+    return [("ol", None, info.get("ketentuan") or [])]
+
+
+def _layout(sections, w, size):
+    """Susun baris-baris siap gambar. Mengembalikan (tinggi_mm, daftar_perintah)."""
+    lh = size * PT * 1.3
+    ops, y = [], 0
+    for kind, title, data in sections:
+        if title:
+            y += size * PT * 1.25
+            ops.append(("h", title, y))
+            y += size * PT * .45
+        if kind == "p":
+            for line in simpleSplit(data, F["r"], size, w / PT):
+                y += lh
+                ops.append(("t", line, y, 0))
+        elif kind == "ol":
+            numw = _sw("9.", F["sb"], size) + 1.2
+            for n, item in enumerate(data, 1):
+                lines = simpleSplit(item, F["r"], size, (w - numw) / PT) or [""]
+                for li, line in enumerate(lines):
+                    y += lh
+                    ops.append(("n", f"{n}." if li == 0 else "", line, y, numw))
+        else:  # kv
+            labw = max([_sw(a, F["sb"], size) for a, _ in data] + [0]) + 2
+            for a, b in data:
+                lines = simpleSplit(str(b), F["r"], size, (w - labw) / PT) or [""]
+                for li, line in enumerate(lines):
+                    y += lh
+                    ops.append(("kv", a if li == 0 else "", line, y, labw))
+        y += size * PT * .5
+    return y, ops
+
+
+def _draw_sections(c, sections, x, top, w, h, ink, sub, head):
+    size = 6.6
+    while True:
+        height, ops = _layout(sections, w, size)
+        if height <= h or size <= 4:
+            break
+        size -= .2
+    for op in ops:
+        if op[0] == "h":
+            _text(c, op[1], x, top - op[2], F["b"], size * .92, head, spacing=.3)
+        elif op[0] == "t":
+            _text(c, op[1], x, top - op[2], F["r"], size, ink)
+        elif op[0] == "n":
+            _text(c, op[1], x, top - op[3], F["sb"], size, head)
+            _text(c, op[2], x + op[4], top - op[3], F["r"], size, ink)
+        else:
+            _text(c, op[1], x, top - op[3], F["sb"], size, sub)
+            _text(c, op[2], x + op[4], top - op[3], F["r"], size, ink)
+
+
+_TTD_CACHE = {}
+
+
+def _ttd_reader(path, white=False):
+    """Gambar tanda tangan; versi putih untuk latar gelap (bentuk dari kanal alpha)."""
+    key = (path, white)
+    if key not in _TTD_CACHE:
+        img = Image.open(path).convert("RGBA")
+        if white:
+            alpha = img.getchannel("A")
+            img = Image.new("RGBA", img.size, (255, 255, 255, 0))
+            img.putalpha(alpha)
+        buf = io.BytesIO()
+        img.save(buf, "PNG")
+        buf.seek(0)
+        _TTD_CACHE[key] = ImageReader(buf)
+    return _TTD_CACHE[key]
+
+
+def _signature(c, k, cx, y, ink, sub, width=30, dark=False):
+    """Blok tanda tangan kepala sekolah, rata tengah di `cx`, baris terbawah di `y`."""
+    info = k.info
+    _text_fit(c, f"{info.get('kota') or ''}{', ' if info.get('kota') else ''}{info.get('tanggal', '')}",
+              cx, y + 13.4, width, F["r"], 5, sub, "c", 3.8)
+    _text(c, "Kepala Sekolah", cx, y + 11.2, F["m"], 5, sub, "c")
+    if info.get("ttd"):
+        try:
+            c.drawImage(_ttd_reader(info["ttd"], dark), cx - 11, y + 3.6, 22, 7, preserveAspectRatio=True,
+                        anchor="c", mask="auto")
+        except Exception:
+            pass
+    nama = info.get("kepsek") or "(............................)"
+    _text_fit(c, nama, cx, y + 2.3, width, F["b"], 5.6, ink, "c", 4)
+    c.setStrokeColor(ink); c.setLineWidth(.2)
+    nw = min(_sw(nama, F["b"], _fit(nama, F["b"], 5.6, width, 4)), width)
+    c.line(cx - nw / 2, y + 1.8, cx + nw / 2, y + 1.8)
+    if info.get("nip"):
+        _text_fit(c, f"NIP. {info['nip']}", cx, y, width, F["r"], 4.6, sub, "c", 3.6)
+
+
+def _back_theme(c, k, W, H, hor, template):
+    """Gambar latar sisi belakang sesuai template. Kembalikan warna (ink, sub, head, on_header)."""
+    if template in ("elegan", "gradien"):
+        if template == "elegan":
+            c.setFillColor(DARK_BG); c.rect(0, 0, W, H, stroke=0, fill=1)
+            c.setStrokeColor(k.accent); c.setLineWidth(.5)
+            for r, a in ((12, .45), (17, .28), (22, .15)):
+                c.setStrokeAlpha(a); c.circle(W, H, r, stroke=1, fill=0)
+            c.setStrokeAlpha(1)
+            hi = _mix(k.accent, WHITE, .6)
+            return colors.HexColor("#e4e7ec"), colors.HexColor("#98a2b3"), hi, WHITE
+        c.saveState()
+        c.linearGradient(0, H, W, 0, (k.dark, k.accent, _mix(k.accent, WHITE, .2)), (0, .55, 1),
+                         extend=True)
+        c.restoreState()
+        c.setFillColor(WHITE)
+        for cx, cy, r, a in ((0, H, 20, .08), (W, 0, 16, .07)):
+            c.setFillAlpha(a); c.circle(cx, cy, r, stroke=0, fill=1)
+        c.setFillAlpha(1)
+        soft = colors.Color(1, 1, 1, alpha=.8)
+        return WHITE, soft, WHITE, WHITE
+    c.setFillColor(WHITE); c.rect(0, 0, W, H, stroke=0, fill=1)
+    if template == "klasik":
+        hh = 11 if hor else 18
+        c.setFillColor(k.accent); c.rect(0, H - hh, W, hh, stroke=0, fill=1)
+        c.setFillColor(k.dark); c.rect(0, H - hh - .9, W, .9, stroke=0, fill=1)
+        c.setFillColor(k.accent); c.rect(0, 0, W, 1.6, stroke=0, fill=1)
+        return INK, GREY, k.accent, WHITE
+    if template == "minimal":
+        c.setFillColor(k.accent)
+        if hor:
+            c.rect(W - 2.2, 0, 2.2, H, stroke=0, fill=1)
+        else:
+            c.rect(0, 0, W, 2.2, stroke=0, fill=1)
+        _outline(c, W, H)
+        return INK, GREY, k.accent, INK
+    # modern
+    big, small = ((24, 15), (15, 9)) if hor else ((20, 24), (13, 15))
+    c.setFillColor(k.soft)
+    p = c.beginPath(); p.moveTo(W - big[0], H); p.lineTo(W, H); p.lineTo(W, H - big[1]); p.close()
+    c.drawPath(p, stroke=0, fill=1)
+    c.setFillColor(k.accent)
+    p = c.beginPath(); p.moveTo(W - small[0], H); p.lineTo(W, H); p.lineTo(W, H - small[1]); p.close()
+    c.drawPath(p, stroke=0, fill=1)
+    c.setFillColor(k.accent); c.rect(0, 0, W, 1.4, stroke=0, fill=1)
+    return INK, GREY, k.accent, INK
+
+
+def draw_back(c, x, y, k, template, hor, jenis, ttd=True):
+    W, H = (CARD_LONG, CARD_SHORT) if hor else (CARD_SHORT, CARD_LONG)
+    judul = BELAKANG.get(jenis, BELAKANG["ketentuan"])[2]
+    c.saveState()
+    c.translate(x, y)
+    c.scale(mm, mm)
+    c.saveState()
+    _clip_card(c, W, H)
+    ink, sub, head, on_head = _back_theme(c, k, W, H, hor, template)
+    klasik = template == "klasik"
+    logo_bg = WHITE if (klasik or template in ("elegan", "gradien")) else k.soft
+    title_c = WHITE if klasik else head
+    small_c = (k.light if klasik else sub)
+    if hor:
+        _logo(c, k, 8.4, H - 6.3, 3, bg=logo_bg)
+        _text_fit(c, judul, 13.2, H - 6, W - 42 if template == "modern" else W - 20, F["b"], 7,
+                  title_c, min_size=5)
+        _text_fit(c, k.sekolah, 13.2, H - 9, W - 42 if template == "modern" else W - 20, F["m"], 4.8,
+                  small_c, min_size=3.8)
+        top, bottom = H - 14, (18.5 if ttd else 6.5)
+        _draw_sections(c, _konten(k, jenis), 5.5, top, W - 11.5, top - bottom, ink, sub, head)
+        if ttd:
+            _signature(c, k, W - 22, 3, ink, sub, dark=template in ("elegan", "gradien"))
+            _text_fit(c, k.info.get("berlaku") or "", 5.5, 3.6, W - 45, F["m"], 4.6, sub, min_size=3.6)
+        else:
+            _text_fit(c, k.info.get("berlaku") or "", 5.5, 3.4, W - 11, F["m"], 4.6, sub, min_size=3.6)
+    else:
+        _logo(c, k, W / 2, H - 6.8, 3.1, bg=logo_bg)
+        _text_fit(c, judul, W / 2, H - 13, W - 8, F["b"], 6.8, title_c, "c", 4.5)
+        _text_fit(c, k.sekolah, W / 2, H - 16, W - 8, F["m"], 4.6, small_c, "c", 3.6)
+        top, bottom = H - 21, (27 if ttd else 8.5)
+        _draw_sections(c, _konten(k, jenis), 5, top, W - 10, top - bottom, ink, sub, head)
+        if ttd:
+            _signature(c, k, W / 2, 8.2, ink, sub, width=40, dark=template in ("elegan", "gradien"))
+        _text_fit(c, k.info.get("berlaku") or "", W / 2, 3.6, W - 8, F["m"], 4.5, sub, "c", 3.4)
+    c.restoreState()
+    c.restoreState()
+
+
+# =================================================================== PDF
+def kartu_pdf(siswa_rows, info, template="modern", orientasi="h", warna="biru", db=None,
+              sisi="depan", belakang="ketentuan", kertas="a4", ttd=True, preview=False):
+    """PDF kartu pelajar.
+
+    sisi: depan | belakang | keduanya.  kertas: a4 (grid) | pvc (1 kartu/halaman).
+    preview=True → satu sisi kartu pertama dengan bingkai abu (untuk pratinjau).
+    Pada kertas A4, halaman belakang dicerminkan kiri-kanan agar pas saat dicetak
+    bolak-balik (duplex, balik di sisi panjang)."""
     template, orientasi, warna = normalize(template, orientasi, warna)
+    sisi = sisi if sisi in SISI else "depan"
+    belakang = belakang if belakang in BELAKANG else DEFAULT["belakang"]
     hor = orientasi == "h"
     accent = WARNA[warna][1]
     W, H = ((CARD_LONG, CARD_SHORT) if hor else (CARD_SHORT, CARD_LONG))
     W, H = W * mm, H * mm
     buf = io.BytesIO()
-    if single:
-        pad = 4 * mm
+    sides = {"depan": ["f"], "belakang": ["b"], "keduanya": ["f", "b"]}[sisi]
+
+    def draw(side, cx, cy, s):
+        k = Ctx(s, info, accent, db)
+        if side == "f":
+            draw_card(c, cx, cy, k, template, hor)
+        else:
+            draw_back(c, cx, cy, k, template, hor, belakang, ttd)
+
+    if preview or kertas == "pvc":
+        pad = 4 * mm if preview else 0
         c = canvas.Canvas(buf, pagesize=(W + 2 * pad, H + 2 * pad))
-        c.setTitle("Pratinjau Kartu Pelajar")
-        for i, s in enumerate(siswa_rows):
-            if i:
-                c.showPage()
-            c.setFillColor(colors.HexColor("#f2f4f7"))
-            c.rect(0, 0, W + 2 * pad, H + 2 * pad, stroke=0, fill=1)
-            draw_card(c, pad, pad, Ctx(s, sekolah, alamat, logo, accent, db), template, hor)
+        c.setTitle("Kartu Pelajar")
+        first = True
+        for s in (siswa_rows[:1] if preview else siswa_rows):
+            for side in sides[:1] if preview else sides:
+                if not first:
+                    c.showPage()
+                first = False
+                if preview:
+                    c.setFillColor(colors.HexColor("#f2f4f7"))
+                    c.rect(0, 0, W + 2 * pad, H + 2 * pad, stroke=0, fill=1)
+                draw(side, pad, pad, s)
         c.save()
         buf.seek(0)
         return buf
@@ -551,17 +803,21 @@ def kartu_pdf(siswa_rows, sekolah, template="modern", orientasi="h", warna="biru
     mx = (pw - cols * W - (cols - 1) * gap) / 2
     my = (ph - rows * H - (rows - 1) * gap) / 2
     per = cols * rows
-    for i, s in enumerate(siswa_rows):
-        if i and i % per == 0:
-            c.showPage()
-        idx = i % per
-        col, row = idx % cols, idx // cols
-        x = mx + col * (W + gap)
-        y = ph - my - (row + 1) * H - row * gap
-        draw_card(c, x, y, Ctx(s, sekolah, alamat, logo, accent, db), template, hor)
-    if not siswa_rows:
-        c.setFont(F["r"], 11)
-        c.drawString(40, ph - 60, "Tidak ada siswa.")
+    chunks = [siswa_rows[i:i + per] for i in range(0, len(siswa_rows), per)] or [[]]
+    first = True
+    for chunk in chunks:
+        for side in sides:
+            if not first:
+                c.showPage()
+            first = False
+            for idx, s in enumerate(chunk):
+                col, row = idx % cols, idx // cols
+                if side == "b":
+                    col = cols - 1 - col  # cermin untuk cetak bolak-balik
+                draw(side, mx + col * (W + gap), ph - my - (row + 1) * H - row * gap, s)
+            if not chunk:
+                c.setFont(F["r"], 11)
+                c.drawString(40, ph - 60, "Tidak ada siswa.")
     c.showPage()
     c.save()
     buf.seek(0)

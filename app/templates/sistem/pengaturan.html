@@ -2,21 +2,46 @@
 {% from "_macros.html" import csrf with context %}
 {% block title %}Pengaturan{% endblock %}
 {% block content %}
-<div class="page-head"><h1>{{ icon('pengaturan') }}Pengaturan</h1></div>
+<div class="page-head"><h1>Pengaturan</h1></div>
 <form method="post" class="card" enctype="multipart/form-data">
   {{ csrf() }}
   <h3>Identitas sekolah</h3>
   <div class="form-grid">
-    <div><label>Nama sekolah</label><input name="nama_sekolah" value="{{ nama_sekolah }}"></div>
-    <div><label>Alamat</label><input name="alamat_sekolah" value="{{ alamat }}"></div>
+    <div><label>Nama sekolah</label><input name="nama_sekolah" value="{{ prof.nama_sekolah }}"></div>
+    <div><label>NPSN</label><input name="npsn" value="{{ prof.npsn }}"></div>
+    <div><label>Akreditasi</label><input name="akreditasi" value="{{ prof.akreditasi }}" placeholder="mis. A (Unggul)"></div>
+    <div class="full"><label>Alamat</label><input name="alamat_sekolah" value="{{ prof.alamat_sekolah }}"></div>
+    <div><label>Kota / kabupaten</label><input name="kota_sekolah" value="{{ prof.kota_sekolah }}" placeholder="dipakai di tanda tangan kartu"></div>
+    <div><label>Telepon</label><input name="telepon_sekolah" value="{{ prof.telepon_sekolah }}"></div>
+    <div><label>Email</label><input name="email_sekolah" value="{{ prof.email_sekolah }}"></div>
+    <div><label>Website</label><input name="website_sekolah" value="{{ prof.website_sekolah }}"></div>
+    <div><label>Kepala sekolah</label><input name="kepala_sekolah" value="{{ prof.kepala_sekolah }}"></div>
+    <div><label>NIP kepala sekolah</label><input name="nip_kepala" value="{{ prof.nip_kepala }}"></div>
     <div class="full"><label>Logo sekolah</label>
       <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
-        {% if logo_url %}<img src="{{ logo_url }}" alt="Logo" style="width:56px;height:56px;object-fit:contain;border:1px solid var(--border);border-radius:10px;padding:4px;background:#fff">{% endif %}
+        {% if logo_url %}<img src="{{ logo_url }}" alt="Logo" class="upload-thumb">{% endif %}
         <input type="file" name="logo" accept="image/png,image/jpeg" style="max-width:320px">
         {% if logo_url %}<label class="check"><input type="checkbox" name="hapus_logo" value="1">Hapus logo</label>{% endif %}
       </div>
       <div class="help">Dipakai di kartu pelajar dan menu samping. Disarankan PNG berlatar transparan, bentuk persegi.</div></div>
+    <div class="full"><label>Tanda tangan kepala sekolah (untuk kartu)</label>
+      <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
+        {% if ttd_url %}<img src="{{ ttd_url }}" alt="Tanda tangan" class="upload-thumb" style="width:120px">{% endif %}
+        <input type="file" name="ttd" accept="image/png,image/jpeg" style="max-width:320px">
+        {% if ttd_url %}<label class="check"><input type="checkbox" name="hapus_ttd" value="1">Hapus tanda tangan</label>{% endif %}
+      </div>
+      <div class="help">PNG berlatar transparan (boleh sudah termasuk stempel). Tanpa gambar, tempat tanda tangan dibiarkan kosong untuk ditandatangani manual.</div></div>
   </div>
+
+  <h3 class="mt" id="kartu">Isi kartu pelajar — sisi belakang</h3>
+  <div class="form-grid">
+    <div class="full"><label>Syarat & ketentuan kartu (satu poin per baris)</label><textarea name="kartu_ketentuan" rows="5">{{ prof.kartu_ketentuan }}</textarea></div>
+    <div class="full"><label>Visi</label><textarea name="visi" rows="2" style="min-height:60px">{{ prof.visi }}</textarea></div>
+    <div class="full"><label>Misi (satu poin per baris)</label><textarea name="misi" rows="4">{{ prof.misi }}</textarea></div>
+    <div class="full"><label>Keterangan masa berlaku</label><input name="kartu_berlaku" value="{{ prof.kartu_berlaku }}"></div>
+  </div>
+  <p class="help">Pilihan “Jam Sekolah & Tata Tertib” memakai data <a href="{{ url_for('kedisiplinan.aturan_jam') }}">Aturan Jam</a> dan <a href="{{ url_for('kedisiplinan.tatib') }}">Tata Tertib</a>; “Kontak & Kartu Ditemukan” memakai nomor WA orang tua di data siswa.</p>
+
   <h3 class="mt">Hari sekolah</h3>
   <div class="checks">{% for h in HARI %}<label class="check"><input type="checkbox" name="hari_sekolah" value="{{ loop.index }}" {{ 'checked' if loop.index in hari }}>{{ h }}</label>{% endfor %}</div>
   <h3 class="mt">Modul & tampilan</h3>

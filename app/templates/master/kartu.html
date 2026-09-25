@@ -2,21 +2,21 @@
 {% block title %}Cetak Kartu{% endblock %}
 {% block content %}
 <div class="page-head"><h1>Cetak Kartu Pelajar</h1></div>
-<p class="page-sub">Pilih template, orientasi, dan warna. Pratinjau di kanan berubah otomatis.</p>
+<p class="page-sub">Atur tampilan sisi depan &amp; belakang, lalu buat PDF siap cetak. Pratinjau berubah otomatis.</p>
 
 <form id="kartu-form" method="get" action="{{ url_for('master.kartu_download') }}" target="_blank" class="kartu-layout">
   <div>
     <div class="card">
-      <div class="card-head"><h3>{{ icon('kartu') }}Template</h3>
+      <div class="card-head"><h3>{{ icon('kartu') }}Template sisi depan</h3>
         <div class="mode-switch" style="min-width:230px">
-          {% for k, v in orientasi_opsi.items() %}<label><input type="radio" name="orientasi" value="{{ k }}" {{ 'checked' if orientasi == k }}><span>{{ v }}</span></label>{% endfor %}
+          {% for k, v in orientasi_opsi.items() %}<label><input type="radio" name="orientasi" value="{{ k }}" {{ 'checked' if o.orientasi == k }}><span>{{ v }}</span></label>{% endfor %}
         </div>
       </div>
       <div class="tpl-grid">
         {% for k, (nama, desc) in templates.items() %}
         <label class="tpl">
-          <input type="radio" name="template" value="{{ k }}" {{ 'checked' if template == k }}>
-          <span class="tpl-thumb"><img data-tpl="{{ k }}" src="{{ url_for('static', filename='img/kartu/' ~ k ~ '-' ~ orientasi ~ '.png') }}" alt="Template {{ nama }}"></span>
+          <input type="radio" name="template" value="{{ k }}" {{ 'checked' if o.template == k }}>
+          <span class="tpl-thumb"><img data-tpl="{{ k }}" src="{{ url_for('static', filename='img/kartu/' ~ k ~ '-' ~ o.orientasi ~ '.png') }}" alt="Template {{ nama }}"></span>
           <span class="tpl-name">{{ nama }}</span>
           <span class="tpl-desc">{{ desc }}</span>
         </label>
@@ -28,15 +28,33 @@
       <h3>Warna utama</h3>
       <div class="swatches">
         {% for k, (nama, hexa) in warna_opsi.items() %}
-        <label class="swatch" title="{{ nama }}"><input type="radio" name="warna" value="{{ k }}" {{ 'checked' if warna == k }}><span style="--c: {{ hexa }}"></span><small>{{ nama }}</small></label>
+        <label class="swatch" title="{{ nama }}"><input type="radio" name="warna" value="{{ k }}" {{ 'checked' if o.warna == k }}><span style="--c: {{ hexa }}"></span><small>{{ nama }}</small></label>
         {% endfor %}
       </div>
       {% if not ada_logo %}<div class="callout mt" style="margin-bottom:0">{{ icon('info') }}<span>Logo sekolah belum diunggah — kartu memakai inisial sekolah. <a href="{{ url_for('sistem.pengaturan') }}">Unggah logo</a></span></div>{% endif %}
     </div>
 
     <div class="card">
-      <h3>Siswa yang dicetak</h3>
-      <div class="tabs" style="margin-bottom:1rem">
+      <div class="card-head"><h3>{{ icon('refresh') }}Isi sisi belakang</h3><a class="btn sm ghost" href="{{ url_for('sistem.pengaturan') }}#kartu">{{ icon('edit') }}Ubah teks</a></div>
+      <div class="opt-list">
+        {% for k, (nama, desc, _j) in belakang_opsi.items() %}
+        <label class="opt"><input type="radio" name="belakang" value="{{ k }}" {{ 'checked' if o.belakang == k }}>
+          <span><b>{{ nama }}</b><small>{{ desc }}</small></span></label>
+        {% endfor %}
+      </div>
+      <label class="check mt"><input type="checkbox" name="ttd" value="1" {{ 'checked' if o.ttd }}>Tampilkan tanda tangan kepala sekolah</label><input type="hidden" name="ttd" value="0">
+      {% if o.ttd and not ada_kepsek %}<p class="help">Nama kepala sekolah &amp; tanda tangan diisi di <a href="{{ url_for('sistem.pengaturan') }}">Pengaturan</a>.</p>{% endif %}
+    </div>
+
+    <div class="card">
+      <h3>{{ icon('printer') }}Cetak</h3>
+      <div class="form-grid">
+        <div><label>Sisi yang dicetak</label>
+          <select name="sisi">{% for k, v in sisi_opsi.items() %}<option value="{{ k }}" {{ 'selected' if o.sisi == k }}>{{ v }}</option>{% endfor %}</select></div>
+        <div><label>Jenis kertas / printer</label>
+          <select name="kertas">{% for k, v in kertas_opsi.items() %}<option value="{{ k }}" {{ 'selected' if o.kertas == k }}>{{ v }}</option>{% endfor %}</select></div>
+      </div>
+      <div class="tabs mt" style="margin-bottom:1rem">
         <a href="#" data-target="kelas" class="active">Per kelas</a><a href="#" data-target="siswa">Satu siswa</a>
       </div>
       <div data-pane="kelas">
@@ -47,19 +65,23 @@
         <label>Siswa</label>
         <select name="siswa_id" disabled>{% for s in siswa %}<option value="{{ s.id }}">{{ s.nama }} — {{ s.kelas_nama or '-' }}</option>{% endfor %}</select>
       </div>
-      <p class="help">Horizontal: 10 kartu per A4 (2 × 5). Vertikal: 9 kartu per A4 (3 × 3). Ukuran standar ID card 85,6 × 54 mm — cetak dengan skala 100% (“Actual size”).</p>
+      <ul class="help mt">
+        <li><b>A4:</b> horizontal 10 kartu (2×5), vertikal 9 kartu (3×3) per halaman, ukuran ID card 85,6 × 54 mm. Cetak dengan skala <b>100% / Actual size</b>.</li>
+        <li><b>Depan &amp; belakang di A4:</b> halaman depan dan belakang berselang-seling dan sisi belakang sudah dicerminkan. Cetak bolak-balik (duplex) dengan pilihan <b>“Flip on long edge”</b>, atau cetak halaman ganjil dulu lalu masukkan ulang kertas untuk halaman genap.</li>
+        <li><b>Printer kartu PVC</b> (Evolis, Zebra, dll.): 1 kartu per halaman, urutan depan lalu belakang per siswa.</li>
+      </ul>
     </div>
   </div>
 
   <div class="kartu-side">
     <div class="card">
-      <div class="card-head"><h3>{{ icon('eye') }}Pratinjau</h3><small id="prev-info"></small></div>
-      <div class="preview-box" id="preview-box">
-        {% if png_ok %}<img id="preview" alt="Pratinjau kartu">{% else %}<iframe id="preview" title="Pratinjau kartu"></iframe>{% endif %}
+      <div class="card-head"><h3>{{ icon('eye') }}Pratinjau</h3></div>
+      <div class="preview-pair">
+        <div><div class="preview-label">Depan</div><div class="preview-box" data-side="depan">{% if png_ok %}<img alt="Pratinjau depan">{% else %}<iframe title="Pratinjau depan"></iframe>{% endif %}</div></div>
+        <div><div class="preview-label">Belakang</div><div class="preview-box" data-side="belakang">{% if png_ok %}<img alt="Pratinjau belakang">{% else %}<iframe title="Pratinjau belakang"></iframe>{% endif %}</div></div>
       </div>
       <div class="btn-row mt">
         <button class="btn" style="flex:1">{{ icon('printer') }}Buat PDF siap cetak</button>
-        <a class="btn outline" id="open-preview" target="_blank" href="#">{{ icon('eye') }}Buka</a>
       </div>
       <p class="help">Pratinjau memakai siswa pertama dari pilihan (atau data contoh). Pilihan terakhir disimpan sebagai default untuk tombol “Cetak Kartu” di halaman lain.</p>
     </div>
@@ -70,27 +92,29 @@
 <script>
 (function () {
   const form = document.getElementById('kartu-form');
-  const iframe = document.getElementById('preview');
-  const openBtn = document.getElementById('open-preview');
   const base = form.getAttribute('action');
   const thumbs = '{{ url_for("static", filename="img/kartu/") }}';
   let t;
 
-  function params(preview) {
+  function params() {
     const p = new URLSearchParams(new FormData(form));
     for (const [k, v] of [...p]) if (!v) p.delete(k);
-    if (preview) p.set('pratinjau', '1');
-    return p.toString();
+    p.set('pratinjau', '1');
+    return p;
   }
   function refresh() {
     const o = form.orientasi.value;
     document.querySelectorAll('img[data-tpl]').forEach(img => img.src = thumbs + img.dataset.tpl + '-' + o + '.png');
-    document.getElementById('preview-box').className = 'preview-box ' + o;
-    const url = base + '?' + params(true);
-    openBtn.href = url;
+    document.querySelector('.preview-pair').className = 'preview-pair ' + o;
     clearTimeout(t);
     t = setTimeout(() => {
-      iframe.src = iframe.tagName === 'IMG' ? url + '&format=png' : url + '#toolbar=0&navpanes=0&view=Fit';
+      document.querySelectorAll('.preview-box').forEach(box => {
+        const p = params();
+        p.set('lihat', box.dataset.side);
+        const el = box.firstElementChild;
+        if (el.tagName === 'IMG') { p.set('format', 'png'); el.src = base + '?' + p; }
+        else el.src = base + '?' + p + '#toolbar=0&navpanes=0&view=Fit';
+      });
     }, 150);
   }
   form.addEventListener('change', refresh);

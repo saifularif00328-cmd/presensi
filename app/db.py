@@ -33,6 +33,28 @@ DEFAULT_SETTINGS = {
     "wa_tpl_izin": "Bapak/Ibu, pengajuan *{status}* untuk ananda *{nama_siswa}* ({kelas}) telah *disetujui* sekolah. {keterangan}",
     "wa_tpl_pelanggaran": "Bapak/Ibu, ananda *{nama_siswa}* ({kelas}) tercatat melakukan pelanggaran: *{status}* pada {jam}. Mohon bimbingannya di rumah.",
     "license_key": "",
+    # profil sekolah (sisi belakang kartu)
+    "kota_sekolah": "",
+    "telepon_sekolah": "",
+    "email_sekolah": "",
+    "website_sekolah": "",
+    "npsn": "",
+    "akreditasi": "",
+    "kepala_sekolah": "",
+    "nip_kepala": "",
+    "ttd_kepsek": "",
+    "visi": "Terwujudnya peserta didik yang beriman, berakhlak mulia, berprestasi, dan peduli "
+            "lingkungan.",
+    "misi": "Menyelenggarakan pembelajaran yang aktif, kreatif, dan menyenangkan.\n"
+            "Menanamkan nilai keimanan, kejujuran, dan kedisiplinan dalam kehidupan sehari-hari.\n"
+            "Mengembangkan potensi akademik dan non-akademik peserta didik secara optimal.\n"
+            "Membangun budaya sekolah yang bersih, aman, dan ramah lingkungan.",
+    "kartu_ketentuan": "Kartu ini adalah identitas resmi siswa dan wajib dibawa setiap hari.\n"
+                       "Kartu digunakan untuk presensi masuk dan pulang dengan memindai kode QR.\n"
+                       "Kartu tidak boleh dipinjamkan, diperjualbelikan, atau disalahgunakan.\n"
+                       "Kehilangan atau kerusakan kartu wajib segera dilaporkan ke Tata Usaha.\n"
+                       "Bagi yang menemukan kartu ini, mohon dikembalikan ke alamat sekolah.",
+    "kartu_berlaku": "Berlaku selama pemegang kartu masih berstatus siswa aktif.",
 }
 
 

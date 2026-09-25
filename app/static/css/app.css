@@ -481,6 +481,16 @@ code.key { display: inline-block; font-size: .95rem; padding: .35rem .6rem; user
 .swatch small { font-size: .7rem; color: var(--muted); line-height: 1.2; display: block; }
 .swatch:has(input:checked) small { color: var(--text); font-weight: 600; }
 .preview-box { background: #f2f4f7; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+.preview-pair { display: grid; gap: .75rem; }
+.preview-pair.v { grid-template-columns: 1fr 1fr; }
+.preview-label { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .3rem; }
+.opt-list { display: grid; gap: .5rem; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.opt { display: flex; gap: .6rem; align-items: flex-start; margin: 0; padding: .65rem .75rem; border: 1px solid var(--border); border-radius: 9px; cursor: pointer; font-weight: 400; }
+.opt input { margin-top: .15rem; }
+.opt b { display: block; font-size: .86rem; font-weight: 600; color: var(--text); }
+.opt small { display: block; font-size: .75rem; color: var(--muted); line-height: 1.35; }
+.opt:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
 .preview-box iframe { width: 100%; border: 0; display: block; height: 260px; background: #f2f4f7; }
-.preview-box.v iframe { height: 470px; }
+.preview-pair.v iframe { height: 360px; }
 .preview-box img { display: block; margin: 0 auto; max-width: 100%; max-height: 520px; }
+.upload-thumb { width: 56px; height: 56px; object-fit: contain; border: 1px solid var(--border); border-radius: 10px; padding: 4px; background: #fff; }

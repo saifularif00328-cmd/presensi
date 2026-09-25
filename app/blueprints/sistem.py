@@ -156,13 +156,15 @@ def info_hapus(iid):
 def pengaturan():
     if request.method == "POST":
         db = get_db()
-        for k in ("nama_sekolah", "alamat_sekolah"):
-            set_setting(k, request.form.get(k, "").strip(), db=db, commit=False)
+        for k in PROFIL_KEYS:
+            if k in request.form:
+                set_setting(k, request.form.get(k, "").strip(), db=db, commit=False)
         hari = [h for h in request.form.getlist("hari_sekolah") if h.isdigit()]
         set_setting("hari_sekolah", ",".join(hari) or "1,2,3,4,5", db=db, commit=False)
         set_setting("modul_ibadah_aktif", "1" if request.form.get("modul_ibadah_aktif") else "0",
                     db=db, commit=False)
-        _simpan_logo(db)
+        _simpan_gambar(db, "logo", "logo_sekolah", "logo_sekolah", (512, 512))
+        _simpan_gambar(db, "ttd", "ttd_kepsek", "ttd_kepsek", (900, 400))
         r = request.form.get("monitor_refresh_detik", "3")
         set_setting("monitor_refresh_detik", r if r.isdigit() and 1 <= int(r) <= 60 else "3",
                     db=db, commit=False)
@@ -176,33 +178,40 @@ def pengaturan():
     return render_template("sistem/pengaturan.html", hari=utils.hari_sekolah(), HARI=utils.HARI,
                            backups=backups, data_dir=os.path.abspath(config.DATA_DIR),
                            alamat=get_setting("alamat_sekolah"),
+                           prof={k: get_setting(k) for k in PROFIL_KEYS},
+                           ttd_url=(url_for("uploads", filename=get_setting("ttd_kepsek"))
+                                    if get_setting("ttd_kepsek") else None),
                            refresh=get_setting("monitor_refresh_detik"))
 
 
-def _simpan_logo(db):
-    """Logo sekolah (dipakai di kartu pelajar & sidebar). Disimpan sebagai PNG ≤ 512 px."""
-    old = get_setting("logo_sekolah", db=db)
-    if request.form.get("hapus_logo") and old:
+PROFIL_KEYS = ("nama_sekolah", "alamat_sekolah", "kota_sekolah", "telepon_sekolah", "email_sekolah",
+               "website_sekolah", "npsn", "akreditasi", "kepala_sekolah", "nip_kepala", "visi",
+               "misi", "kartu_ketentuan", "kartu_berlaku")
+
+
+def _simpan_gambar(db, field, key, prefix, max_size):
+    """Simpan gambar unggahan (logo / tanda tangan) sebagai PNG transparan."""
+    old = get_setting(key, db=db)
+    if request.form.get(f"hapus_{field}") and old:
         path = os.path.join(config.UPLOAD_DIR, old)
         if os.path.exists(path):
             os.remove(path)
-        set_setting("logo_sekolah", "", db=db, commit=False)
+        set_setting(key, "", db=db, commit=False)
         return
-    f = request.files.get("logo")
+    f = request.files.get(field)
     if not f or not f.filename:
         return
     try:
-        img = Image.open(f.stream)
-        img = img.convert("RGBA")
+        img = Image.open(f.stream).convert("RGBA")
     except Exception:
-        flash("File logo tidak valid (gunakan PNG/JPG).", "error")
+        flash("File gambar tidak valid (gunakan PNG/JPG).", "error")
         return
-    img.thumbnail((512, 512))
-    name = f"logo_sekolah_{secrets.token_hex(3)}.png"
+    img.thumbnail(max_size)
+    name = f"{prefix}_{secrets.token_hex(3)}.png"
     img.save(os.path.join(config.UPLOAD_DIR, name), "PNG")
     if old and os.path.exists(os.path.join(config.UPLOAD_DIR, old)):
         os.remove(os.path.join(config.UPLOAD_DIR, old))
-    set_setting("logo_sekolah", name, db=db, commit=False)
+    set_setting(key, name, db=db, commit=False)
 
 
 @bp.route("/backup")

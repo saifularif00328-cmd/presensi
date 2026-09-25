@@ -352,33 +352,93 @@ def siswa_import_template():
 
 
 # ================================================================ KARTU PELAJAR
+KARTU_KEYS = ("template", "orientasi", "warna", "belakang", "sisi", "kertas", "ttd")
+
+
 def _kartu_opsi():
-    """Pilihan template dari query string, jatuh ke pilihan terakhir yang disimpan."""
-    return kartu_svc.normalize(
-        request.args.get("template") or get_setting("kartu_template"),
-        request.args.get("orientasi") or get_setting("kartu_orientasi"),
-        request.args.get("warna") or get_setting("kartu_warna"))
+    """Pilihan kartu dari query string, jatuh ke pilihan terakhir yang disimpan."""
+    def pick(key, default):
+        return request.args.get(key) or get_setting(f"kartu_{key}") or default
+    template, orientasi, warna = kartu_svc.normalize(pick("template", None), pick("orientasi", None),
+                                                     pick("warna", None))
+    belakang = pick("belakang", "ketentuan")
+    sisi = pick("sisi", "keduanya")
+    kertas = pick("kertas", "a4")
+    return {"template": template, "orientasi": orientasi, "warna": warna,
+            "belakang": belakang if belakang in kartu_svc.BELAKANG else "ketentuan",
+            "sisi": sisi if sisi in kartu_svc.SISI else "depan",
+            "kertas": kertas if kertas in kartu_svc.KERTAS else "a4",
+            "ttd": pick("ttd", "1") == "1"}
+
+
+def _upload(key):
+    rel = get_setting(key)
+    path = rel and os.path.join(config.UPLOAD_DIR, rel)
+    return path if path and os.path.exists(path) else None
 
 
 def logo_path():
-    rel = get_setting("logo_sekolah")
-    path = rel and os.path.join(config.UPLOAD_DIR, rel)
-    return path if path and os.path.exists(path) else None
+    return _upload("logo_sekolah")
+
+
+def _lines(key):
+    return [x.strip() for x in (get_setting(key) or "").splitlines() if x.strip()]
+
+
+def _hari_text():
+    from .. import utils
+    hs = sorted(utils.hari_sekolah())
+    if not hs:
+        return "-"
+    if hs == list(range(hs[0], hs[-1] + 1)) and len(hs) > 2:
+        return f"{utils.HARI[hs[0] - 1]} – {utils.HARI[hs[-1] - 1]}"
+    return ", ".join(utils.HARI[h - 1] for h in hs)
+
+
+def kartu_info():
+    """Data sekolah untuk kartu (depan & belakang)."""
+    from .. import utils
+    from ..services.attendance import aturan_for
+    tatib = []
+    for r in query("SELECT judul, isi FROM tata_tertib ORDER BY urutan, id LIMIT 5"):
+        isi = (r["isi"] or "").strip()
+        first = isi.split(". ")[0].rstrip(".") if isi else r["judul"]
+        tatib.append(first if len(first) <= 110 else first[:107] + "...")
+    return {
+        "sekolah": get_setting("nama_sekolah"), "alamat": get_setting("alamat_sekolah"),
+        "logo": logo_path(), "ttd": _upload("ttd_kepsek"),
+        "kota": get_setting("kota_sekolah"), "tanggal": utils.tanggal_indo(utils.today()).split(", ")[1],
+        "telepon": get_setting("telepon_sekolah"), "email": get_setting("email_sekolah"),
+        "website": get_setting("website_sekolah"), "npsn": get_setting("npsn"),
+        "akreditasi": get_setting("akreditasi"), "kepsek": get_setting("kepala_sekolah"),
+        "nip": get_setting("nip_kepala"), "visi": get_setting("visi"), "misi": _lines("misi"),
+        "ketentuan": _lines("kartu_ketentuan"), "berlaku": get_setting("kartu_berlaku"),
+        "hari": _hari_text(), "tatib": tatib,
+        "aturan_fn": lambda k: aturan_for(k.get("kelas_id"), k.get("jenjang")),
+    }
 
 
 @bp.route("/kartu")
 @roles()
 @feature("kartu")
 def kartu():
-    template, orientasi, warna = _kartu_opsi()
     return render_template("master/kartu.html", kelas=kelas_options(),
                            siswa=query("SELECT s.id, s.nama, k.nama AS kelas_nama FROM siswa s "
                                        "LEFT JOIN kelas k ON k.id = s.kelas_id WHERE s.aktif = 1 "
                                        "ORDER BY k.nama, s.nama"),
                            templates=kartu_svc.TEMPLATES, orientasi_opsi=kartu_svc.ORIENTASI,
-                           warna_opsi=kartu_svc.WARNA, template=template, orientasi=orientasi,
-                           warna=warna, ada_logo=bool(logo_path()),
+                           warna_opsi=kartu_svc.WARNA, belakang_opsi=kartu_svc.BELAKANG,
+                           sisi_opsi=kartu_svc.SISI, kertas_opsi=kartu_svc.KERTAS,
+                           o=_kartu_opsi(), ada_logo=bool(logo_path()),
+                           ada_ttd=bool(_upload("ttd_kepsek")),
+                           ada_kepsek=bool(get_setting("kepala_sekolah")),
                            png_ok=kartu_svc.png_available())
+
+
+SAMPLE_SISWA = {"id": 0, "nama": "Nama Siswa Contoh", "nis": "2024001", "nisn": "0098765432",
+                "kelas_nama": "7A", "kelas_id": None, "jenjang": None, "foto": None,
+                "qr_token": "CONTOH0000000000", "wa_ayah": "081234567890", "wa_ibu": None,
+                "wa_wali": None}
 
 
 @bp.route("/kartu/pdf")
@@ -386,10 +446,10 @@ def kartu():
 @feature("kartu")
 def kartu_download():
     kelas_id, siswa_id = arg_int("kelas_id"), arg_int("siswa_id")
-    template, orientasi, warna = _kartu_opsi()
+    o = _kartu_opsi()
     pratinjau = request.args.get("pratinjau") == "1"
-    sql = ("SELECT s.*, k.nama AS kelas_nama FROM siswa s LEFT JOIN kelas k ON k.id = s.kelas_id "
-           "WHERE s.aktif = 1")
+    sql = ("SELECT s.*, k.nama AS kelas_nama, k.jenjang FROM siswa s "
+           "LEFT JOIN kelas k ON k.id = s.kelas_id WHERE s.aktif = 1")
     args = []
     if siswa_id:
         sql += " AND s.id = ?"
@@ -398,18 +458,21 @@ def kartu_download():
         sql += " AND s.kelas_id = ?"
         args.append(kelas_id)
     rows = query(sql + " ORDER BY k.nama, s.nama", args)
+    sisi = o["sisi"]
     if pratinjau:
-        rows = rows[:1] or [{"nama": "Nama Siswa Contoh", "nis": "2024001", "nisn": "0098765432",
-                             "kelas_nama": "7A", "foto": None, "qr_token": "CONTOH0000000000"}]
+        rows = rows[:1] or [SAMPLE_SISWA]
+        sisi = "belakang" if request.args.get("lihat") == "belakang" else "depan"
     else:
         # pilihan terakhir disimpan sebagai default (dipakai tombol "Cetak Kartu" di halaman lain)
         db = get_db()
-        set_setting("kartu_template", template, db=db, commit=False)
-        set_setting("kartu_orientasi", orientasi, db=db, commit=False)
-        set_setting("kartu_warna", warna, db=db)
-    buf = kartu_svc.kartu_pdf(rows, get_setting("nama_sekolah"), template, orientasi, warna,
-                              alamat=get_setting("alamat_sekolah"), logo=logo_path(),
-                              single=pratinjau)
+        for key in KARTU_KEYS:
+            val = o[key]
+            set_setting(f"kartu_{key}", ("1" if val else "0") if key == "ttd" else val, db=db,
+                        commit=False)
+        db.commit()
+    buf = kartu_svc.kartu_pdf(rows, kartu_info(), o["template"], o["orientasi"], o["warna"],
+                              sisi=sisi, belakang=o["belakang"], kertas=o["kertas"],
+                              ttd=o["ttd"], preview=pratinjau)
     if pratinjau and request.args.get("format") == "png":
         png = kartu_svc.pdf_to_png(buf)
         if png is not None:

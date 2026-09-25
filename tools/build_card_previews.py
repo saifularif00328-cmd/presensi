@@ -24,8 +24,9 @@ def main(warna="biru", out=None, scale=2.5):
     with app.app_context():
         for t in TEMPLATES:
             for o in ORIENTASI:
-                pdf = kartu_pdf([SAMPLE], "SMP Negeri 1 Nusantara", t, o, warna,
-                                alamat="Jl. Pendidikan No. 1, Kota Nusantara", single=True)
+                info = {"sekolah": "SMP Negeri 1 Nusantara",
+                        "alamat": "Jl. Pendidikan No. 1, Kota Nusantara"}
+                pdf = kartu_pdf([SAMPLE], info, t, o, warna, preview=True)
                 with open(os.path.join(out, f"{t}-{o}.png"), "wb") as f:
                     f.write(pdf_to_png(pdf, scale).read())
     print("Pratinjau disimpan di", out)

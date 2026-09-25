@@ -285,3 +285,31 @@ def test_kartu_semua_template(app, client, seed):
         from app.db import get_setting
         assert get_setting("kartu_template") == "gradien"
         assert get_setting("kartu_orientasi") == "v"
+
+
+def test_kartu_depan_belakang(app, client, seed):
+    import pypdfium2 as pdfium
+    from app.services.kartu import BELAKANG
+    for jenis in BELAKANG:
+        for o in ("h", "v"):
+            r = client.get(f"/master/kartu/pdf?kelas_id=1&sisi=keduanya&belakang={jenis}&orientasi={o}")
+            assert r.status_code == 200, (jenis, o)
+            assert len(pdfium.PdfDocument(r.data)) == 2  # 1 halaman depan + 1 belakang (A4)
+    # printer PVC: depan & belakang per siswa, ukuran halaman = ukuran kartu
+    r = client.get("/master/kartu/pdf?kelas_id=1&sisi=keduanya&kertas=pvc&orientasi=h")
+    doc = pdfium.PdfDocument(r.data)
+    assert len(doc) == 4  # 2 siswa kelas 7A × 2 sisi
+    w, h = doc[0].get_size()
+    assert abs(w - 85.6 / 25.4 * 72) < 1 and abs(h - 54 / 25.4 * 72) < 1
+    r = client.get("/master/kartu/pdf?pratinjau=1&lihat=belakang&belakang=jadwal&format=png&ttd=0")
+    assert r.data[:4] == b"\x89PNG"
+
+
+def test_pengaturan_profil_sekolah(app, client):
+    r = client.post("/sistem/pengaturan", data={"nama_sekolah": "SMA Uji", "kepala_sekolah": "Budi, S.Pd.",
+                                                 "misi": "Satu\nDua", "hari_sekolah": ["1", "2"]})
+    assert r.status_code == 302
+    with app.app_context():
+        from app.db import get_setting
+        assert get_setting("kepala_sekolah") == "Budi, S.Pd."
+        assert get_setting("misi") == "Satu\nDua"
