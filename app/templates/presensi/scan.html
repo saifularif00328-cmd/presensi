@@ -44,13 +44,15 @@
         </form>
         {% if webcam.error %}<p class="flash error">{{ webcam.error }}</p>{% endif %}
       {% else %}
-        <p class="help">Tidak aktif: paket <code>opencv-python</code> dan <code>pyzbar</code> belum terpasang di server. Gunakan tombol “Buka Kamera” (browser) atau scanner USB.</p>
+        <p class="help">Tidak aktif: paket <code>opencv-python</code> dan <code>pyzbar</code> belum terpasang di server.
+          Pasang dengan <code>venv\Scripts\python -m pip install opencv-python pyzbar</code> di folder aplikasi, lalu jalankan ulang.
+          Tanpa paket ini, webcam laptop tetap bisa dipakai lewat tombol “Buka Kamera”.</p>
       {% endif %}
     </div>
     {% endif %}
   </div>
   <div>
-    <div class="result" id="result"><div class="big-ic">🪪</div><div class="pesan">Siap menerima scan</div><div class="muted">Tempelkan kartu QR siswa</div></div>
+    <div class="result" id="result"><div class="big-ic">📇</div><div class="pesan">Siap menerima scan</div><div class="muted">Tempelkan kartu QR siswa</div></div>
     <div class="card mt"><h3>Scan terakhir</h3><ul class="list" id="history"></ul></div>
   </div>
 </div>

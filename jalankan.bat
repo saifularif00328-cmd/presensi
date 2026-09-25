@@ -13,5 +13,10 @@ if not exist venv (
   venv\Scripts\python -m pip install --upgrade pip
   venv\Scripts\python -m pip install -r requirements.txt waitress
 )
+REM Paket opsional untuk scan via webcam PC (OpenCV + pyzbar). Gagal pun aplikasi tetap jalan.
+venv\Scripts\python -c "import cv2, pyzbar.pyzbar" >nul 2>nul || (
+  echo Memasang paket webcam ^(opencv-python, pyzbar^)...
+  venv\Scripts\python -m pip install opencv-python pyzbar
+)
 venv\Scripts\python run.py --open
 pause

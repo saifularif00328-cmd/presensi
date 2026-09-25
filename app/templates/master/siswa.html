@@ -13,7 +13,7 @@
     {% for v, l in [('aktif','Aktif'),('nonaktif','Nonaktif'),('semua','Semua')] %}<option value="{{ v }}" {{ 'selected' if status == v }}>{{ l }}</option>{% endfor %}
   </select>
   <button class="btn">Cari</button>
-  {% if kelas_id %}<a class="btn outline" target="_blank" href="{{ url_for('master.kartu_download', kelas_id=kelas_id) }}">🪪 Cetak kartu kelas</a>{% endif %}
+  {% if kelas_id %}<a class="btn outline" target="_blank" href="{{ url_for('master.kartu_download', kelas_id=kelas_id) }}">📇 Cetak kartu kelas</a>{% endif %}
 </form>
 <div class="card"><div class="table-wrap"><table>
   <thead><tr><th></th><th>Nama</th><th>NIS</th><th class="hide-sm">NISN</th><th>Kelas</th><th class="hide-sm">L/P</th><th class="hide-sm">WA Ortu</th><th></th></tr></thead>

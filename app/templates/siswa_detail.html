@@ -32,7 +32,7 @@
     </div>
     {% if can() %}
     <div class="btn-row mt" style="justify-content:center">
-      <a class="btn sm" target="_blank" href="{{ url_for('master.kartu_download', siswa_id=s.id) }}">🪪 Cetak Kartu</a>
+      <a class="btn sm" target="_blank" href="{{ url_for('master.kartu_download', siswa_id=s.id) }}">📇 Cetak Kartu</a>
       <form class="inline" method="post" action="{{ url_for('master.siswa_ganti_qr', sid=s.id) }}" data-confirm="Buat QR baru? Kartu lama tidak akan berlaku lagi.">{{ csrf() }}<button class="btn sm warn">🔁 Ganti QR</button></form>
     </div>
     {% endif %}

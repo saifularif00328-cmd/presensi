@@ -19,7 +19,7 @@ MENU = [
         ("Presensi Manual", "✍️", "presensi.manual", ("piket",), "presensi"),
         ("Rekap Presensi", "📊", "presensi.rekap", ("piket", "bk"), "rekap"),
         ("SMT Presensi", "🗂️", "presensi.smt", ("piket", "bk"), "rekap"),
-        ("Cetak Kartu", "🪪", "master.kartu", (), "kartu"),
+        ("Cetak Kartu", "📇", "master.kartu", (), "kartu"),
     ]),
     ("Perizinan", [
         ("Izin & Sakit", "🤒", "perizinan.izin", ("piket", "bk"), "perizinan"),
