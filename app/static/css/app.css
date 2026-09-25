@@ -361,7 +361,7 @@ td b, td a b { font-weight: 600; }
 .mode-switch input { display: none; }
 .mode-switch label:has(input:checked) { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
 .scan-input { font-size: 1.05rem; padding: .8rem 1rem; letter-spacing: .02em; }
-#reader { width: 100%; border-radius: var(--radius); overflow: hidden; background: #0b1220; }
+#reader { width: 100%; min-height: 180px; border-radius: var(--radius); overflow: hidden; background: #0b1220; }
 #reader video { width: 100% !important; height: auto; display: block; border-radius: var(--radius); }
 .result {
   border-radius: var(--radius); padding: 1.5rem; text-align: center; min-height: 250px;

@@ -80,6 +80,16 @@ def create_app(test_config=None, start_jobs=True):
                          if get_setting("logo_sekolah") else None),
         }
 
+    @app.url_defaults
+    def _static_versi(endpoint, values):
+        """Tambahkan ?v=<waktu ubah file> ke URL static agar browser tidak memakai cache lama
+        setelah aplikasi diperbarui."""
+        if endpoint == "static" and "filename" in values and "v" not in values:
+            try:
+                values["v"] = int(os.stat(os.path.join(app.static_folder, values["filename"])).st_mtime)
+            except OSError:
+                pass
+
     def icon(name, cls=""):
         """Ikon SVG (Lucide) dari sprite lokal — tetap tampil saat offline."""
         href = url_for("static", filename="icons.svg") + "#" + str(escape(name))
