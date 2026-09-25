@@ -48,7 +48,7 @@ Akun gratis ngrok mendapat **1 domain tetap** (tidak berubah setiap dijalankan).
 1. Di dashboard ngrok buka menu **Domains** (di bawah *Universal Gateway* / *Cloud Edge*,
    tergantung versi tampilan).
 2. Jika belum ada domain, klik **+ New Domain / Create Domain** → domain gratis dibuat otomatis,
-   contohnya `bright-otter-happily.ngrok-free.app`.
+   contohnya `bright-otter-happily.ngrok-free.app` (atau berakhiran `.ngrok-free.dev` — pakai persis seperti di dashboard).
 3. **Salin nama domain tersebut** (tanpa `https://`).
 
 ## Langkah 5 — Simpan domain untuk dijalankan otomatis

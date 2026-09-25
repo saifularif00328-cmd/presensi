@@ -16,7 +16,7 @@ if exist vendor\ngrok_domain.txt (
 where cloudflared >nul 2>nul && if exist "%USERPROFILE%\.cloudflared\config.yml" start "Cloudflare Tunnel" cloudflared tunnel run
 goto server
 :ngrok
-where ngrok >nul 2>nul && start "ngrok" ngrok http --url=%NGROK_DOMAIN% 8500
+where ngrok >nul 2>nul && start "ngrok" cmd /k ngrok http --url=%NGROK_DOMAIN% 8500
 where ngrok >nul 2>nul || echo PERINGATAN: ngrok tidak ditemukan. Lihat license_server\TUTORIAL_NGROK.md
 :server
 start "" cmd /c "timeout /t 3 >nul & start http://localhost:8501"
