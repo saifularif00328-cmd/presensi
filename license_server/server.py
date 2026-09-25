@@ -145,6 +145,11 @@ def create_app(test_config=None):
     def guard():
         if request.path.startswith("/api/") or request.endpoint in ("static", "favicon", None):
             return None
+        # Halaman admin hanya dari laptop vendor sendiri. Permintaan lewat Cloudflare Tunnel
+        # selalu membawa header CF-Connecting-IP → ditolak (kecuali LISENSI_ADMIN_PUBLIK=1).
+        if (request.headers.get("CF-Connecting-IP") or request.headers.get("X-Forwarded-For")) \
+                and os.environ.get("LISENSI_ADMIN_PUBLIK") != "1":
+            abort(403)
         if request.method == "POST":
             sent = request.form.get("_csrf", "")
             if not session.get("_csrf") or not hmac.compare_digest(sent, session["_csrf"]):

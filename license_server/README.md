@@ -55,6 +55,8 @@ Data server tersimpan di `license_server/data/lisensi.db` (backup berkala).
 Koneksi rumah umumnya tidak punya IP publik, jadi gunakan *tunnel*:
 
 ### Opsi A — Cloudflare Tunnel (disarankan, gratis, alamat tetap)
+
+📘 **Tutorial langkah demi langkah dari nol: [`TUTORIAL_CLOUDFLARE.md`](TUTORIAL_CLOUDFLARE.md)**
 Butuh akun Cloudflare gratis dan sebuah domain (mis. `.my.id` / `.com`) yang DNS-nya di Cloudflare.
 
 ```bat
@@ -83,5 +85,5 @@ Menampilkan alamat acak `https://xxxx.trycloudflare.com` — alamat berganti set
 jadi hanya untuk mencoba. Jika alamat server berganti, lisensi sekolah **tetap aktif**; hanya
 cek online harian yang gagal sampai admin sekolah memperbarui alamat server di halaman Lisensi.
 
-Keamanan: halaman admin dilindungi password; API aktivasi dibatasi 20 percobaan/menit per IP;
+Keamanan: halaman admin hanya bisa dibuka dari laptop vendor (`http://localhost:8500`) — permintaan dari internet lewat tunnel mendapat 403 (bisa dibuka dengan env `LISENSI_ADMIN_PUBLIK=1`); admin dilindungi password; API aktivasi dibatasi 20 percobaan/menit per IP;
 kode aktivasi acak 12 karakter (≈60 bit) sehingga tidak bisa ditebak.

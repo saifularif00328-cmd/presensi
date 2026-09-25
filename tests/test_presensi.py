@@ -383,3 +383,15 @@ def test_server_aktivasi_online(app, client, tmp_path, monkeypatch):
         db.close()
     assert client.get("/ibadah/tap").status_code == 402
     assert client.get("/perizinan/izin").status_code == 200
+
+
+def test_admin_server_lisensi_tertutup_dari_internet(tmp_path):
+    from license_server.server import create_app as server_app
+    srv = server_app({"TESTING": True, "DB_PATH": str(tmp_path / "s.db"),
+                      "KEY_PATH": str(tmp_path / "tidak-ada.pem")})
+    c = srv.test_client()
+    assert c.get("/setup").status_code == 200                       # dari laptop sendiri
+    assert c.get("/setup", headers={"CF-Connecting-IP": "1.2.3.4"}).status_code == 403
+    r = c.post("/api/activate", json={"code": "X", "device": "Y"},
+               headers={"CF-Connecting-IP": "1.2.3.4"})
+    assert r.status_code == 503  # API tetap terbuka (di sini: kunci privat belum ada)
