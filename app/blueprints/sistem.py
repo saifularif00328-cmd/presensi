@@ -15,8 +15,9 @@ from werkzeug.security import generate_password_hash
 from .. import config, utils
 from ..auth import ROLES, feature, roles
 from ..db import execute, get_db, get_setting, query, set_setting
-from ..license import (FEATURE_LABEL, TIER_LABEL, TIERS, current_tier, device_id,
-                       features_for, validate_key)
+from ..license import (FEATURE_LABEL, TIER_LABEL, TIERS, current_license, current_tier,
+                       device_id, features_for, public_key)
+from ..services import lisensi as lisensi_svc
 from ..services.rekap import rekap_kelas_hari
 from .common import arg_int, form_int
 
@@ -237,18 +238,35 @@ def backup():
 @roles()
 def lisensi():
     if request.method == "POST":
-        key = request.form.get("license_key", "").strip().upper()
-        tier = validate_key(key)
-        if tier:
-            set_setting("license_key", key)
-            flash(f"Lisensi {TIER_LABEL[tier]} berhasil diaktifkan.", "success")
+        db = get_db()
+        if request.form.get("aksi") == "online":
+            ok, res = lisensi_svc.activate_online(db, request.form.get("server", ""),
+                                                  request.form.get("kode", ""))
+            if ok:
+                flash(f"Lisensi {TIER_LABEL[res['tier']]} aktif"
+                      f"{' sampai ' + res['exp'] if res['exp'] else ' tanpa batas waktu'}.", "success")
+            else:
+                flash(res, "error")
+        elif request.form.get("aksi") == "cek":
+            st = lisensi_svc.check_online(db)
+            flash({"aktif": "Lisensi terverifikasi aktif di server.",
+                   "dicabut": "Server menyatakan lisensi ini DICABUT."}.get(
+                       st, "Tidak dapat mengecek ke server (offline / server belum diatur)."),
+                  "success" if st == "aktif" else "error")
         else:
-            flash("Kode lisensi tidak valid untuk perangkat ini.", "error")
+            info = lisensi_svc.activate_offline(db, request.form.get("license_key", ""))
+            if info["valid"]:
+                flash(f"Lisensi {TIER_LABEL[info['tier']]} berhasil diaktifkan.", "success")
+            else:
+                flash(f"Kode lisensi ditolak: {info['reason']}", "error")
         return redirect(url_for("sistem.lisensi"))
     tabel = [(t, TIER_LABEL[t], sorted(FEATURE_LABEL.get(f, f) for f in features_for(t)
                                        if f in FEATURE_LABEL)) for t in TIERS]
     return render_template("sistem/lisensi.html", device=device_id(), tier_now=current_tier(),
-                           tabel=tabel, key=get_setting("license_key"))
+                           tabel=tabel, info=current_license(), key=get_setting("license_key"),
+                           server=lisensi_svc.server_url(),
+                           checked=get_setting("license_checked"),
+                           pubkey_ok=public_key() is not None)
 
 
 # ================================================================ MULTI-CABANG

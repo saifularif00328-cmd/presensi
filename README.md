@@ -68,17 +68,20 @@ Pesan yang ditolak 3× berstatus *Gagal* dan bisa dikirim ulang dari **Log Notif
 
 | Tier | Fitur |
 |---|---|
-| Basic (tanpa kode) | Presensi & QR, data master, rekap presensi, cetak kartu. Hanya akun admin yang bisa login |
+| Basic (tanpa kode) | Presensi & QR, data master, rekap presensi, cetak kartu — hanya akun admin yang bisa login |
 | Pro | + Perizinan, Rekap Pelanggaran, Notifikasi WA, multi-user & role |
 | Enterprise | + Modul Ibadah, Dashboard Multi-Cabang |
 
-Kode lisensi terikat ke **ID perangkat**, yang terlihat di menu *Lisensi*. Vendor membuat kode dengan:
+Lisensi ditandatangani digital (Ed25519) dan terikat ke **ID perangkat** + masa berlaku.
+Aplikasi hanya membawa kunci publik, sehingga lisensi tidak bisa dipalsukan walaupun `.exe` dibongkar.
 
-```bash
-python tools/keygen.py <ID_PERANGKAT> pro
-```
-
-> **Sebelum distribusi:** ganti `VENDOR_SECRET` di `app/license.py`. Aplikasi dan `keygen.py` harus memakai secret yang sama.
+- **Vendor:** jalankan `python tools/vendor_init.py` sekali (membuat kunci privat & publik), lalu
+  kelola lisensi lewat **server aktivasi** (`jalankan_server_lisensi.bat`) — panduan lengkap
+  termasuk Cloudflare Tunnel di [`license_server/README.md`](license_server/README.md).
+  Kode offline juga bisa dibuat dengan `python tools/keygen.py --device <ID> --tier pro --hari 365`.
+- **Sekolah:** menu **Lisensi** → *Aktivasi online* (kode aktivasi + alamat server) atau
+  *Aktivasi offline* (tempel kode lisensi). Status dicek otomatis ke server saat online:
+  pencabutan, perpanjangan, dan ganti tier diterima tanpa input ulang.
 
 ## Build `.exe` Windows
 
@@ -110,3 +113,11 @@ tools/build_card_previews.py  # membuat gambar contoh template kartu (app/static
 pip install pytest
 python -m pytest -q
 ```
+
+## Rencana pengembangan
+
+- **Presensi wajah (opsional per siswa)** — pengenalan wajah offline dengan OpenCV YuNet + SFace
+  (lisensi Apache-2.0), yang disimpan hanya vektor wajah, wajib persetujuan orang tua (UU PDP).
+  1. *Mode kios*: kamera di gerbang, hasil masuk ke alur presensi yang sama (telat, WA, monitor).
+  2. *Mode HP siswa*: login NIS + PIN terikat 1 HP, pindai **QR dinamis** (berganti tiap 20 detik)
+     di layar gerbang lewat WiFi sekolah + selfie diverifikasi wajah; perlu HTTPS lokal.

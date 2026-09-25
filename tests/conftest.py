@@ -6,11 +6,21 @@ _TMP = tempfile.mkdtemp(prefix="presensi-test-")
 os.environ["PRESENSI_DATA_DIR"] = _TMP
 os.environ["PRESENSI_DEVICE_ID"] = "TEST-DEVI-CE00-0001"
 
+# Pasangan kunci lisensi khusus pengujian (kunci publik lewat env)
+from cryptography.hazmat.primitives import serialization  # noqa: E402
+
+from app.license import generate_keypair  # noqa: E402
+
+_PRIV_PEM, _PUB_PEM = generate_keypair()
+os.environ["PRESENSI_LICENSE_PUBKEY"] = _PUB_PEM.decode()
+PRIV_KEY = serialization.load_pem_private_key(_PRIV_PEM, password=None)
+PRIV_PEM = _PRIV_PEM
+
 import pytest  # noqa: E402
 
 from app import create_app, utils  # noqa: E402
 from app.db import connect, set_setting  # noqa: E402
-from app.license import make_key  # noqa: E402
+from app.license import make_license  # noqa: E402
 
 # Senin, 7 Januari 2030 — hari sekolah, setelah data siswa dibuat
 BASE_DAY = datetime(2030, 1, 7)
@@ -45,8 +55,8 @@ def app(tmp_path, clock):
 def set_tier(app, tier):
     with app.app_context():
         db = connect()
-        set_setting("license_key", make_key(os.environ["PRESENSI_DEVICE_ID"], tier) if tier else "",
-                    db=db)
+        set_setting("license_key", make_license(PRIV_KEY, os.environ["PRESENSI_DEVICE_ID"], tier,
+                                                "Sekolah Uji") if tier else "", db=db)
         db.close()
 
 

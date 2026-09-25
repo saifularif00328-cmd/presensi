@@ -5,7 +5,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from .. import utils
 from ..auth import login_required
 from ..db import execute, get_db, get_setting, query
-from ..license import has_feature
+from ..license import current_license, has_feature
 from ..qr import make_payload
 from ..services.rekap import rekap_kelas_hari
 from .common import arg_date, arg_int, kelas_options, send_export
@@ -33,8 +33,14 @@ def beranda():
             "token": bool(get_setting("fonnte_token")),
         }
     libur = None if utils.is_school_day(tgl) else (utils.libur_on(tgl) or "Bukan hari sekolah")
+    lic = None
+    if g.user["role"] == "admin":
+        info = current_license()
+        if info["payload"] and (not info["valid"] or (info["days_left"] is not None
+                                                      and info["days_left"] <= 30)):
+            lic = info
     return render_template("beranda.html", rekap=rekap, total=total, tgl=tgl, infos=infos,
-                           wa=wa, libur=libur)
+                           wa=wa, libur=libur, lic=lic)
 
 
 @bp.route("/rekap-kelas/export")

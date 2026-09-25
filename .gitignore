@@ -6,3 +6,7 @@ build/
 dist/
 .venv/
 venv/
+
+# kunci privat vendor (JANGAN di-commit)
+vendor/
+license_server/data/

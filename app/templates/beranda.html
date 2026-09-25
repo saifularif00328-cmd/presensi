@@ -9,6 +9,7 @@
 </div>
 <p class="page-sub">Ringkasan kehadiran {{ tanggal_indo(tgl) }}</p>
 
+{% if lic %}<div class="alert-libur">{{ icon('key') }}<span>{% if lic.valid %}Lisensi berakhir dalam <b>{{ lic.days_left }} hari</b> ({{ lic.exp }}).{% else %}{{ lic.reason }} Aplikasi berjalan sebagai Basic.{% endif %} <a href="{{ url_for('sistem.lisensi') }}">Kelola lisensi</a></span></div>{% endif %}
 {% if libur %}<div class="alert-libur">{{ icon('libur') }}<span>{{ tanggal_indo(tgl) }}: {{ libur }} — presensi dilewati.</span></div>{% endif %}
 
 <div class="stats" style="margin-bottom:1.25rem">

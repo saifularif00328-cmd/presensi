@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head"><h1>Lisensi Sekolah</h1></div>
+{% if not key_ok %}<div class="flash error">{{ icon('alert') }}<span>Kunci privat belum ada. Jalankan <code>python tools/vendor_init.py</code>, lalu restart server.</span></div>{% endif %}
+<div class="stats" style="margin-bottom:1.25rem">
+  <div class="stat"><b>{{ stats.total }}</b><span>Total lisensi</span></div>
+  <div class="stat h"><b>{{ stats.aktif }}</b><span>Aktif</span></div>
+  <div class="stat t"><b>{{ stats.segera }}</b><span>Berakhir ≤ 30 hari</span></div>
+  <div class="stat a"><b>{{ stats.dicabut }}</b><span>Dicabut</span></div>
+</div>
+<div class="card">
+  <h3>{{ icon('plus') }}Buat lisensi baru</h3>
+  <form method="post" action="{{ url_for('baru') }}" class="form-grid"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div><label>Nama sekolah</label><input name="sekolah" required></div>
+    <div><label>Kontak (WA / email)</label><input name="kontak"></div>
+    <div><label>Tier</label><select name="tier">{% for t in TIERS %}<option value="{{ t }}" {{ 'selected' if t == 'pro' }}>{{ TIER_LABEL[t] }}</option>{% endfor %}</select></div>
+    <div><label>Masa berlaku</label><select name="durasi"><option value="30">30 hari (uji coba)</option><option value="180">6 bulan</option><option value="365" selected>1 tahun</option><option value="730">2 tahun</option><option value="0">Selamanya</option></select></div>
+    <div><label>Maks. perangkat</label><input type="number" name="max_device" value="1" min="1"></div>
+    <div class="full"><label>Catatan</label><input name="catatan" placeholder="mis. no. invoice, harga"></div>
+    <div><button class="btn">Buat lisensi</button></div>
+  </form>
+</div>
+<form class="filters" method="get"><input name="q" value="{{ q }}" placeholder="Cari sekolah / kode / ID lisensi"><button class="btn">{{ icon('search') }}Cari</button></form>
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Sekolah</th><th>Tier</th><th>Kode aktivasi</th><th>Berlaku</th><th class="num">Perangkat</th><th>Terakhir online</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr><td><a href="{{ url_for('detail', lid=r.id) }}"><b>{{ r.sekolah }}</b></a><br><small>{{ r.kontak or '' }}</small></td>
+    <td>{{ TIER_LABEL[r.tier] }}</td><td><code>{{ r.kode }}</code></td>
+    <td class="nowrap">{{ r.exp or 'Selamanya' }}</td><td class="num">{{ r.n_dev }}/{{ r.max_device }}</td>
+    <td class="nowrap"><small>{{ r.last_seen or '-' }}</small></td>
+    <td>{% if r.status == 'dicabut' %}<span class="badge b-err">Dicabut</span>{% elif expired(r) %}<span class="badge b-warn">Kedaluwarsa</span>{% else %}<span class="badge b-ok">Aktif</span>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="7" class="empty">Belum ada lisensi.</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

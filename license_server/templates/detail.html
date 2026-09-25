@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-head"><a class="btn sm ghost" href="{{ url_for('index') }}">{{ icon('back') }}Kembali</a><h1>{{ lic.sekolah }}</h1>
+  {% if lic.status == 'dicabut' %}<span class="badge b-err">Dicabut</span>{% elif expired %}<span class="badge b-warn">Kedaluwarsa</span>{% else %}<span class="badge b-ok">Aktif</span>{% endif %}</div>
+<div class="grid grid-2">
+  <div class="card">
+    <h3>{{ icon('key') }}Kode aktivasi</h3>
+    <div class="code-big">{{ lic.kode }}</div>
+    <p class="help">Kirim kode ini ke sekolah. Di aplikasi: <b>Akun → Lisensi → Aktivasi online</b>, isi kode + alamat server ini (URL tunnel publik Anda).</p>
+    <dl class="kv mt"><dt>ID lisensi</dt><dd><code>{{ lic.lid }}</code></dd><dt>Dibuat</dt><dd>{{ lic.created_at }}</dd></dl>
+    <div class="btn-row mt">
+      <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        {% if lic.status == 'aktif' %}<input type="hidden" name="aksi" value="cabut"><button class="btn sm danger" onclick="return confirm('Cabut lisensi? Aplikasi sekolah turun ke Basic saat berikutnya online.')">{{ icon('x') }}Cabut lisensi</button>
+        {% else %}<input type="hidden" name="aksi" value="pulihkan"><button class="btn sm ok">Pulihkan</button>{% endif %}
+      </form>
+      <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="aksi" value="hapus"><button class="btn sm ghost" onclick="return confirm('Hapus data lisensi ini dari server?')">{{ icon('trash') }}Hapus</button></form>
+    </div>
+  </div>
+  <div class="card">
+    <h3>{{ icon('edit') }}Ubah lisensi</h3>
+    <form method="post" class="form-grid"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="aksi" value="simpan">
+      <div class="full"><label>Nama sekolah</label><input name="sekolah" value="{{ lic.sekolah }}"></div>
+      <div><label>Tier</label><select name="tier">{% for t in TIERS %}<option value="{{ t }}" {{ 'selected' if lic.tier == t }}>{{ TIER_LABEL[t] }}</option>{% endfor %}</select></div>
+      <div><label>Berlaku sampai (kosong = selamanya)</label><input type="date" name="exp" value="{{ lic.exp or '' }}"></div>
+      <div><label>Maks. perangkat</label><input type="number" name="max_device" min="1" value="{{ lic.max_device }}"></div>
+      <div><label>Kontak</label><input name="kontak" value="{{ lic.kontak or '' }}"></div>
+      <div class="full"><label>Catatan</label><input name="catatan" value="{{ lic.catatan or '' }}"></div>
+      <div><button class="btn">Simpan</button></div>
+    </form>
+    <p class="help">Perpanjangan / ganti tier diterima aplikasi sekolah otomatis saat online (cek tiap 6 jam), tanpa input kode ulang.</p>
+  </div>
+</div>
+<div class="card">
+  <h3>{{ icon('database') }}Perangkat teraktivasi</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>ID perangkat</th><th>Nama di aplikasi</th><th>Versi</th><th>Pertama</th><th>Terakhir online</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for a in acts %}
+    <tr><td><code>{{ a.device }}</code></td><td>{{ a.sekolah_app or '-' }}</td><td>{{ a.app_version or '-' }}</td><td><small>{{ a.first_at }}</small></td><td><small>{{ a.last_seen or '-' }}</small></td>
+      <td>{% if a.aktif %}<span class="badge b-ok">Aktif</span>{% else %}<span class="badge">Dilepas</span>{% endif %}</td>
+      <td class="actions">{% if a.aktif %}<form method="post" class="inline"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="aksi" value="reset"><input type="hidden" name="act_id" value="{{ a.id }}"><button class="btn sm warn" onclick="return confirm('Lepas perangkat ini? Lisensinya dicabut di perangkat tsb. dan kode bisa dipakai di perangkat baru.')">Lepas</button></form>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="7" class="empty">Belum diaktifkan di perangkat mana pun.</td></tr>{% endfor %}
+    </tbody></table></div>
+</div>
+<div class="card">
+  <h3>{{ icon('wifi-off') }}Buat kode lisensi offline</h3>
+  <p class="help" style="margin-top:0">Untuk sekolah tanpa internet: minta <b>ID perangkat</b> dari halaman Lisensi aplikasi mereka.</p>
+  <form method="post" class="btn-row"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="aksi" value="offline">
+    <input name="device" placeholder="XXXX-XXXX-XXXX-XXXX" required style="max-width:280px;text-transform:uppercase"><button class="btn outline" {{ 'disabled' if not key_ok }}>Buat kode</button></form>
+  {% if offline_key %}<label class="mt">Kode lisensi (salin seluruhnya):</label><textarea readonly rows="3" style="font-family:ui-monospace,Consolas,monospace;font-size:.8rem" onclick="this.select()">{{ offline_key }}</textarea>{% endif %}
+</div>
+{% endblock %}

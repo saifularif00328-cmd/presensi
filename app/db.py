@@ -33,6 +33,10 @@ DEFAULT_SETTINGS = {
     "wa_tpl_izin": "Bapak/Ibu, pengajuan *{status}* untuk ananda *{nama_siswa}* ({kelas}) telah *disetujui* sekolah. {keterangan}",
     "wa_tpl_pelanggaran": "Bapak/Ibu, ananda *{nama_siswa}* ({kelas}) tercatat melakukan pelanggaran: *{status}* pada {jam}. Mohon bimbingannya di rumah.",
     "license_key": "",
+    "license_status": "",
+    "license_server": "",
+    "license_checked": "",
+    "license_last_seen": "",
     # profil sekolah (sisi belakang kartu)
     "kota_sekolah": "",
     "telepon_sekolah": "",

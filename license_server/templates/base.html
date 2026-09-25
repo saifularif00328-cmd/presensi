@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Server Lisensi{% endblock %} · Presensi Siswa Digital</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <style>.content{max-width:1100px}.topbar{position:static}.code-big{font-size:1.35rem;font-weight:700;letter-spacing:.08em;font-family:ui-monospace,Consolas,monospace}</style>
+</head>
+<body>
+{% if session.get('admin') %}
+<header class="topbar" style="background:#0b1220;border:0;color:#fff">
+  <span class="logo-mark">{{ icon('key') }}</span>
+  <a href="{{ url_for('index') }}" style="color:#fff;font-weight:600">Server Aktivasi Lisensi</a>
+  <div class="spacer"></div>
+  <a class="btn sm ghost" style="background:transparent;color:#cfd4dc;border-color:#344054" href="{{ url_for('logout') }}">{{ icon('logout') }}Keluar</a>
+</header>
+{% endif %}
+<main class="content">
+  {% for cat, m in get_flashed_messages(with_categories=true) %}<div class="flash {{ cat if cat in ('success','error') else 'info' }}">{{ icon('ok' if cat == 'success' else 'alert') }}<span>{{ m }}</span></div>{% endfor %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

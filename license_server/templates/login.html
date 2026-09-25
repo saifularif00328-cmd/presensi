@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width:380px;margin:4rem auto">
+  <span class="logo-mark" style="margin-bottom:1rem">{{ icon('key') }}</span>
+  <h1>Server Aktivasi Lisensi</h1>
+  <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="field"><label>Password admin</label><input type="password" name="password" required autofocus></div>
+    <button class="btn block">{{ icon('login') }}Masuk</button>
+  </form>
+</div>
+{% endblock %}

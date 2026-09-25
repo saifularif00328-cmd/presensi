@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width:420px;margin:4rem auto">
+  <span class="logo-mark" style="margin-bottom:1rem">{{ icon('key') }}</span>
+  <h1>Siapkan server lisensi</h1>
+  <p class="muted">Buat password admin (minimal 8 karakter). Hanya Anda yang boleh tahu.</p>
+  <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="field"><label>Password admin</label><input type="password" name="password" required minlength="8"></div>
+    <div class="field"><label>Ulangi password</label><input type="password" name="ulang" required minlength="8"></div>
+    <button class="btn block">Simpan</button>
+  </form>
+</div>
+{% endblock %}

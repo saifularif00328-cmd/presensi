@@ -1,8 +1,8 @@
 from app.db import connect
-from app.license import make_key, validate_key
+from app.license import make_license, parse_license
 from app.qr import make_payload, parse_payload
 
-from .conftest import BASE_DAY, set_tier
+from .conftest import BASE_DAY, PRIV_KEY, set_tier
 
 
 def scan(client, code, mode="auto"):
@@ -177,9 +177,17 @@ def test_wa_toggle_nonaktif(app, client, seed, clock):
 
 
 def test_lisensi_dan_tier(app, client):
-    k = make_key("AAAA-BBBB-CCCC-DDDD", "pro")
-    assert validate_key(k, "AAAA-BBBB-CCCC-DDDD") == "pro"
-    assert validate_key(k, "AAAA-BBBB-CCCC-EEEE") is None
+    from datetime import date
+    k = make_license(PRIV_KEY, "AAAA-BBBB-CCCC-DDDD", "pro", "SMP Uji", "2031-01-01")
+    ok = parse_license(k, "AAAA-BBBB-CCCC-DDDD", today=date(2030, 1, 7))
+    assert ok["valid"] and ok["tier"] == "pro" and ok["days_left"] == 359
+    assert not parse_license(k, "AAAA-BBBB-CCCC-EEEE", today=date(2030, 1, 7))["valid"]
+    assert "kedaluwarsa" in parse_license(k, "AAAA-BBBB-CCCC-DDDD", today=date(2031, 2, 1))["reason"]
+    tamper = k[:-6] + ("A" if k[-6] != "A" else "B") + k[-5:]
+    assert not parse_license(tamper, "AAAA-BBBB-CCCC-DDDD", today=date(2030, 1, 7))["valid"]
+    # jam komputer dimundurkan
+    assert "mundur" in parse_license(k, "AAAA-BBBB-CCCC-DDDD", today=date(2030, 1, 7),
+                                     last_seen=date(2030, 3, 1))["reason"]
     set_tier(app, None)
     assert client.get("/perizinan/izin").status_code == 402
     assert client.get("/ibadah/tap").status_code == 402
@@ -313,3 +321,65 @@ def test_pengaturan_profil_sekolah(app, client):
         from app.db import get_setting
         assert get_setting("kepala_sekolah") == "Budi, S.Pd."
         assert get_setting("misi") == "Satu\nDua"
+
+
+def test_server_aktivasi_online(app, client, tmp_path, monkeypatch):
+    """Alur penuh: vendor buat lisensi di server → sekolah aktivasi online → cabut → cek."""
+    import requests
+    from app.services import lisensi as svc
+    from license_server.server import create_app as server_app
+    from .conftest import PRIV_PEM
+
+    key_path = tmp_path / "priv.pem"
+    key_path.write_bytes(PRIV_PEM)
+    srv = server_app({"TESTING": True, "DB_PATH": str(tmp_path / "srv.db"),
+                      "KEY_PATH": str(key_path)})
+    sc = srv.test_client()
+    sc.get("/setup")
+    with sc.session_transaction() as s:
+        tok = s["_csrf"]
+    sc.post("/setup", data={"_csrf": tok, "password": "rahasia123", "ulang": "rahasia123"})
+    sc.post("/lisensi/baru", data={"_csrf": tok, "sekolah": "SMPN Uji", "tier": "enterprise",
+                                   "durasi": "0", "max_device": "1"})
+    import sqlite3
+    kode = sqlite3.connect(tmp_path / "srv.db").execute("SELECT kode FROM licenses").fetchone()[0]
+
+    class Resp:
+        def __init__(self, r):
+            self.r, self.status_code = r, r.status_code
+
+        def json(self):
+            return self.r.get_json()
+
+    def fake_post(url, json=None, timeout=None):
+        return Resp(sc.post(url.replace("http://lisensi.test", ""), json=json))
+
+    monkeypatch.setattr(requests, "post", fake_post)
+    set_tier(app, None)
+    assert client.get("/ibadah/tap").status_code == 402
+    r = client.post("/sistem/lisensi", data={"aksi": "online", "kode": kode.lower(),
+                                             "server": "http://lisensi.test"})
+    assert r.status_code == 302
+    assert client.get("/ibadah/tap").status_code == 200  # Enterprise aktif
+    # kode yang sama tidak bisa dipakai di perangkat lain (maks 1)
+    other = sc.post("/api/activate", json={"code": kode, "device": "LAIN-0000-0000-0000"})
+    assert other.status_code == 409
+    # vendor mencabut → aplikasi turun ke Basic setelah cek online
+    sc.post("/lisensi/1", data={"_csrf": tok, "aksi": "cabut"})
+    with app.app_context():
+        from app.db import connect
+        db = connect()
+        assert svc.check_online(db) == "dicabut"
+        db.close()
+    assert client.get("/ibadah/tap").status_code == 402
+    # dipulihkan + diturunkan ke Pro → diterima otomatis
+    sc.post("/lisensi/1", data={"_csrf": tok, "aksi": "pulihkan"})
+    sc.post("/lisensi/1", data={"_csrf": tok, "aksi": "simpan", "tier": "pro", "exp": "",
+                                "max_device": "1", "sekolah": "SMPN Uji"})
+    with app.app_context():
+        from app.db import connect
+        db = connect()
+        assert svc.check_online(db) == "aktif"
+        db.close()
+    assert client.get("/ibadah/tap").status_code == 402
+    assert client.get("/perizinan/izin").status_code == 200

@@ -3,24 +3,50 @@
 {% block title %}Lisensi{% endblock %}
 {% block content %}
 <div class="page-head"><h1>Lisensi</h1></div>
+{% if not pubkey_ok %}
+<div class="flash error">{{ icon('alert') }}<span>Kunci publik vendor belum dipasang (<code>app/license_public.pem</code>). Vendor: jalankan <code>python tools/vendor_init.py</code> lalu build ulang aplikasi.</span></div>
+{% endif %}
 <div class="grid grid-2">
   <div class="card">
-    <h3>Status</h3>
+    <div class="card-head"><h3>{{ icon('key') }}Status lisensi</h3>
+      {% if info.valid %}<span class="badge b-ok">{{ icon('check', 'sm') }}Aktif</span>{% else %}<span class="badge">Basic</span>{% endif %}</div>
     <dl class="kv">
       <dt>Tier aktif</dt><dd><span class="badge b-info">{{ tier_label }}</span></dd>
+      {% if info.payload %}
+      <dt>Terdaftar untuk</dt><dd>{{ info.sekolah or '-' }}</dd>
+      <dt>ID lisensi</dt><dd><code>{{ info.lid }}</code></dd>
+      <dt>Berlaku sampai</dt><dd>{% if info.exp %}{{ tanggal_indo(info.exp) }}{% if info.days_left is not none and info.days_left >= 0 %} <small>({{ info.days_left }} hari lagi)</small>{% endif %}{% else %}Selamanya{% endif %}</dd>
+      {% endif %}
       <dt>ID perangkat</dt><dd><code class="key">{{ device }}</code></dd>
-      <dt>Kode lisensi</dt><dd><small>{{ key or 'belum ada (mode Basic)' }}</small></dd>
+      {% if checked %}<dt>Cek terakhir</dt><dd>{{ checked }}</dd>{% endif %}
     </dl>
-    <p class="help">Kirim ID perangkat ke vendor untuk mendapatkan kode lisensi. Kode hanya berlaku di perangkat ini.</p>
+    {% if not info.valid %}<div class="alert-libur mt" style="margin-bottom:0">{{ icon('alert') }}<span>{{ info.reason }}</span></div>
+    {% elif info.days_left is not none and info.days_left <= 30 %}<div class="alert-libur mt" style="margin-bottom:0">{{ icon('clock') }}<span>Lisensi akan berakhir dalam {{ info.days_left }} hari. Hubungi vendor untuk perpanjangan.</span></div>{% endif %}
+    {% if info.lid and server %}
+    <form method="post" class="mt">{{ csrf() }}<input type="hidden" name="aksi" value="cek"><button class="btn sm outline">{{ icon('refresh') }}Cek status ke server</button></form>
+    {% endif %}
   </div>
+
   <div class="card">
-    <h3>Aktivasi</h3>
-    <form method="post">{{ csrf() }}
-      <div class="field"><label>Kode lisensi</label><input name="license_key" placeholder="PRO-XXXXX-XXXXX-XXXXX-XXXXX" required style="text-transform:uppercase"></div>
-      <button class="btn">Aktifkan</button>
+    <h3>{{ icon('wifi') }}Aktivasi online (kode aktivasi)</h3>
+    <form method="post">{{ csrf() }}<input type="hidden" name="aksi" value="online">
+      <div class="field"><label>Kode aktivasi dari vendor</label><input name="kode" placeholder="XXXX-XXXX-XXXX" required style="text-transform:uppercase"></div>
+      <div class="field"><label>Alamat server aktivasi</label><input name="server" value="{{ server }}" placeholder="https://lisensi.contoh.com" required></div>
+      <button class="btn">{{ icon('key') }}Aktifkan</button>
     </form>
+    <p class="help">Butuh internet hanya saat aktivasi. Setelah aktif, aplikasi tetap berjalan offline; status lisensi dicek otomatis saat online (perpanjangan juga diterima otomatis).</p>
   </div>
 </div>
+
+<div class="card">
+  <h3>{{ icon('wifi-off') }}Aktivasi offline (kode lisensi)</h3>
+  <form method="post">{{ csrf() }}<input type="hidden" name="aksi" value="offline">
+    <div class="field"><label>Kode lisensi lengkap</label><textarea name="license_key" rows="3" placeholder="PSD1-...." required style="font-family:ui-monospace,Consolas,monospace;font-size:.8rem">{{ '' }}</textarea></div>
+    <button class="btn outline">Aktifkan kode</button>
+  </form>
+  <p class="help">Untuk sekolah tanpa internet: kirim <b>ID perangkat</b> di atas ke vendor, lalu tempel kode lisensi yang diberikan.</p>
+</div>
+
 <div class="card">
   <h3>Fitur per tier</h3>
   <div class="table-wrap"><table>
@@ -28,7 +54,7 @@
     <tbody>
       {% for t, label, fitur in tabel %}
       <tr><td><b>{{ label }}</b>{% if t == tier_now %} <span class="badge b-ok">aktif</span>{% endif %}</td>
-        <td>Presensi & QR dasar, data master, rekap presensi, cetak kartu{% if fitur %}, {{ fitur|join(', ') }}{% endif %}</td></tr>
+        <td>Presensi &amp; QR dasar, data master, rekap presensi, cetak kartu{% if fitur %}, {{ fitur|join(', ') }}{% endif %}</td></tr>
       {% endfor %}
     </tbody></table></div>
 </div>

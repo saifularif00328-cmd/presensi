@@ -7,6 +7,7 @@
 import logging
 import os
 import sqlite3
+from datetime import timedelta
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -43,6 +44,14 @@ def job_kuota(db):
     refresh_quota(db)
 
 
+def job_lisensi(db):
+    """Catat tanggal (anti jam mundur) & cek status lisensi ke server bila online."""
+    from .license import touch_last_seen
+    from .services.lisensi import check_online
+    touch_last_seen(db)
+    check_online(db)
+
+
 def job_backup(db):
     """Salin database ke data/backup/presensi-YYYY-MM-DD.db (simpan 14 terakhir)."""
     config.ensure_dirs()
@@ -72,6 +81,8 @@ def start(app):
               coalesce=True)
     s.add_job(_job(app, job_kuota), "interval", hours=1, id="kuota", max_instances=1)
     s.add_job(_job(app, job_backup), "cron", hour=12, minute=30, id="backup")
+    s.add_job(_job(app, job_lisensi), "interval", hours=6, id="lisensi", max_instances=1,
+              next_run_time=utils.now() + timedelta(seconds=30))
     s.start()
     _scheduler = s
     return s
