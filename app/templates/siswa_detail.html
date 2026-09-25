@@ -12,12 +12,12 @@
       {% if not s.aktif %}<span class="badge b-err">Nonaktif</span>{% endif %}
       <div class="btn-row mt">
         {% for k in ['H','I','S','A','D'] %}<span class="chip">{{ ket_badge(k) }} {{ ringkas.get(k, 0) }}</span>{% endfor %}
-        <span class="chip">⚠️ {{ poin }} poin</span>
+        <span class="chip">{{ icon('pelanggaran', 'sm') }}{{ poin }} poin</span>
       </div>
     </div>
     {% if can() %}
     <div class="btn-row">
-      <a class="btn outline" href="{{ url_for('master.siswa_form', sid=s.id) }}">✏️ Edit</a>
+      <a class="btn outline" href="{{ url_for('master.siswa_form', sid=s.id) }}">{{ icon('edit') }}Edit</a>
     </div>
     {% endif %}
   </div>
@@ -32,8 +32,8 @@
     </div>
     {% if can() %}
     <div class="btn-row mt" style="justify-content:center">
-      <a class="btn sm" target="_blank" href="{{ url_for('master.kartu_download', siswa_id=s.id) }}">📇 Cetak Kartu</a>
-      <form class="inline" method="post" action="{{ url_for('master.siswa_ganti_qr', sid=s.id) }}" data-confirm="Buat QR baru? Kartu lama tidak akan berlaku lagi.">{{ csrf() }}<button class="btn sm warn">🔁 Ganti QR</button></form>
+      <a class="btn sm" target="_blank" href="{{ url_for('master.kartu_download', siswa_id=s.id) }}">{{ icon('printer') }}Cetak Kartu</a>
+      <form class="inline" method="post" action="{{ url_for('master.siswa_ganti_qr', sid=s.id) }}" data-confirm="Buat QR baru? Kartu lama tidak akan berlaku lagi.">{{ csrf() }}<button class="btn sm warn">{{ icon('refresh') }}Ganti QR</button></form>
     </div>
     {% endif %}
   </div>
@@ -77,7 +77,7 @@
     <h3>Pelanggaran <small>(total {{ poin }} poin)</small></h3>
     <ul class="list">
       {% for p in pelanggaran %}<li><div class="grow"><div class="title">{{ p.jenis or '-' }}</div><div class="sub">{{ p.tanggal }}{% if p.keterangan %} · {{ p.keterangan }}{% endif %}{% if p.tindak_lanjut %} · TL: {{ p.tindak_lanjut }}{% endif %}</div></div><span class="badge b-err">{{ p.poin }}</span></li>
-      {% else %}<li class="empty">Tidak ada pelanggaran. 👍</li>{% endfor %}
+      {% else %}<li class="empty">Tidak ada pelanggaran.</li>{% endfor %}
     </ul>
   </div>
 </div>

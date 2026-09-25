@@ -8,7 +8,7 @@
   {% if can() %}<form method="post" action="{{ url_for('presensi.tutup_hari') }}" data-confirm="Proses tutup hari sekarang? Siswa tanpa keterangan akan ditandai Alpha (notifikasi WA dikirim) dan yang belum absen pulang ditandai Belum Pulang.">{{ csrf() }}<button class="btn sm warn">Tutup hari</button></form>{% endif %}
 </div>
 <p class="muted" style="margin-top:-.6rem">{{ tanggal_indo(today()) }} · update <span id="waktu">-</span> · refresh tiap {{ refresh }} detik</p>
-<div id="libur" class="alert-libur" hidden>🏖️ Hari ini bukan hari sekolah — presensi dilewati.</div>
+<div id="libur" class="alert-libur" hidden>{{ icon('libur') }}<span>Hari ini bukan hari sekolah — presensi dilewati.</span></div>
 <div class="stats card" id="stats"></div>
 <div class="grid grid-2">
   <div class="card"><h3>Live feed scan</h3><ul class="list feed" id="feed"><li class="empty">Menunggu scan…</li></ul></div>
@@ -25,7 +25,7 @@
   const detailUrl = '{{ url_for("main.siswa_detail", sid=0) }}'.replace(/0$/, '');
   let tab = 'belum', lastId = 0, data = null;
   const badge = (t, cls) => '<span class="badge b-' + String(cls || t).replace(/ /g, '') + '">' + escapeHtml(t) + '</span>';
-  const ic = { masuk: '🟢', pulang: '🔵', peringatan: '⚠️', gagal: '❌', manual: '✍️', ibadah: '🕌' };
+  const ic = { masuk: 'login', pulang: 'logout', peringatan: 'alert', gagal: 'err', manual: 'manual', ibadah: 'ibadah' };
 
   function renderStats(s) {
     const items = [['Siswa', s.total, ''], ['Sudah masuk', s.masuk, 'h'], ['Telat', s.telat, 't'], ['Sudah pulang', s.pulang, 'd'],
@@ -37,8 +37,8 @@
     if (!feed.length) { el.innerHTML = '<li class="empty">Belum ada scan hari ini.</li>'; return; }
     const newest = feed[0].id;
     el.innerHTML = feed.map(f => '<li' + (f.id > lastId && lastId ? ' style="animation:flashin 1.5s"' : '') + '>' +
-      (f.nama ? avatarHtml(f) : '<span class="avatar">' + (ic[f.jenis] || '•') + '</span>') +
-      '<div class="grow"><div class="title">' + (ic[f.jenis] || '') + ' ' + escapeHtml(f.nama || 'Tidak dikenal') + '</div>' +
+      '<span class="feed-ic ' + f.jenis + '">' + iconHtml(ic[f.jenis] || 'alert') + '</span>' +
+      '<div class="grow"><div class="title">' + escapeHtml(f.nama || 'Kartu tidak dikenal') + '</div>' +
       '<div class="sub">' + escapeHtml(f.kelas || '') + ' · ' + escapeHtml(f.pesan || '') + (f.metode ? ' · ' + escapeHtml(f.metode) : '') + '</div></div>' +
       '<span class="muted nowrap">' + f.waktu.slice(11, 16) + '</span></li>').join('');
     lastId = newest;
@@ -53,7 +53,7 @@
       (s.jam_masuk ? ' · masuk ' + s.jam_masuk.slice(0, 5) : '') + (s.jam_pulang ? ' · pulang ' + s.jam_pulang.slice(0, 5) : '') + '</div></div></a>' +
       (s.status_masuk ? badge(s.status_masuk) : '') + (s.status_pulang ? ' ' + badge(s.status_pulang) : '') +
       (s.keterangan && s.keterangan !== 'H' ? ' ' + badge(s.keterangan) : '') + '</li>').join('')
-      : '<li class="empty">' + (tab === 'belum' ? 'Semua siswa sudah tercatat 🎉' : 'Belum ada.') + '</li>';
+      : '<li class="empty">' + (tab === 'belum' ? 'Semua siswa sudah tercatat' : 'Belum ada.') + '</li>';
   }
   async function refresh() {
     try {

@@ -2,7 +2,7 @@
 {% from "_macros.html" import kelas_select, export_btns with context %}
 {% block title %}Rekap Ibadah{% endblock %}
 {% block content %}
-<div class="page-head"><h1>📋 Rekap Ibadah Harian</h1>{{ export_btns() }}</div>
+<div class="page-head"><h1>Rekap Ibadah Harian</h1>{{ export_btns() }}</div>
 <form class="filters" method="get">
   <div><label>Tanggal</label><input type="date" name="tanggal" value="{{ tgl }}"></div>
   <div><label>Kelas</label>{{ kelas_select(kelas, kelas_id) }}</div>

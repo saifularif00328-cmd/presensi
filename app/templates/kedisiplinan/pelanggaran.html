@@ -2,7 +2,7 @@
 {% from "_macros.html" import csrf, siswa_select, kelas_select, del_btn, export_btns with context %}
 {% block title %}Rekap Pelanggaran{% endblock %}
 {% block content %}
-<div class="page-head"><h1>⚠️ Rekap Pelanggaran</h1>{% if tab != 'jenis' %}{{ export_btns() }}{% endif %}</div>
+<div class="page-head"><h1>Rekap Pelanggaran</h1>{% if tab != 'jenis' %}{{ export_btns() }}{% endif %}</div>
 <div class="card">
   <h3>Catat pelanggaran</h3>
   <form method="post" class="form-grid">
@@ -37,7 +37,7 @@
     <tr><td class="nowrap">{{ r.tanggal }}</td><td><a href="{{ url_for('main.siswa_detail', sid=r.siswa_id) }}">{{ r.nama }}</a><br><small>{{ r.kelas or '-' }}</small></td>
       <td>{{ r.jenis or '-' }}<br><small>{{ r.kategori or '' }}</small></td><td class="num"><span class="badge b-err">{{ r.poin }}</span></td>
       <td>{{ r.keterangan or '' }}<br><small>oleh {{ r.pencatat or '-' }}</small></td>
-      <td><form method="post" action="{{ url_for('kedisiplinan.pelanggaran_tl', pid=r.id) }}" style="display:flex;gap:.3rem">{{ csrf() }}<input name="tindak_lanjut" value="{{ r.tindak_lanjut or '' }}" style="min-width:150px"><button class="btn sm ghost">💾</button></form></td>
+      <td><form method="post" action="{{ url_for('kedisiplinan.pelanggaran_tl', pid=r.id) }}" style="display:flex;gap:.3rem">{{ csrf() }}<input name="tindak_lanjut" value="{{ r.tindak_lanjut or '' }}" style="min-width:150px"><button class="btn sm ghost icon-only" title="Simpan">{{ icon('save') }}</button></form></td>
       <td class="actions">{{ del_btn(url_for('kedisiplinan.pelanggaran_hapus', pid=r.id)) }}</td></tr>
     {% else %}<tr><td colspan="7" class="empty">Tidak ada catatan pada periode ini.</td></tr>{% endfor %}
     </tbody></table></div>

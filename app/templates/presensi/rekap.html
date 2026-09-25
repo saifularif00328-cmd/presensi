@@ -2,7 +2,7 @@
 {% from "_macros.html" import kelas_select, ket_badge, status_badge, export_btns with context %}
 {% block title %}Rekap Presensi{% endblock %}
 {% block content %}
-<div class="page-head"><h1>📊 Rekap Presensi</h1>{{ export_btns() }}</div>
+<div class="page-head"><h1>Rekap Presensi</h1>{{ export_btns() }}</div>
 <form class="filters" method="get">
   <div><label>Dari</label><input type="date" name="dari" value="{{ dari }}"></div>
   <div><label>Sampai</label><input type="date" name="sampai" value="{{ sampai }}"></div>

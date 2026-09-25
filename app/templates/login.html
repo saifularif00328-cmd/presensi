@@ -1,19 +1,36 @@
 {% extends "base.html" %}
 {% from "_macros.html" import csrf with context %}
 {% block title %}Masuk{% endblock %}
-{% block content %}
-<div class="login-wrap">
-  <div class="card login-card">
-    <div class="logo">📋</div>
-    <h1 style="text-align:center">{{ APP_NAME }}</h1>
-    <p class="muted" style="text-align:center;margin-top:-.3rem">{{ nama_sekolah }}</p>
-    <form method="post">
-      {{ csrf() }}
-      <div class="field"><label>Username</label><input name="username" autofocus required autocomplete="username"></div>
-      <div class="field"><label>Password</label><input name="password" type="password" required autocomplete="current-password"></div>
-      <button class="btn block">Masuk</button>
-    </form>
-    <p class="help" style="text-align:center">v{{ APP_VERSION }} · berjalan offline di jaringan lokal sekolah</p>
-  </div>
+{% block bare %}
+<div class="login-page">
+  <section class="login-aside">
+    <div style="display:flex;align-items:center;gap:.7rem;color:#fff;font-weight:600">
+      <span class="logo-mark">{{ icon('logo') }}</span>{{ APP_NAME }}
+    </div>
+    <div>
+      <h2>Presensi sekolah yang cepat, akurat, dan tetap berjalan tanpa internet.</h2>
+      <p>{{ nama_sekolah }}</p>
+      <ul>
+        <li>{{ icon('qr') }}Scan kartu QR masuk &amp; pulang dalam hitungan detik</li>
+        <li>{{ icon('wa') }}Notifikasi WhatsApp otomatis ke orang tua</li>
+        <li>{{ icon('rekap') }}Rekap harian &amp; semester siap ekspor</li>
+      </ul>
+    </div>
+    <small style="color:#667085">v{{ APP_VERSION }}</small>
+  </section>
+  <section class="login-form">
+    <div class="login-card">
+      <span class="logo-mark" style="margin-bottom:1.25rem">{{ icon('logo') }}</span>
+      <h1>Masuk ke akun Anda</h1>
+      <p class="muted" style="margin:0 0 1.5rem">Gunakan akun yang diberikan admin sekolah.</p>
+      {% for cat, m in get_flashed_messages(with_categories=true) %}<div class="flash {{ 'error' if cat == 'error' else 'info' }}">{{ icon('alert') }}<span>{{ m }}</span></div>{% endfor %}
+      <form method="post">
+        {{ csrf() }}
+        <div class="field"><label>Username</label><input name="username" autofocus required autocomplete="username"></div>
+        <div class="field"><label>Password</label><input name="password" type="password" required autocomplete="current-password"></div>
+        <button class="btn block" style="margin-top:.5rem;padding:.65rem">{{ icon('login') }}Masuk</button>
+      </form>
+    </div>
+  </section>
 </div>
 {% endblock %}

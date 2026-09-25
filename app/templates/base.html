@@ -4,39 +4,62 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <meta name="theme-color" content="#2563eb">
+  <meta name="theme-color" content="#0b1220">
   <title>{% block title %}{{ APP_NAME }}{% endblock %} · {{ APP_NAME }}</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231d4ed8'/%3E%3Cpath d='M11 16.5l3.5 3.5 7-8' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
   {% block head %}{% endblock %}
 </head>
 <body>
 {% set ep = request.endpoint or '' %}
 {% if g.user %}
-<header class="topbar">
-  {% if ep != 'main.beranda' %}<a class="back" href="{% block back %}{{ url_for('main.beranda') }}{% endblock %}" title="Kembali">‹</a>{% endif %}
-  <div>
-    <div class="brand">📋 Presensi Siswa <span class="tier-badge">{{ tier_label }}</span></div>
-    <div class="school">{{ nama_sekolah }}</div>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo-mark">{{ icon('logo') }}</span>
+      <div><div class="brand-name">Presensi Siswa</div><div class="brand-sub">{{ nama_sekolah }}</div></div>
+    </div>
+    <nav>
+      <a href="{{ url_for('main.beranda') }}" class="{{ 'active' if ep == 'main.beranda' }}">{{ icon('dashboard') }}Beranda</a>
+      <a href="{{ url_for('main.siswa') }}" class="{{ 'active' if ep in ('main.siswa', 'main.siswa_detail') }}">{{ icon('siswa') }}Siswa</a>
+      {% for grp in menu() %}
+        <div class="nav-label">{{ grp.title }}</div>
+        {% for m in grp['items'] %}
+          <a href="{{ m.url }}" class="{{ 'active' if request.path == m.url }} {{ 'locked' if m.locked }}">{{ icon(m.icon) }}{{ m.label }}{% if m.locked %}<span class="pill">{{ m.tier }}</span>{% endif %}</a>
+        {% endfor %}
+      {% endfor %}
+    </nav>
+    <div class="side-foot"><span>v{{ APP_VERSION }}</span><span class="pill">{{ tier_label }}</span></div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      {% if ep != 'main.beranda' %}<a class="back" href="{% block back %}{{ url_for('main.beranda') }}{% endblock %}" title="Kembali">{{ icon('back') }}</a>{% endif %}
+      <div class="mobile-brand"><span class="logo-mark" style="width:30px;height:30px">{{ icon('logo') }}</span>Presensi</div>
+      <div class="today">{{ icon('clock', 'sm') }}{{ tanggal_indo(today()) }}</div>
+      <div class="spacer"></div>
+      <a class="user-chip" href="{{ url_for('main.akun') }}">
+        <span class="avatar">{{ g.user.nama[:1]|upper }}</span>
+        <span class="who"><b>{{ g.user.nama }}</b><span>{{ ROLES[g.user.role] }}</span></span>
+      </a>
+    </header>
+    <main class="content">
+      {% with msgs = get_flashed_messages(with_categories=true) %}
+        {% for cat, m in msgs %}<div class="flash {{ cat if cat in ('success','error','info') else 'info' }}">{{ icon('ok' if cat == 'success' else ('err' if cat == 'error' else 'alert')) }}<span>{{ m }}</span></div>{% endfor %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
   </div>
-  <div class="spacer"></div>
-  <div class="user">{{ g.user.nama }}<br><small style="color:#dbeafe">{{ ROLES[g.user.role] }}</small></div>
-</header>
-{% endif %}
-<main class="container">
-  {% with msgs = get_flashed_messages(with_categories=true) %}
-    {% for cat, m in msgs %}<div class="flash {{ cat if cat in ('success','error','info') else 'info' }}">{{ m }}</div>{% endfor %}
-  {% endwith %}
-  {% block content %}{% endblock %}
-</main>
-{% if g.user %}
+</div>
 <nav class="bottomnav">
-  <a href="{{ url_for('main.beranda') }}" class="{{ 'active' if ep == 'main.beranda' }}"><span class="ic">🏠</span>Beranda</a>
-  <a href="{{ url_for('presensi.monitor') }}" class="{{ 'active' if ep == 'presensi.monitor' }}"><span class="ic">📡</span>Monitor</a>
-  <a href="{{ url_for('main.siswa') }}" class="{{ 'active' if ep in ('main.siswa', 'main.siswa_detail') }}"><span class="ic">🎓</span>Siswa</a>
-  <a href="{{ url_for('main.akun') }}" class="{{ 'active' if ep == 'main.akun' }}"><span class="ic">👤</span>Akun</a>
+  <a href="{{ url_for('main.beranda') }}" class="{{ 'active' if ep == 'main.beranda' }}">{{ icon('home') }}Beranda</a>
+  <a href="{{ url_for('presensi.monitor') }}" class="{{ 'active' if ep == 'presensi.monitor' }}">{{ icon('monitor') }}Monitor</a>
+  <a href="{{ url_for('main.siswa') }}" class="{{ 'active' if ep in ('main.siswa', 'main.siswa_detail') }}">{{ icon('siswa') }}Siswa</a>
+  <a href="{{ url_for('main.akun') }}" class="{{ 'active' if ep == 'main.akun' }}">{{ icon('akun') }}Akun</a>
 </nav>
+{% else %}
+  {% block bare %}{% endblock %}
 {% endif %}
+<script>window.ICONS = "{{ url_for('static', filename='icons.svg') }}";</script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>

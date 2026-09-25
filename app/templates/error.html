@@ -1,10 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Error {{ kode }}{% endblock %}
-{% block content %}
-<div class="card" style="text-align:center;padding:2.5rem 1rem">
-  <div style="font-size:3rem">{{ '🔒' if kode == 403 else '🤔' }}</div>
-  <h1>{{ kode }}</h1>
+{% macro body() %}
+<div class="card state">
+  <div class="state-ic">{{ icon('lock' if kode == 403 else 'alert') }}</div>
+  <h1>{{ {403: 'Akses ditolak', 404: 'Halaman tidak ditemukan', 400: 'Permintaan tidak valid'}.get(kode, 'Terjadi kesalahan') }}</h1>
   <p>{{ pesan }}</p>
-  <a class="btn" href="{{ url_for('main.beranda') }}">Kembali ke Beranda</a>
+  <a class="btn" href="{{ url_for('main.beranda') }}">{{ icon('home') }}Kembali ke Beranda</a>
 </div>
-{% endblock %}
+{% endmacro %}
+{% block content %}{{ body() }}{% endblock %}
+{% block bare %}<div class="content" style="max-width:560px;padding-top:4rem">{{ body() }}</div>{% endblock %}

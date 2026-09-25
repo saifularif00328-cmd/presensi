@@ -2,7 +2,7 @@
 {% from "_macros.html" import csrf, del_btn with context %}
 {% block title %}Info{% endblock %}
 {% block content %}
-<div class="page-head"><h1>📢 Papan Pengumuman</h1></div>
+<div class="page-head"><h1>Papan Pengumuman</h1></div>
 {% if g.user.role == 'admin' %}
 <div class="card">
   <h3>{{ 'Edit' if edit else 'Tulis' }} pengumuman</h3>
@@ -19,7 +19,7 @@
 <div class="card">
   {% for i in rows %}
   <div class="info-item {{ 'penting' if i.penting }}">
-    <div class="card-head" style="margin:0"><b style="flex:1">{{ '❗ ' if i.penting }}{{ i.judul }}{% if not i.aktif %} <span class="badge">disembunyikan</span>{% endif %}</b>
+    <div class="card-head" style="margin:0"><b style="flex:1">{{ i.judul }}{% if not i.aktif %} <span class="badge">disembunyikan</span>{% endif %}</b>
       {% if g.user.role == 'admin' %}<a class="btn sm ghost" href="?edit={{ i.id }}">Edit</a> {{ del_btn(url_for('sistem.info_hapus', iid=i.id)) }}{% endif %}</div>
     <div class="isi">{{ i.isi }}</div>
     <small>{{ i.pembuat or '-' }} · {{ i.created_at[:16] }}</small>

@@ -3,7 +3,7 @@
 {% block title %}Siswa{% endblock %}
 {% block content %}
 <div class="page-head"><h1>Siswa</h1>
-  {% if can() %}<a class="btn" href="{{ url_for('master.siswa_form') }}">＋ Tambah</a>{% endif %}
+  {% if can() %}<a class="btn" href="{{ url_for('master.siswa_form') }}">{{ icon('plus') }}Tambah</a>{% endif %}
 </div>
 <form class="filters" method="get">
   <input name="q" value="{{ q }}" placeholder="Cari nama / NIS / NISN">

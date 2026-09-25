@@ -2,7 +2,7 @@
 {% from "_macros.html" import kelas_select, export_btns with context %}
 {% block title %}SMT Ibadah{% endblock %}
 {% block content %}
-<div class="page-head"><h1>🗃️ Rekap Ibadah Semester</h1>{% if p %}{{ export_btns({'periode': p.id}) if not request.args.get('periode') else export_btns() }}{% endif %}</div>
+<div class="page-head"><h1>Rekap Ibadah Semester</h1>{% if p %}{{ export_btns({'periode': p.id}) if not request.args.get('periode') else export_btns() }}{% endif %}</div>
 <form class="filters" method="get">
   <div><label>Periode</label><select name="periode">{% for x in periode %}<option value="{{ x.id }}" {{ 'selected' if p and p.id == x.id }}>{{ x.nama }} · {{ x.semester }}</option>{% endfor %}</select></div>
   <div><label>Kelas</label>{{ kelas_select(kelas, kelas_id) }}</div>

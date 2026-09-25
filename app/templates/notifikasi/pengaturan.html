@@ -2,7 +2,7 @@
 {% from "_macros.html" import csrf with context %}
 {% block title %}Notifikasi WA{% endblock %}
 {% block content %}
-<div class="page-head"><h1>💬 Notifikasi WhatsApp</h1><a class="btn outline" href="{{ url_for('notifikasi.log') }}">🧾 Log</a></div>
+<div class="page-head"><h1>Notifikasi WhatsApp</h1><a class="btn outline" href="{{ url_for('notifikasi.log') }}">{{ icon('log') }}Log</a></div>
 <form method="post">
   {{ csrf() }}
   <div class="card">

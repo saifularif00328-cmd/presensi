@@ -15,9 +15,9 @@
     </dl>
     {% if g.user.role == 'admin' %}
     <div class="btn-row mt">
-      <a class="btn outline sm" href="{{ url_for('sistem.users') }}">🔐 Akses User</a>
-      <a class="btn outline sm" href="{{ url_for('sistem.lisensi') }}">🔑 Lisensi</a>
-      <a class="btn outline sm" href="{{ url_for('sistem.pengaturan') }}">⚙️ Pengaturan</a>
+      <a class="btn outline sm" href="{{ url_for('sistem.users') }}">{{ icon('user-akses') }}Akses User</a>
+      <a class="btn outline sm" href="{{ url_for('sistem.lisensi') }}">{{ icon('key') }}Lisensi</a>
+      <a class="btn outline sm" href="{{ url_for('sistem.pengaturan') }}">{{ icon('pengaturan') }}Pengaturan</a>
     </div>
     {% endif %}
   </div>

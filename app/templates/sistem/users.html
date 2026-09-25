@@ -2,7 +2,7 @@
 {% from "_macros.html" import csrf, del_btn with context %}
 {% block title %}Akses User{% endblock %}
 {% block content %}
-<div class="page-head"><h1>🔐 Akses User</h1></div>
+<div class="page-head"><h1>{{ icon('user-akses') }}Akses User</h1></div>
 <div class="card">
   <h3>{{ 'Edit' if edit else 'Tambah' }} user</h3>
   <form method="post" class="form-grid">
@@ -22,7 +22,7 @@
     <thead><tr><th>Modul</th><th class="num">Admin/TU</th><th class="num">Guru Piket</th><th class="num">Guru BK</th></tr></thead>
     <tbody>
       {% for m, a, p, b in [('Data master, aturan jam, libur, pengaturan, user','✅','–','–'),('Scan QR & presensi manual','✅','✅','–'),('Monitor live, rekap & SMT presensi','✅','✅','✅'),('Izin & sakit, izin keluar','✅','✅','✅'),('Pengajuan kartu','✅','✅ (ajukan)','–'),('Pelanggaran & tata tertib','✅','lihat tatib','✅'),('Tap & rekap ibadah','✅','✅','✅'),('Notifikasi WA & lisensi','✅','–','–')] %}
-      <tr><td>{{ m }}</td><td class="num">{{ a }}</td><td class="num">{{ p }}</td><td class="num">{{ b }}</td></tr>
+      <tr><td>{{ m }}</td>{% for x in (a, p, b) %}<td class="num">{% if x.startswith('✅') %}{{ icon('check', 'text-ok') }}{{ x[1:] }}{% elif x == '–' %}<span class="muted">–</span>{% else %}{{ x }}{% endif %}</td>{% endfor %}</tr>
       {% endfor %}
     </tbody></table></div>
 </div>

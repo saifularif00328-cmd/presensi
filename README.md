@@ -97,9 +97,10 @@ app/
   scheduler.py         # APScheduler: antrian WA, tutup harian, kuota, backup
   services/            # attendance (logika scan), notify (Fonnte), rekap, export, webcam
   blueprints/          # main, master_data, presensi, perizinan, ibadah, kedisiplinan, sistem, notifikasi
-  templates/, static/  # UI mobile-first (bottom nav: Beranda · Monitor · Siswa · Akun)
+  templates/, static/  # UI: sidebar (laptop) / bottom nav (HP), font Inter + ikon Lucide lokal
 tests/                 # pytest
 tools/keygen.py        # generator kode lisensi (vendor)
+tools/build_icons.py   # membangun sprite ikon app/static/icons.svg dari lucide-static
 ```
 
 ## Pengujian

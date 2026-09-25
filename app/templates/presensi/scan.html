@@ -2,8 +2,8 @@
 {% from "_macros.html" import csrf with context %}
 {% block title %}Scan Presensi{% endblock %}
 {% block content %}
-<div class="page-head"><h1>📷 Scan Presensi</h1><div class="clock" id="clock"></div></div>
-{% if libur %}<div class="alert-libur">🏖️ Hari ini libur: {{ libur }}. Scan tidak akan dicatat.</div>{% endif %}
+<div class="page-head"><h1>Scan Presensi</h1><div class="clock" id="clock"></div></div>
+{% if libur %}<div class="alert-libur">{{ icon('libur') }}<span>Hari ini libur: {{ libur }}. Scan tidak akan dicatat.</span></div>{% endif %}
 <div class="scan-layout">
   <div>
     <div class="card">
@@ -20,7 +20,7 @@
         <div class="help">Scanner fisik bekerja seperti keyboard — cukup pastikan kursor berada di kotak ini.</div>
       </div>
       <div class="btn-row">
-        <button type="button" class="btn" id="cam-start">📱 Buka Kamera</button>
+        <button type="button" class="btn" id="cam-start">{{ icon('camera') }}Buka Kamera</button>
         <button type="button" class="btn danger" id="cam-stop" hidden>Tutup Kamera</button>
         <select id="cam-select" hidden style="max-width:220px"></select>
       </div>
@@ -28,7 +28,7 @@
     </div>
     {% if can() %}
     <div class="card">
-      <h3>🖥️ Webcam PC (server)</h3>
+      <h3>{{ icon('webcam') }}Webcam PC (server)</h3>
       {% if webcam.available %}
         <p class="help">Memakai OpenCV + pyzbar di komputer server. Hasil scan tampil di Monitor Live.</p>
         <form method="post" action="{{ url_for('presensi.webcam_ctl') }}" class="btn-row">
@@ -56,7 +56,7 @@
     {% endif %}
   </div>
   <div>
-    <div class="result" id="result"><div class="big-ic">📇</div><div class="pesan">Siap menerima scan</div><div class="muted">Tempelkan kartu QR siswa</div></div>
+    <div class="result" id="result"><div class="big-ic">{{ icon('qr') }}</div><div class="pesan">Siap menerima scan</div><div class="muted">Tempelkan kartu QR siswa</div></div>
     <div class="card mt"><h3>Scan terakhir</h3><ul class="list" id="history"></ul></div>
   </div>
 </div>

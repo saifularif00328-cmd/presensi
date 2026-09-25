@@ -1,6 +1,6 @@
 /* Scanner QR serbaguna:
  *  - Scanner fisik USB (HID): mengetik isi QR ke input lalu Enter
- *  - Kamera HP / webcam lewat browser (html5-qrcode, dimuat lokal → tetap jalan offline)
+ *  - Kamera HP / webcam lewat browser (html5-qrcode, dimuat lokal, tetap jalan offline)
  *
  * initScanner({ endpoint, extra: () => ({...}), resultEl, inputEl, readerId, historyEl })
  */
@@ -14,7 +14,7 @@ function initScanner(opt) {
   function render(res) {
     const lvl = res.level || (res.ok ? 'success' : 'error');
     resultEl.className = 'result ' + lvl;
-    const ic = { success: '✅', warning: '⚠️', error: '❌' }[lvl];
+    const ic = iconHtml({ success: 'ok', warning: 'alert', error: 'err' }[lvl]);
     let html = '';
     if (res.siswa) {
       html += avatarHtml(res.siswa, 'avatar');
@@ -22,7 +22,7 @@ function initScanner(opt) {
       html += '<div class="muted">' + escapeHtml(res.siswa.kelas || '') +
         (res.siswa.nis ? ' · NIS ' + escapeHtml(res.siswa.nis) : '') + '</div>';
     } else {
-      html += '<div class="big-ic">' + ic + '</div>';
+      html += '<div class="big-ic">' + iconHtml(lvl === 'error' ? 'err' : 'alert') + '</div>';
     }
     html += '<div class="pesan">' + (res.siswa ? ic + ' ' : '') + escapeHtml(res.pesan) + '</div>';
     if (res.jam) html += '<div class="muted">Pukul ' + escapeHtml(res.jam) + '</div>';

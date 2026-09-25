@@ -3,7 +3,7 @@
 {% block title %}Log Notifikasi WA{% endblock %}
 {% block back %}{{ url_for('notifikasi.pengaturan') }}{% endblock %}
 {% block content %}
-<div class="page-head"><h1>🧾 Log Notifikasi WA</h1>
+<div class="page-head"><h1>Log Notifikasi WA</h1>
   <form method="post" action="{{ url_for('notifikasi.proses') }}">{{ csrf() }}<button class="btn outline sm">Proses antrian sekarang</button></form>
   {% if counts.get('Gagal') %}<form method="post" action="{{ url_for('notifikasi.kirim_ulang') }}">{{ csrf() }}<button class="btn warn sm">Kirim ulang semua gagal</button></form>{% endif %}
 </div>
@@ -15,12 +15,12 @@
   <thead><tr><th>Waktu</th><th>Siswa</th><th>Jenis</th><th>Nomor</th><th>Pesan</th><th>Status</th><th></th></tr></thead>
   <tbody>
   {% for r in rows %}
-  <tr><td class="nowrap"><small>{{ r.created_at[:16] }}{% if r.sent_at %}<br>✓ {{ r.sent_at[11:16] }}{% endif %}</small></td><td>{{ r.nama or '-' }}</td><td>{{ r.jenis }}</td><td>{{ r.nomor }}</td>
+  <tr><td class="nowrap"><small>{{ r.created_at[:16] }}{% if r.sent_at %}<br>{{ icon('check', 'sm text-ok') }} {{ r.sent_at[11:16] }}{% endif %}</small></td><td>{{ r.nama or '-' }}</td><td>{{ r.jenis }}</td><td>{{ r.nomor }}</td>
     <td style="max-width:320px"><small>{{ r.pesan }}</small>{% if r.error %}<br><small style="color:var(--err)">{{ r.error }}</small>{% endif %}</td>
     <td>{{ status_badge(r.status) }}{% if r.percobaan %}<br><small>{{ r.percobaan }}× coba</small>{% endif %}</td>
     <td class="actions">{% if r.status != 'Terkirim' %}<form class="inline" method="post" action="{{ url_for('notifikasi.kirim_ulang') }}">{{ csrf() }}<input type="hidden" name="id" value="{{ r.id }}"><button class="btn sm ghost">Kirim ulang</button></form>{% endif %}</td></tr>
   {% else %}<tr><td colspan="7" class="empty">Belum ada notifikasi.</td></tr>{% endfor %}
   </tbody></table></div>
-  <div class="pager">{% if page > 1 %}<a class="btn sm ghost" href="?status={{ status }}&page={{ page - 1 }}">‹ Sebelumnya</a>{% endif %}{% if rows|length == 100 %}<a class="btn sm ghost" href="?status={{ status }}&page={{ page + 1 }}">Berikutnya ›</a>{% endif %}</div>
+  <div class="pager">{% if page > 1 %}<a class="btn sm ghost" href="?status={{ status }}&page={{ page - 1 }}">{{ icon('back') }}Sebelumnya</a>{% endif %}{% if rows|length == 100 %}<a class="btn sm ghost" href="?status={{ status }}&page={{ page + 1 }}">Berikutnya{{ icon('next') }}</a>{% endif %}</div>
 </div>
 {% endblock %}

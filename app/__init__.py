@@ -3,7 +3,8 @@ import os
 import secrets
 from datetime import timedelta
 
-from flask import Flask, g, render_template, send_from_directory
+from flask import Flask, g, render_template, send_from_directory, url_for
+from markupsafe import Markup, escape
 
 from . import config
 from .db import close_db, get_setting, init_db
@@ -76,6 +77,13 @@ def create_app(test_config=None, start_jobs=True):
             "today": utils.today_str,
             "ibadah_aktif": lambda: get_setting("modul_ibadah_aktif") == "1",
         }
+
+    def icon(name, cls=""):
+        """Ikon SVG (Lucide) dari sprite lokal — tetap tampil saat offline."""
+        href = url_for("static", filename="icons.svg") + "#" + str(escape(name))
+        return Markup(f'<svg class="ico {escape(cls)}" aria-hidden="true"><use href="{href}"/></svg>')
+
+    app.jinja_env.globals["icon"] = icon
 
     @app.template_filter("jam")
     def fmt_jam(v):

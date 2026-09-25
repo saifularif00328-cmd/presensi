@@ -30,12 +30,12 @@
 {% endmacro %}
 
 {% macro del_btn(url, msg='Hapus data ini?', label='Hapus') %}
-<form class="inline" method="post" action="{{ url }}" data-confirm="{{ msg }}">{{ csrf() }}<button class="btn sm danger">{{ label }}</button></form>
+<form class="inline" method="post" action="{{ url }}" data-confirm="{{ msg }}">{{ csrf() }}<button class="btn sm danger">{{ icon('trash') }}{{ label }}</button></form>
 {% endmacro %}
 
 {% macro export_btns(params={}) %}
 <div class="btn-row">
-  <a class="btn sm outline" href="{{ url_for(request.endpoint, **dict(request.args, format='xlsx', **params)) }}">⬇ Excel</a>
-  <a class="btn sm outline" href="{{ url_for(request.endpoint, **dict(request.args, format='pdf', **params)) }}">⬇ PDF</a>
+  <a class="btn sm outline" href="{{ url_for(request.endpoint, **dict(request.args, format='xlsx', **params)) }}">{{ icon('excel') }}Excel</a>
+  <a class="btn sm outline" href="{{ url_for(request.endpoint, **dict(request.args, format='pdf', **params)) }}">{{ icon('pdf') }}PDF</a>
 </div>
 {% endmacro %}

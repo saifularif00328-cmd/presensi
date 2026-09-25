@@ -3,26 +3,49 @@
 {% block title %}Beranda{% endblock %}
 {% block content %}
 <div class="page-head">
-  <h1>Halo, {{ g.user.nama.split(' ')[0] }} 👋</h1>
-  {% if can('piket') and has_feature('presensi') %}<a class="btn" href="{{ url_for('presensi.scan') }}">📷 Mulai Scan</a>{% endif %}
+  <h1>Selamat datang, {{ g.user.nama.split(' ')[0] }}</h1>
+  {% if can('piket', 'bk') %}<a class="btn outline" href="{{ url_for('presensi.monitor') }}">{{ icon('monitor') }}Monitor Live</a>{% endif %}
+  {% if can('piket') and has_feature('presensi') %}<a class="btn" href="{{ url_for('presensi.scan') }}">{{ icon('scan') }}Mulai Scan</a>{% endif %}
 </div>
-<p class="muted" style="margin-top:-.6rem">{{ tanggal_indo(today()) }}</p>
+<p class="page-sub">Ringkasan kehadiran {{ tanggal_indo(tgl) }}</p>
 
-{% for i in infos %}
-<div class="info-item {{ 'penting' if i.penting }}"><b>📢 {{ i.judul }}</b><div class="isi">{{ i.isi }}</div></div>
-{% endfor %}
+{% if libur %}<div class="alert-libur">{{ icon('libur') }}<span>{{ tanggal_indo(tgl) }}: {{ libur }} — presensi dilewati.</span></div>{% endif %}
 
-{% if wa %}
-<div class="card">
-  <div class="card-head"><h3>💬 Notifikasi WhatsApp (Fonnte)</h3>
-    <form method="post" action="{{ url_for('notifikasi.kuota') }}">{{ csrf() }}<button class="btn sm outline">Cek kuota</button></form>
+<div class="stats" style="margin-bottom:1.25rem">
+  <div class="stat"><b>{{ total.total }}</b><span>Total siswa</span></div>
+  <div class="stat h"><b>{{ total.H }}</b><span>Hadir</span></div>
+  <div class="stat t"><b>{{ total.telat }}</b><span>Terlambat</span></div>
+  <div class="stat i"><b>{{ total.I }}</b><span>Izin</span></div>
+  <div class="stat s"><b>{{ total.S }}</b><span>Sakit</span></div>
+  <div class="stat a"><b>{{ total.A }}</b><span>Alpha</span></div>
+  <div class="stat d"><b>{{ total.D }}</b><span>Dispensasi</span></div>
+  <div class="stat"><b>{{ total.belum }}</b><span>Belum tercatat</span></div>
+</div>
+
+{% if infos or wa %}
+<div class="grid grid-2" style="margin-bottom:1.25rem">
+  {% if infos %}
+  <div class="card">
+    <div class="card-head"><h3>{{ icon('info') }}Pengumuman</h3><a class="btn sm ghost" href="{{ url_for('sistem.info') }}">Lihat semua</a></div>
+    {% for i in infos %}
+    <div class="info-item {{ 'penting' if i.penting }}"><b>{{ i.judul }}</b>{% if i.penting %} <span class="badge b-err">Penting</span>{% endif %}<div class="isi">{{ i.isi }}</div></div>
+    {% endfor %}
   </div>
-  {% if not wa.token %}<p class="flash error" style="margin:0">Token Fonnte belum diisi. <a href="{{ url_for('notifikasi.pengaturan') }}">Atur sekarang</a>.</p>
-  {% else %}
-  <div class="stats">
-    <div class="stat"><b style="font-size:.95rem">{{ wa.kuota or 'belum dicek' }}</b><span>Sisa kuota{% if wa.cek %} · {{ wa.cek }}{% endif %}</span></div>
-    <div class="stat t"><b>{{ wa.antri }}</b><span>Menunggu koneksi</span></div>
-    <div class="stat a"><b>{{ wa.gagal }}</b><span>Gagal</span></div>
+  {% endif %}
+  {% if wa %}
+  <div class="card">
+    <div class="card-head"><h3>{{ icon('wa') }}Notifikasi WhatsApp</h3>
+      <form method="post" action="{{ url_for('notifikasi.kuota') }}">{{ csrf() }}<button class="btn sm outline">{{ icon('refresh') }}Cek kuota</button></form>
+    </div>
+    {% if not wa.token %}
+      <div class="alert-libur" style="margin:0">{{ icon('alert') }}<span>Token Fonnte belum diisi. <a href="{{ url_for('notifikasi.pengaturan') }}">Atur sekarang</a></span></div>
+    {% else %}
+    <div class="stats">
+      <div class="stat"><b style="font-size:.95rem">{{ wa.kuota or 'Belum dicek' }}</b><span>Sisa kuota{% if wa.cek %} · {{ wa.cek[11:] }}{% endif %}</span></div>
+      <div class="stat t"><b>{{ wa.antri }}</b><span>Antrian</span></div>
+      <div class="stat a"><b>{{ wa.gagal }}</b><span>Gagal</span></div>
+    </div>
+    {% endif %}
   </div>
   {% endif %}
 </div>
@@ -33,9 +56,10 @@
   <h3>{{ grp.title }}</h3>
   <div class="menu-grid">
     {% for m in grp['items'] %}
-    <a class="menu-item {{ 'locked' if m.locked }}" href="{{ m.url }}">
-      {% if m.locked %}<span class="lock">{{ m.tier }}</span>{% endif %}
-      <span class="ic">{{ m.icon }}</span>{{ m.label }}</a>
+    <a class="menu-item tone-{{ grp.tone }} {{ 'locked' if m.locked }}" href="{{ m.url }}" {% if m.locked %}title="Tersedia di lisensi {{ m.tier }}"{% endif %}>
+      <span class="tile">{{ icon(m.icon) }}</span><span>{{ m.label }}</span>
+      {% if m.locked %}<span class="lock">{{ icon('lock') }}</span>{% endif %}
+    </a>
     {% endfor %}
   </div>
 </div>
@@ -44,48 +68,34 @@
 <div class="card">
   <div class="card-head">
     <h2>Rekap Per Kelas</h2>
-    <form method="get" style="display:flex;gap:.4rem">
-      <input type="date" name="tanggal" value="{{ tgl }}" data-autosubmit style="width:auto">
-    </form>
-    <a class="btn sm outline" href="{{ url_for('main.rekap_kelas_export', tanggal=tgl, format='xlsx') }}">⬇ Excel</a>
-    <a class="btn sm outline" href="{{ url_for('main.rekap_kelas_export', tanggal=tgl, format='pdf') }}">⬇ PDF</a>
-  </div>
-  {% if libur %}<div class="alert-libur">🏖️ {{ tanggal_indo(tgl) }}: {{ libur }} — presensi dilewati.</div>{% endif %}
-  <div class="stats" style="margin-bottom:1rem">
-    <div class="stat"><b>{{ total.total }}</b><span>Siswa</span></div>
-    <div class="stat h"><b>{{ total.H }}</b><span>Hadir</span></div>
-    <div class="stat t"><b>{{ total.telat }}</b><span>Telat</span></div>
-    <div class="stat i"><b>{{ total.I }}</b><span>Izin</span></div>
-    <div class="stat s"><b>{{ total.S }}</b><span>Sakit</span></div>
-    <div class="stat a"><b>{{ total.A }}</b><span>Alpha</span></div>
-    <div class="stat d"><b>{{ total.D }}</b><span>Dispensasi</span></div>
-    <div class="stat"><b>{{ total.belum }}</b><span>Belum</span></div>
+    <form method="get"><input type="date" name="tanggal" value="{{ tgl }}" data-autosubmit style="width:auto"></form>
+    <a class="btn sm outline" href="{{ url_for('main.rekap_kelas_export', tanggal=tgl, format='xlsx') }}">{{ icon('excel') }}Excel</a>
+    <a class="btn sm outline" href="{{ url_for('main.rekap_kelas_export', tanggal=tgl, format='pdf') }}">{{ icon('pdf') }}PDF</a>
   </div>
   <div class="grid grid-3">
     {% for k in rekap %}
-    <div class="card kelas-card" style="margin:0;background:#f8fafc;box-shadow:none;border:1px solid var(--line)">
-      <div class="card-head" style="margin-bottom:.5rem">
-        <h3>{{ k.nama }}</h3><small>{{ k.total }} siswa</small>
-      </div>
+    <div class="kelas-card">
+      <div class="card-head"><h3>Kelas {{ k.nama }}</h3><small>{{ k.total }} siswa</small></div>
       <div class="hisad">
         <div><b style="color:var(--ok)">{{ k.H }}</b><span>H</span></div>
         <div><b style="color:var(--info)">{{ k.I }}</b><span>I</span></div>
         <div><b style="color:var(--purple)">{{ k.S }}</b><span>S</span></div>
         <div><b style="color:var(--err)">{{ k.A }}</b><span>A</span></div>
         <div><b style="color:var(--primary)">{{ k.D }}</b><span>D</span></div>
-        <div><b>{{ k.belum }}</b><span>Belum</span></div>
+        <div><b>{{ k.belum }}</b><span>BLM</span></div>
       </div>
-      <div class="progress"><div style="width:{{ ((k.H + k.D) * 100 / k.total)|round|int if k.total else 0 }}%"></div></div>
+      {% set pct = ((k.H + k.D) * 100 / k.total)|round|int if k.total else 0 %}
+      <div class="progress"><div style="width:{{ pct }}%"></div></div>
       <div class="btn-row" style="justify-content:space-between">
-        <small>{{ k.telat }} telat</small>
-        <span>
-          <a class="btn sm ghost" href="{{ url_for('presensi.monitor', kelas_id=k.id) }}">Lihat</a>
-          <a class="btn sm outline" href="{{ url_for('main.rekap_kelas_export', tanggal=tgl, kelas_id=k.id, format='xlsx') }}" title="Download Excel">⬇</a>
+        <small>{{ pct }}% hadir · {{ k.telat }} terlambat</small>
+        <span class="btn-row">
+          <a class="btn sm ghost" href="{{ url_for('presensi.monitor', kelas_id=k.id) }}">Detail</a>
+          <a class="btn sm ghost icon-only" href="{{ url_for('main.rekap_kelas_export', tanggal=tgl, kelas_id=k.id, format='xlsx') }}" title="Unduh Excel">{{ icon('download') }}</a>
         </span>
       </div>
     </div>
     {% else %}
-    <p class="empty">Belum ada kelas. {% if can() %}<a href="{{ url_for('master.kelas') }}">Tambah kelas</a>{% endif %}</p>
+    <div class="empty">{{ icon('inbox') }}Belum ada kelas. {% if can() %}<a href="{{ url_for('master.kelas') }}">Tambah kelas</a>{% endif %}</div>
     {% endfor %}
   </div>
 </div>

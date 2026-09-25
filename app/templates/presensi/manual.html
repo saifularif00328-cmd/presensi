@@ -2,12 +2,12 @@
 {% from "_macros.html" import csrf, kelas_select, status_badge with context %}
 {% block title %}Presensi Manual{% endblock %}
 {% block content %}
-<div class="page-head"><h1>✍️ Presensi Manual</h1></div>
+<div class="page-head"><h1>Presensi Manual</h1></div>
 <form class="filters" method="get">
   <div><label>Kelas</label>{{ kelas_select(kelas, kelas_id, all_label='— pilih kelas —', autosubmit=True) }}</div>
   <div><label>Tanggal</label><input type="date" name="tanggal" value="{{ tgl }}" max="{{ today() }}" data-autosubmit></div>
 </form>
-{% if libur %}<div class="alert-libur">🏖️ {{ tanggal_indo(tgl) }}: {{ libur }}</div>{% endif %}
+{% if libur %}<div class="alert-libur">{{ icon('libur') }}<span>{{ tanggal_indo(tgl) }}: {{ libur }}</span></div>{% endif %}
 {% if kelas_id %}
 <form method="post" class="card">
   {{ csrf() }}<input type="hidden" name="kelas_id" value="{{ kelas_id }}"><input type="hidden" name="tanggal" value="{{ tgl }}">

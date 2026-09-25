@@ -54,6 +54,10 @@
     });
   };
 
+  window.iconHtml = function (name, cls) {
+    return '<svg class="ico ' + (cls || '') + '" aria-hidden="true"><use href="' + (window.ICONS || '/static/icons.svg') + '#' + name + '"/></svg>';
+  };
+
   window.avatarHtml = function (s, cls) {
     cls = cls || 'avatar';
     if (s && s.foto) return '<img class="' + cls + '" src="/uploads/' + encodeURI(s.foto) + '" alt="">';

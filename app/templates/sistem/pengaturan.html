@@ -2,7 +2,7 @@
 {% from "_macros.html" import csrf with context %}
 {% block title %}Pengaturan{% endblock %}
 {% block content %}
-<div class="page-head"><h1>⚙️ Pengaturan</h1></div>
+<div class="page-head"><h1>{{ icon('pengaturan') }}Pengaturan</h1></div>
 <form method="post" class="card">
   {{ csrf() }}
   <h3>Identitas sekolah</h3>
@@ -22,18 +22,18 @@
 </form>
 <div class="grid grid-2">
   <div class="card">
-    <h3>💾 Backup data</h3>
+    <h3>{{ icon('database') }}Backup data</h3>
     <p class="help">Database tersimpan di <code>{{ data_dir }}</code>. Backup otomatis dibuat setiap hari (14 hari terakhir disimpan di folder <code>backup</code>).</p>
-    <a class="btn outline" href="{{ url_for('sistem.backup') }}">⬇ Unduh backup sekarang</a>
+    <a class="btn outline" href="{{ url_for('sistem.backup') }}">{{ icon('download') }}Unduh backup sekarang</a>
     {% if backups %}<ul class="help">{% for b in backups[:5] %}<li>{{ b }}</li>{% endfor %}</ul>{% endif %}
   </div>
   <div class="card">
     <h3>Lainnya</h3>
     <div class="btn-row">
-      <a class="btn outline" href="{{ url_for('sistem.lisensi') }}">🔑 Lisensi</a>
-      <a class="btn outline" href="{{ url_for('notifikasi.pengaturan') }}">💬 Notifikasi WA</a>
+      <a class="btn outline" href="{{ url_for('sistem.lisensi') }}">{{ icon('key') }}Lisensi</a>
+      <a class="btn outline" href="{{ url_for('notifikasi.pengaturan') }}">{{ icon('wa') }}Notifikasi WA</a>
       <a class="btn outline" href="{{ url_for('kedisiplinan.aturan_jam') }}">⏰ Aturan Jam</a>
-      <a class="btn outline" href="{{ url_for('sistem.libur') }}">🏖️ Kalender Libur</a>
+      <a class="btn outline" href="{{ url_for('sistem.libur') }}">{{ icon('libur') }}Kalender Libur</a>
     </div>
   </div>
 </div>

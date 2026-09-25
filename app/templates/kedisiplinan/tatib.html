@@ -2,7 +2,7 @@
 {% from "_macros.html" import csrf, del_btn with context %}
 {% block title %}Tata Tertib{% endblock %}
 {% block content %}
-<div class="page-head"><h1>📜 Tata Tertib Sekolah</h1></div>
+<div class="page-head"><h1>Tata Tertib Sekolah</h1></div>
 {% set editor = g.user.role in ('admin', 'bk') %}
 {% if editor %}
 <div class="card">

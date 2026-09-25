@@ -2,7 +2,7 @@
 {% from "_macros.html" import csrf, siswa_select, status_badge, del_btn with context %}
 {% block title %}Pengajuan Kartu{% endblock %}
 {% block content %}
-<div class="page-head"><h1>🔁 Pengajuan Cetak Ulang Kartu</h1></div>
+<div class="page-head"><h1>Pengajuan Cetak Ulang Kartu</h1></div>
 {% if request.args.get('cetak') %}
 <div class="flash success">Kartu siap dicetak: <a target="_blank" href="{{ url_for('master.kartu_download', siswa_id=request.args.get('cetak')) }}"><b>Buka PDF kartu</b></a></div>
 {% endif %}
