@@ -15,7 +15,7 @@ Dibuat sesuai PRD *Presensi Siswa Digital v1.0*.
 | **Kedisiplinan** | Tata Tertib, Rekap Pelanggaran (jenis, poin, tindak lanjut), Aturan Jam (per default/jenjang/kelas) |
 | **Sistem** | Kalender Libur, Akses User (Admin, Guru Piket, Guru BK), Info/pengumuman, Pengaturan, Backup, Lisensi, Dashboard Multi-Cabang |
 | **Notifikasi WA** | Fonnte API, token terenkripsi, template dengan `{nama_siswa}` `{kelas}` `{jam}` `{status}`, toggle per jenis, antrian offline, log & kirim ulang, info kuota |
-| **Kartu pelajar** | PDF grid 2×5 (ukuran ID card) berisi foto, nama, kelas, QR — satuan atau per kelas |
+| **Kartu pelajar** | 5 template (Modern, Klasik, Minimal, Elegan, Gradien) × orientasi horizontal/vertikal × 8 pilihan warna, logo sekolah, pratinjau langsung; PDF siap cetak A4 (horizontal 2×5, vertikal 3×3) ukuran ID card 85,6×54 mm, satuan atau per kelas |
 
 ### Aturan presensi
 - **Absen masuk** → `Hadir` / `Telat` (setelah *batas telat*).
@@ -101,6 +101,7 @@ app/
 tests/                 # pytest
 tools/keygen.py        # generator kode lisensi (vendor)
 tools/build_icons.py   # membangun sprite ikon app/static/icons.svg dari lucide-static
+tools/build_card_previews.py  # membuat gambar contoh template kartu (app/static/img/kartu)
 ```
 
 ## Pengujian

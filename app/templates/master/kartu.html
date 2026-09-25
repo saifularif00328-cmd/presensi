@@ -1,22 +1,110 @@
 {% extends "base.html" %}
 {% block title %}Cetak Kartu{% endblock %}
 {% block content %}
-<div class="page-head"><h1>{{ icon('printer') }}Cetak Kartu Pelajar</h1></div>
-<div class="grid grid-2">
-  <div class="card">
-    <h3>Massal per kelas</h3>
-    <form method="get" action="{{ url_for('master.kartu_download') }}" target="_blank">
-      <div class="field"><label>Kelas</label><select name="kelas_id"><option value="">Semua kelas</option>{% for k in kelas %}<option value="{{ k.id }}">{{ k.nama }}</option>{% endfor %}</select></div>
-      <button class="btn">Buat PDF</button>
-    </form>
+<div class="page-head"><h1>Cetak Kartu Pelajar</h1></div>
+<p class="page-sub">Pilih template, orientasi, dan warna. Pratinjau di kanan berubah otomatis.</p>
+
+<form id="kartu-form" method="get" action="{{ url_for('master.kartu_download') }}" target="_blank" class="kartu-layout">
+  <div>
+    <div class="card">
+      <div class="card-head"><h3>{{ icon('kartu') }}Template</h3>
+        <div class="mode-switch" style="min-width:230px">
+          {% for k, v in orientasi_opsi.items() %}<label><input type="radio" name="orientasi" value="{{ k }}" {{ 'checked' if orientasi == k }}><span>{{ v }}</span></label>{% endfor %}
+        </div>
+      </div>
+      <div class="tpl-grid">
+        {% for k, (nama, desc) in templates.items() %}
+        <label class="tpl">
+          <input type="radio" name="template" value="{{ k }}" {{ 'checked' if template == k }}>
+          <span class="tpl-thumb"><img data-tpl="{{ k }}" src="{{ url_for('static', filename='img/kartu/' ~ k ~ '-' ~ orientasi ~ '.png') }}" alt="Template {{ nama }}"></span>
+          <span class="tpl-name">{{ nama }}</span>
+          <span class="tpl-desc">{{ desc }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Warna utama</h3>
+      <div class="swatches">
+        {% for k, (nama, hexa) in warna_opsi.items() %}
+        <label class="swatch" title="{{ nama }}"><input type="radio" name="warna" value="{{ k }}" {{ 'checked' if warna == k }}><span style="--c: {{ hexa }}"></span><small>{{ nama }}</small></label>
+        {% endfor %}
+      </div>
+      {% if not ada_logo %}<div class="callout mt" style="margin-bottom:0">{{ icon('info') }}<span>Logo sekolah belum diunggah — kartu memakai inisial sekolah. <a href="{{ url_for('sistem.pengaturan') }}">Unggah logo</a></span></div>{% endif %}
+    </div>
+
+    <div class="card">
+      <h3>Siswa yang dicetak</h3>
+      <div class="tabs" style="margin-bottom:1rem">
+        <a href="#" data-target="kelas" class="active">Per kelas</a><a href="#" data-target="siswa">Satu siswa</a>
+      </div>
+      <div data-pane="kelas">
+        <label>Kelas</label>
+        <select name="kelas_id"><option value="">Semua kelas</option>{% for k in kelas %}<option value="{{ k.id }}">{{ k.nama }}</option>{% endfor %}</select>
+      </div>
+      <div data-pane="siswa" hidden>
+        <label>Siswa</label>
+        <select name="siswa_id" disabled>{% for s in siswa %}<option value="{{ s.id }}">{{ s.nama }} — {{ s.kelas_nama or '-' }}</option>{% endfor %}</select>
+      </div>
+      <p class="help">Horizontal: 10 kartu per A4 (2 × 5). Vertikal: 9 kartu per A4 (3 × 3). Ukuran standar ID card 85,6 × 54 mm — cetak dengan skala 100% (“Actual size”).</p>
+    </div>
   </div>
-  <div class="card">
-    <h3>Satuan</h3>
-    <form method="get" action="{{ url_for('master.kartu_download') }}" target="_blank">
-      <div class="field"><label>Siswa</label><select name="siswa_id" required>{% for s in siswa %}<option value="{{ s.id }}">{{ s.nama }} — {{ s.kelas_nama or '-' }}</option>{% endfor %}</select></div>
-      <button class="btn">Buat PDF</button>
-    </form>
+
+  <div class="kartu-side">
+    <div class="card">
+      <div class="card-head"><h3>{{ icon('eye') }}Pratinjau</h3><small id="prev-info"></small></div>
+      <div class="preview-box" id="preview-box">
+        {% if png_ok %}<img id="preview" alt="Pratinjau kartu">{% else %}<iframe id="preview" title="Pratinjau kartu"></iframe>{% endif %}
+      </div>
+      <div class="btn-row mt">
+        <button class="btn" style="flex:1">{{ icon('printer') }}Buat PDF siap cetak</button>
+        <a class="btn outline" id="open-preview" target="_blank" href="#">{{ icon('eye') }}Buka</a>
+      </div>
+      <p class="help">Pratinjau memakai siswa pertama dari pilihan (atau data contoh). Pilihan terakhir disimpan sebagai default untuk tombol “Cetak Kartu” di halaman lain.</p>
+    </div>
   </div>
-</div>
-<p class="help">PDF berisi grid 2×5 kartu ukuran standar ID card (85,6 × 54 mm) per halaman A4, siap dicetak lalu dipotong/laminasi. Setiap kartu memuat foto, nama, kelas, dan QR.</p>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const form = document.getElementById('kartu-form');
+  const iframe = document.getElementById('preview');
+  const openBtn = document.getElementById('open-preview');
+  const base = form.getAttribute('action');
+  const thumbs = '{{ url_for("static", filename="img/kartu/") }}';
+  let t;
+
+  function params(preview) {
+    const p = new URLSearchParams(new FormData(form));
+    for (const [k, v] of [...p]) if (!v) p.delete(k);
+    if (preview) p.set('pratinjau', '1');
+    return p.toString();
+  }
+  function refresh() {
+    const o = form.orientasi.value;
+    document.querySelectorAll('img[data-tpl]').forEach(img => img.src = thumbs + img.dataset.tpl + '-' + o + '.png');
+    document.getElementById('preview-box').className = 'preview-box ' + o;
+    const url = base + '?' + params(true);
+    openBtn.href = url;
+    clearTimeout(t);
+    t = setTimeout(() => {
+      iframe.src = iframe.tagName === 'IMG' ? url + '&format=png' : url + '#toolbar=0&navpanes=0&view=Fit';
+    }, 150);
+  }
+  form.addEventListener('change', refresh);
+  document.querySelectorAll('[data-target]').forEach(a => a.addEventListener('click', e => {
+    e.preventDefault();
+    document.querySelectorAll('[data-target]').forEach(x => x.classList.toggle('active', x === a));
+    document.querySelectorAll('[data-pane]').forEach(p => {
+      const on = p.dataset.pane === a.dataset.target;
+      p.hidden = !on;
+      p.querySelector('select').disabled = !on;
+    });
+    refresh();
+  }));
+  refresh();
+})();
+</script>
 {% endblock %}

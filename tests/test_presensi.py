@@ -267,3 +267,21 @@ def test_semua_halaman_render(app, client, seed, clock):
         r = client.get(url)
         assert r.status_code == 200, f"{url} → {r.status_code}"
     assert client.get("/presensi/api/monitor").get_json()["stats"]["masuk"] == 1
+
+
+def test_kartu_semua_template(app, client, seed):
+    from app.services.kartu import ORIENTASI, TEMPLATES, WARNA
+    for t in TEMPLATES:
+        for o in ORIENTASI:
+            r = client.get(f"/master/kartu/pdf?kelas_id=1&template={t}&orientasi={o}&warna=emas")
+            assert r.status_code == 200 and r.data[:4] == b"%PDF", (t, o)
+    r = client.get("/master/kartu/pdf?pratinjau=1&template=elegan&orientasi=v&warna=hijau")
+    assert r.status_code == 200 and r.data[:4] == b"%PDF"
+    r = client.get("/master/kartu/pdf?pratinjau=1&template=modern&orientasi=h&format=png")
+    assert r.status_code == 200 and r.data[:8] == b"\x89PNG\r\n\x1a\n"
+    assert set(WARNA)  # pilihan warna tersedia
+    # pilihan terakhir (bukan pratinjau) tersimpan sebagai default
+    with app.app_context():
+        from app.db import get_setting
+        assert get_setting("kartu_template") == "gradien"
+        assert get_setting("kartu_orientasi") == "v"

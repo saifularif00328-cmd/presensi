@@ -3,12 +3,19 @@
 {% block title %}Pengaturan{% endblock %}
 {% block content %}
 <div class="page-head"><h1>{{ icon('pengaturan') }}Pengaturan</h1></div>
-<form method="post" class="card">
+<form method="post" class="card" enctype="multipart/form-data">
   {{ csrf() }}
   <h3>Identitas sekolah</h3>
   <div class="form-grid">
     <div><label>Nama sekolah</label><input name="nama_sekolah" value="{{ nama_sekolah }}"></div>
     <div><label>Alamat</label><input name="alamat_sekolah" value="{{ alamat }}"></div>
+    <div class="full"><label>Logo sekolah</label>
+      <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
+        {% if logo_url %}<img src="{{ logo_url }}" alt="Logo" style="width:56px;height:56px;object-fit:contain;border:1px solid var(--border);border-radius:10px;padding:4px;background:#fff">{% endif %}
+        <input type="file" name="logo" accept="image/png,image/jpeg" style="max-width:320px">
+        {% if logo_url %}<label class="check"><input type="checkbox" name="hapus_logo" value="1">Hapus logo</label>{% endif %}
+      </div>
+      <div class="help">Dipakai di kartu pelajar dan menu samping. Disarankan PNG berlatar transparan, bentuk persegi.</div></div>
   </div>
   <h3 class="mt">Hari sekolah</h3>
   <div class="checks">{% for h in HARI %}<label class="check"><input type="checkbox" name="hari_sekolah" value="{{ loop.index }}" {{ 'checked' if loop.index in hari }}>{{ h }}</label>{% endfor %}</div>

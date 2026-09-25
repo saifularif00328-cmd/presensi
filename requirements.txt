@@ -6,6 +6,7 @@ openpyxl>=3.1
 reportlab>=4.0
 requests>=2.31
 cryptography>=41.0
+pypdfium2>=4.0          # render pratinjau kartu (PDF → PNG)
 
 # Opsional — scan QR via webcam PC di sisi server (OpenCV + pyzbar).
 # Tanpa paket ini, scan tetap bisa lewat kamera browser (html5-qrcode)

@@ -6,7 +6,7 @@ a = Analysis(
     ["run.py"],
     pathex=[],
     datas=[("app/templates", "app/templates"), ("app/static", "app/static"),
-           ("app/schema.sql", "app")],
+           ("app/schema.sql", "app"), ("app/fonts", "app/fonts")],
     hiddenimports=["apscheduler.triggers.interval", "apscheduler.triggers.cron",
                    "apscheduler.executors.pool", "apscheduler.jobstores.memory"],
     excludes=["tkinter", "pytest"],

@@ -76,6 +76,8 @@ def create_app(test_config=None, start_jobs=True):
             "tanggal_indo": utils.tanggal_indo,
             "today": utils.today_str,
             "ibadah_aktif": lambda: get_setting("modul_ibadah_aktif") == "1",
+            "logo_url": (url_for("uploads", filename=get_setting("logo_sekolah"))
+                         if get_setting("logo_sekolah") else None),
         }
 
     def icon(name, cls=""):

@@ -2,10 +2,12 @@
 import hmac
 import io
 import os
+import secrets
 import sqlite3
 import tempfile
 
 import requests
+from PIL import Image
 from flask import (Blueprint, abort, flash, g, jsonify, redirect, render_template, request,
                    send_file, url_for)
 from werkzeug.security import generate_password_hash
@@ -160,6 +162,7 @@ def pengaturan():
         set_setting("hari_sekolah", ",".join(hari) or "1,2,3,4,5", db=db, commit=False)
         set_setting("modul_ibadah_aktif", "1" if request.form.get("modul_ibadah_aktif") else "0",
                     db=db, commit=False)
+        _simpan_logo(db)
         r = request.form.get("monitor_refresh_detik", "3")
         set_setting("monitor_refresh_detik", r if r.isdigit() and 1 <= int(r) <= 60 else "3",
                     db=db, commit=False)
@@ -174,6 +177,32 @@ def pengaturan():
                            backups=backups, data_dir=os.path.abspath(config.DATA_DIR),
                            alamat=get_setting("alamat_sekolah"),
                            refresh=get_setting("monitor_refresh_detik"))
+
+
+def _simpan_logo(db):
+    """Logo sekolah (dipakai di kartu pelajar & sidebar). Disimpan sebagai PNG ≤ 512 px."""
+    old = get_setting("logo_sekolah", db=db)
+    if request.form.get("hapus_logo") and old:
+        path = os.path.join(config.UPLOAD_DIR, old)
+        if os.path.exists(path):
+            os.remove(path)
+        set_setting("logo_sekolah", "", db=db, commit=False)
+        return
+    f = request.files.get("logo")
+    if not f or not f.filename:
+        return
+    try:
+        img = Image.open(f.stream)
+        img = img.convert("RGBA")
+    except Exception:
+        flash("File logo tidak valid (gunakan PNG/JPG).", "error")
+        return
+    img.thumbnail((512, 512))
+    name = f"logo_sekolah_{secrets.token_hex(3)}.png"
+    img.save(os.path.join(config.UPLOAD_DIR, name), "PNG")
+    if old and os.path.exists(os.path.join(config.UPLOAD_DIR, old)):
+        os.remove(os.path.join(config.UPLOAD_DIR, old))
+    set_setting("logo_sekolah", name, db=db, commit=False)
 
 
 @bp.route("/backup")

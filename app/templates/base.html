@@ -16,7 +16,7 @@
 <div class="app">
   <aside class="sidebar">
     <div class="brand">
-      <span class="logo-mark">{{ icon('logo') }}</span>
+      {% if logo_url %}<img class="logo-img" src="{{ logo_url }}" alt="">{% else %}<span class="logo-mark">{{ icon('logo') }}</span>{% endif %}
       <div><div class="brand-name">Presensi Siswa</div><div class="brand-sub">{{ nama_sekolah }}</div></div>
     </div>
     <nav>

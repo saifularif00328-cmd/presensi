@@ -11,9 +11,10 @@ from PIL import Image, ImageOps
 
 from .. import config
 from ..auth import feature, roles
-from ..db import execute, get_db, get_setting, new_qr_token, query
+from ..db import execute, get_db, get_setting, new_qr_token, query, set_setting
 from ..qr import make_payload, qr_png
-from ..services.export import kartu_pdf, xlsx
+from ..services import kartu as kartu_svc
+from ..services.export import xlsx
 from .common import arg_int, form_int, kelas_options
 
 bp = Blueprint("master", __name__, url_prefix="/master")
@@ -351,14 +352,33 @@ def siswa_import_template():
 
 
 # ================================================================ KARTU PELAJAR
+def _kartu_opsi():
+    """Pilihan template dari query string, jatuh ke pilihan terakhir yang disimpan."""
+    return kartu_svc.normalize(
+        request.args.get("template") or get_setting("kartu_template"),
+        request.args.get("orientasi") or get_setting("kartu_orientasi"),
+        request.args.get("warna") or get_setting("kartu_warna"))
+
+
+def logo_path():
+    rel = get_setting("logo_sekolah")
+    path = rel and os.path.join(config.UPLOAD_DIR, rel)
+    return path if path and os.path.exists(path) else None
+
+
 @bp.route("/kartu")
 @roles()
 @feature("kartu")
 def kartu():
+    template, orientasi, warna = _kartu_opsi()
     return render_template("master/kartu.html", kelas=kelas_options(),
                            siswa=query("SELECT s.id, s.nama, k.nama AS kelas_nama FROM siswa s "
                                        "LEFT JOIN kelas k ON k.id = s.kelas_id WHERE s.aktif = 1 "
-                                       "ORDER BY k.nama, s.nama"))
+                                       "ORDER BY k.nama, s.nama"),
+                           templates=kartu_svc.TEMPLATES, orientasi_opsi=kartu_svc.ORIENTASI,
+                           warna_opsi=kartu_svc.WARNA, template=template, orientasi=orientasi,
+                           warna=warna, ada_logo=bool(logo_path()),
+                           png_ok=kartu_svc.png_available())
 
 
 @bp.route("/kartu/pdf")
@@ -366,6 +386,8 @@ def kartu():
 @feature("kartu")
 def kartu_download():
     kelas_id, siswa_id = arg_int("kelas_id"), arg_int("siswa_id")
+    template, orientasi, warna = _kartu_opsi()
+    pratinjau = request.args.get("pratinjau") == "1"
     sql = ("SELECT s.*, k.nama AS kelas_nama FROM siswa s LEFT JOIN kelas k ON k.id = s.kelas_id "
            "WHERE s.aktif = 1")
     args = []
@@ -376,11 +398,27 @@ def kartu_download():
         sql += " AND s.kelas_id = ?"
         args.append(kelas_id)
     rows = query(sql + " ORDER BY k.nama, s.nama", args)
-    buf = kartu_pdf(rows, get_setting("nama_sekolah"))
-    name = "kartu-pelajar"
-    if siswa_id and rows:
+    if pratinjau:
+        rows = rows[:1] or [{"nama": "Nama Siswa Contoh", "nis": "2024001", "nisn": "0098765432",
+                             "kelas_nama": "7A", "foto": None, "qr_token": "CONTOH0000000000"}]
+    else:
+        # pilihan terakhir disimpan sebagai default (dipakai tombol "Cetak Kartu" di halaman lain)
+        db = get_db()
+        set_setting("kartu_template", template, db=db, commit=False)
+        set_setting("kartu_orientasi", orientasi, db=db, commit=False)
+        set_setting("kartu_warna", warna, db=db)
+    buf = kartu_svc.kartu_pdf(rows, get_setting("nama_sekolah"), template, orientasi, warna,
+                              alamat=get_setting("alamat_sekolah"), logo=logo_path(),
+                              single=pratinjau)
+    if pratinjau and request.args.get("format") == "png":
+        png = kartu_svc.pdf_to_png(buf)
+        if png is not None:
+            return send_file(png, mimetype="image/png", max_age=0)
+        buf.seek(0)
+    name = "pratinjau-kartu" if pratinjau else "kartu-pelajar"
+    if not pratinjau and siswa_id and rows:
         name += f"-{rows[0]['nama'].replace(' ', '_')}"
-    elif kelas_id and rows:
+    elif not pratinjau and kelas_id and rows:
         name += f"-{rows[0]['kelas_nama']}"
     return send_file(buf, mimetype="application/pdf", as_attachment=False,
-                     download_name=f"{name}.pdf")
+                     download_name=f"{name}.pdf", max_age=0)
