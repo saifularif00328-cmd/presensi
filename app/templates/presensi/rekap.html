@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_macros.html" import kelas_select, ket_badge, status_badge, export_btns with context %}
+{% block title %}Rekap Presensi{% endblock %}
+{% block content %}
+<div class="page-head"><h1>📊 Rekap Presensi</h1>{{ export_btns() }}</div>
+<form class="filters" method="get">
+  <div><label>Dari</label><input type="date" name="dari" value="{{ dari }}"></div>
+  <div><label>Sampai</label><input type="date" name="sampai" value="{{ sampai }}"></div>
+  <div><label>Kelas</label>{{ kelas_select(kelas, kelas_id) }}</div>
+  <div><label>Keterangan</label><select name="ket"><option value="">Semua</option>{% for k, v in KET.items() %}<option value="{{ k }}" {{ 'selected' if ket == k }}>{{ k }} · {{ v }}</option>{% endfor %}<option value="T" {{ 'selected' if ket == 'T' }}>Telat</option></select></div>
+  <button class="btn">Tampilkan</button>
+</form>
+<div class="stats card">
+  {% for k, cls in [('H','h'),('I','i'),('S','s'),('A','a'),('D','d')] %}<div class="stat {{ cls }}"><b>{{ ringkas[k] }}</b><span>{{ KET[k] }}</span></div>{% endfor %}
+  <div class="stat t"><b>{{ ringkas['T'] }}</b><span>Telat</span></div>
+</div>
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Tanggal</th><th>Nama</th><th>Kelas</th><th class="num">Ket</th><th>Masuk</th><th>Pulang</th><th class="hide-sm">Sumber</th><th class="hide-sm">Catatan</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr><td class="nowrap">{{ r.tanggal }}</td><td><a href="{{ url_for('main.siswa_detail', sid=r.siswa_id) }}">{{ r.nama }}</a></td><td>{{ r.kelas or '-' }}</td>
+    <td class="num">{{ ket_badge(r.keterangan) }}</td>
+    <td class="nowrap">{{ r.jam_masuk|jam }} {{ status_badge(r.status_masuk) if r.status_masuk }}</td>
+    <td class="nowrap">{{ r.jam_pulang|jam }} {{ status_badge(r.status_pulang) if r.status_pulang }}</td>
+    <td class="hide-sm">{{ r.sumber }}</td><td class="hide-sm">{{ r.catatan or '' }}</td></tr>
+  {% else %}<tr><td colspan="8" class="empty">Tidak ada data pada filter ini.</td></tr>{% endfor %}
+  </tbody></table></div>
+  <p class="help">{{ rows|length }} baris. Siswa yang belum tercatat sama sekali tidak muncul di sini — lihat Monitor Live untuk hari ini.</p>
+</div>
+{% endblock %}

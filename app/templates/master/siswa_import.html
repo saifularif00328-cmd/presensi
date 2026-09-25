@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}Import Siswa{% endblock %}
+{% block back %}{{ url_for('master.siswa') }}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>⬆ Import Siswa Massal</h1></div>
+<div class="card">
+  <ol>
+    <li>Unduh <a href="{{ url_for('master.siswa_import_template') }}">template Excel</a> (atau buat file CSV dengan kolom yang sama).</li>
+    <li>Isi data mulai baris ke-2. Kolom: {% for c in cols %}<code>{{ c }}</code>{{ ', ' if not loop.last }}{% endfor %}. Hanya <code>nama</code> yang wajib.</li>
+    <li>Kelas yang belum ada akan dibuat otomatis. Siswa dengan NIS yang sudah terdaftar akan diperbarui.</li>
+  </ol>
+  <form method="post" enctype="multipart/form-data" class="btn-row">
+    {{ csrf() }}
+    <input type="file" name="file" accept=".xlsx,.csv" required style="max-width:360px">
+    <button class="btn">Import</button>
+  </form>
+</div>
+{% endblock %}

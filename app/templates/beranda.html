@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}Beranda{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Halo, {{ g.user.nama.split(' ')[0] }} 👋</h1>
+  {% if can('piket') and has_feature('presensi') %}<a class="btn" href="{{ url_for('presensi.scan') }}">📷 Mulai Scan</a>{% endif %}
+</div>
+<p class="muted" style="margin-top:-.6rem">{{ tanggal_indo(today()) }}</p>
+
+{% for i in infos %}
+<div class="info-item {{ 'penting' if i.penting }}"><b>📢 {{ i.judul }}</b><div class="isi">{{ i.isi }}</div></div>
+{% endfor %}
+
+{% if wa %}
+<div class="card">
+  <div class="card-head"><h3>💬 Notifikasi WhatsApp (Fonnte)</h3>
+    <form method="post" action="{{ url_for('notifikasi.kuota') }}">{{ csrf() }}<button class="btn sm outline">Cek kuota</button></form>
+  </div>
+  {% if not wa.token %}<p class="flash error" style="margin:0">Token Fonnte belum diisi. <a href="{{ url_for('notifikasi.pengaturan') }}">Atur sekarang</a>.</p>
+  {% else %}
+  <div class="stats">
+    <div class="stat"><b style="font-size:.95rem">{{ wa.kuota or 'belum dicek' }}</b><span>Sisa kuota{% if wa.cek %} · {{ wa.cek }}{% endif %}</span></div>
+    <div class="stat t"><b>{{ wa.antri }}</b><span>Menunggu koneksi</span></div>
+    <div class="stat a"><b>{{ wa.gagal }}</b><span>Gagal</span></div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% for grp in menu() %}
+<div class="menu-group">
+  <h3>{{ grp.title }}</h3>
+  <div class="menu-grid">
+    {% for m in grp['items'] %}
+    <a class="menu-item {{ 'locked' if m.locked }}" href="{{ m.url }}">
+      {% if m.locked %}<span class="lock">{{ m.tier }}</span>{% endif %}
+      <span class="ic">{{ m.icon }}</span>{{ m.label }}</a>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+
+<div class="card">
+  <div class="card-head">
+    <h2>Rekap Per Kelas</h2>
+    <form method="get" style="display:flex;gap:.4rem">
+      <input type="date" name="tanggal" value="{{ tgl }}" data-autosubmit style="width:auto">
+    </form>
+    <a class="btn sm outline" href="{{ url_for('main.rekap_kelas_export', tanggal=tgl, format='xlsx') }}">⬇ Excel</a>
+    <a class="btn sm outline" href="{{ url_for('main.rekap_kelas_export', tanggal=tgl, format='pdf') }}">⬇ PDF</a>
+  </div>
+  {% if libur %}<div class="alert-libur">🏖️ {{ tanggal_indo(tgl) }}: {{ libur }} — presensi dilewati.</div>{% endif %}
+  <div class="stats" style="margin-bottom:1rem">
+    <div class="stat"><b>{{ total.total }}</b><span>Siswa</span></div>
+    <div class="stat h"><b>{{ total.H }}</b><span>Hadir</span></div>
+    <div class="stat t"><b>{{ total.telat }}</b><span>Telat</span></div>
+    <div class="stat i"><b>{{ total.I }}</b><span>Izin</span></div>
+    <div class="stat s"><b>{{ total.S }}</b><span>Sakit</span></div>
+    <div class="stat a"><b>{{ total.A }}</b><span>Alpha</span></div>
+    <div class="stat d"><b>{{ total.D }}</b><span>Dispensasi</span></div>
+    <div class="stat"><b>{{ total.belum }}</b><span>Belum</span></div>
+  </div>
+  <div class="grid grid-3">
+    {% for k in rekap %}
+    <div class="card kelas-card" style="margin:0;background:#f8fafc;box-shadow:none;border:1px solid var(--line)">
+      <div class="card-head" style="margin-bottom:.5rem">
+        <h3>{{ k.nama }}</h3><small>{{ k.total }} siswa</small>
+      </div>
+      <div class="hisad">
+        <div><b style="color:var(--ok)">{{ k.H }}</b><span>H</span></div>
+        <div><b style="color:var(--info)">{{ k.I }}</b><span>I</span></div>
+        <div><b style="color:var(--purple)">{{ k.S }}</b><span>S</span></div>
+        <div><b style="color:var(--err)">{{ k.A }}</b><span>A</span></div>
+        <div><b style="color:var(--primary)">{{ k.D }}</b><span>D</span></div>
+        <div><b>{{ k.belum }}</b><span>Belum</span></div>
+      </div>
+      <div class="progress"><div style="width:{{ ((k.H + k.D) * 100 / k.total)|round|int if k.total else 0 }}%"></div></div>
+      <div class="btn-row" style="justify-content:space-between">
+        <small>{{ k.telat }} telat</small>
+        <span>
+          <a class="btn sm ghost" href="{{ url_for('presensi.monitor', kelas_id=k.id) }}">Lihat</a>
+          <a class="btn sm outline" href="{{ url_for('main.rekap_kelas_export', tanggal=tgl, kelas_id=k.id, format='xlsx') }}" title="Download Excel">⬇</a>
+        </span>
+      </div>
+    </div>
+    {% else %}
+    <p class="empty">Belum ada kelas. {% if can() %}<a href="{{ url_for('master.kelas') }}">Tambah kelas</a>{% endif %}</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

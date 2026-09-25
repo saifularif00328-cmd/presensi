@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, kelas_select with context %}
+{% block title %}Monitor Live{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1><span class="live-dot"></span>Monitor Live</h1>
+  <form method="get">{{ kelas_select(kelas, kelas_id, autosubmit=True) }}</form>
+  {% if can() %}<form method="post" action="{{ url_for('presensi.tutup_hari') }}" data-confirm="Proses tutup hari sekarang? Siswa tanpa keterangan akan ditandai Alpha (notifikasi WA dikirim) dan yang belum absen pulang ditandai Belum Pulang.">{{ csrf() }}<button class="btn sm warn">Tutup hari</button></form>{% endif %}
+</div>
+<p class="muted" style="margin-top:-.6rem">{{ tanggal_indo(today()) }} · update <span id="waktu">-</span> · refresh tiap {{ refresh }} detik</p>
+<div id="libur" class="alert-libur" hidden>🏖️ Hari ini bukan hari sekolah — presensi dilewati.</div>
+<div class="stats card" id="stats"></div>
+<div class="grid grid-2">
+  <div class="card"><h3>Live feed scan</h3><ul class="list feed" id="feed"><li class="empty">Menunggu scan…</li></ul></div>
+  <div class="card">
+    <div class="tabs" style="margin-bottom:.6rem"><a href="#" class="active" data-tab="belum">Belum absen (<span id="n-belum">0</span>)</a><a href="#" data-tab="sudah">Sudah (<span id="n-sudah">0</span>)</a></div>
+    <ul class="list" id="daftar"></ul>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const url = '{{ url_for("presensi.api_monitor", kelas_id=kelas_id) }}';
+  const detailUrl = '{{ url_for("main.siswa_detail", sid=0) }}'.replace(/0$/, '');
+  let tab = 'belum', lastId = 0, data = null;
+  const badge = (t, cls) => '<span class="badge b-' + String(cls || t).replace(/ /g, '') + '">' + escapeHtml(t) + '</span>';
+  const ic = { masuk: '🟢', pulang: '🔵', peringatan: '⚠️', gagal: '❌', manual: '✍️', ibadah: '🕌' };
+
+  function renderStats(s) {
+    const items = [['Siswa', s.total, ''], ['Sudah masuk', s.masuk, 'h'], ['Telat', s.telat, 't'], ['Sudah pulang', s.pulang, 'd'],
+                   ['Izin/Sakit', s.izin, 'i'], ['Alpha', s.alpha, 'a'], ['Belum absen', s.belum, '']];
+    document.getElementById('stats').innerHTML = items.map(i => '<div class="stat ' + i[2] + '"><b>' + i[1] + '</b><span>' + i[0] + '</span></div>').join('');
+  }
+  function renderFeed(feed) {
+    const el = document.getElementById('feed');
+    if (!feed.length) { el.innerHTML = '<li class="empty">Belum ada scan hari ini.</li>'; return; }
+    const newest = feed[0].id;
+    el.innerHTML = feed.map(f => '<li' + (f.id > lastId && lastId ? ' style="animation:flashin 1.5s"' : '') + '>' +
+      (f.nama ? avatarHtml(f) : '<span class="avatar">' + (ic[f.jenis] || '•') + '</span>') +
+      '<div class="grow"><div class="title">' + (ic[f.jenis] || '') + ' ' + escapeHtml(f.nama || 'Tidak dikenal') + '</div>' +
+      '<div class="sub">' + escapeHtml(f.kelas || '') + ' · ' + escapeHtml(f.pesan || '') + (f.metode ? ' · ' + escapeHtml(f.metode) : '') + '</div></div>' +
+      '<span class="muted nowrap">' + f.waktu.slice(11, 16) + '</span></li>').join('');
+    lastId = newest;
+  }
+  function renderList() {
+    if (!data) return;
+    const rows = data[tab];
+    document.getElementById('n-belum').textContent = data.belum.length;
+    document.getElementById('n-sudah').textContent = data.sudah.length;
+    document.getElementById('daftar').innerHTML = rows.length ? rows.map(s =>
+      '<li><a class="row" href="' + detailUrl + s.id + '">' + avatarHtml(s) + '<div class="grow"><div class="title">' + escapeHtml(s.nama) + '</div><div class="sub">' + escapeHtml(s.kelas || '') +
+      (s.jam_masuk ? ' · masuk ' + s.jam_masuk.slice(0, 5) : '') + (s.jam_pulang ? ' · pulang ' + s.jam_pulang.slice(0, 5) : '') + '</div></div></a>' +
+      (s.status_masuk ? badge(s.status_masuk) : '') + (s.status_pulang ? ' ' + badge(s.status_pulang) : '') +
+      (s.keterangan && s.keterangan !== 'H' ? ' ' + badge(s.keterangan) : '') + '</li>').join('')
+      : '<li class="empty">' + (tab === 'belum' ? 'Semua siswa sudah tercatat 🎉' : 'Belum ada.') + '</li>';
+  }
+  async function refresh() {
+    try {
+      const r = await fetch(url, { credentials: 'same-origin' });
+      if (r.status !== 200) return;
+      data = await r.json();
+      document.getElementById('waktu').textContent = data.waktu;
+      document.getElementById('libur').hidden = !data.libur;
+      renderStats(data.stats); renderFeed(data.feed); renderList();
+    } catch (e) { document.getElementById('waktu').textContent = 'gagal terhubung'; }
+  }
+  document.querySelectorAll('[data-tab]').forEach(a => a.addEventListener('click', e => {
+    e.preventDefault(); tab = a.dataset.tab;
+    document.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('active', x === a));
+    renderList();
+  }));
+  refresh(); setInterval(refresh, {{ refresh * 1000 }});
+})();
+</script>
+{% endblock %}

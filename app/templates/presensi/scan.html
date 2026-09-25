@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}Scan Presensi{% endblock %}
+{% block content %}
+<div class="page-head"><h1>📷 Scan Presensi</h1><div class="clock" id="clock"></div></div>
+{% if libur %}<div class="alert-libur">🏖️ Hari ini libur: {{ libur }}. Scan tidak akan dicatat.</div>{% endif %}
+<div class="scan-layout">
+  <div>
+    <div class="card">
+      <label>Sesi presensi</label>
+      <div class="mode-switch" id="mode">
+        <label><input type="radio" name="mode" value="auto" checked><span>Otomatis</span></label>
+        <label><input type="radio" name="mode" value="masuk"><span>Masuk</span></label>
+        <label><input type="radio" name="mode" value="pulang"><span>Pulang</span></label>
+      </div>
+      <p class="help">Otomatis: scan pertama = absen masuk; scan setelah pukul {{ aturan.batas_pulang_cepat }} = absen pulang. Telat setelah {{ aturan.batas_telat }}, pulang normal mulai {{ aturan.jam_pulang }} (aturan default — bisa berbeda per kelas).</p>
+      <div class="field mt">
+        <label>Scanner QR USB / input manual</label>
+        <input id="code" class="scan-input" placeholder="Arahkan scanner ke kartu…" autocomplete="off">
+        <div class="help">Scanner fisik bekerja seperti keyboard — cukup pastikan kursor berada di kotak ini.</div>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn" id="cam-start">📱 Buka Kamera</button>
+        <button type="button" class="btn danger" id="cam-stop" hidden>Tutup Kamera</button>
+        <select id="cam-select" hidden style="max-width:220px"></select>
+      </div>
+      <div id="reader" class="mt"></div>
+    </div>
+    {% if can() %}
+    <div class="card">
+      <h3>🖥️ Webcam PC (server)</h3>
+      {% if webcam.available %}
+        <p class="help">Memakai OpenCV + pyzbar di komputer server. Hasil scan tampil di Monitor Live.</p>
+        <form method="post" action="{{ url_for('presensi.webcam_ctl') }}" class="btn-row">
+          {{ csrf() }}
+          {% if webcam.running %}
+            <span class="badge b-ok">Berjalan · mode {{ webcam.mode }}</span>
+            <input type="hidden" name="aksi" value="stop"><button class="btn sm danger">Hentikan</button>
+          {% else %}
+            <select name="mode" style="width:auto"><option value="auto">Otomatis</option><option value="masuk">Masuk</option><option value="pulang">Pulang</option></select>
+            <input name="kamera" value="0" style="width:70px" title="Indeks kamera">
+            <button class="btn sm">Mulai</button>
+          {% endif %}
+        </form>
+        {% if webcam.error %}<p class="flash error">{{ webcam.error }}</p>{% endif %}
+      {% else %}
+        <p class="help">Tidak aktif: paket <code>opencv-python</code> dan <code>pyzbar</code> belum terpasang di server. Gunakan tombol “Buka Kamera” (browser) atau scanner USB.</p>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  <div>
+    <div class="result" id="result"><div class="big-ic">🪪</div><div class="pesan">Siap menerima scan</div><div class="muted">Tempelkan kartu QR siswa</div></div>
+    <div class="card mt"><h3>Scan terakhir</h3><ul class="list" id="history"></ul></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
+<script>
+  startClock(document.getElementById('clock'));
+  initScanner({
+    endpoint: '{{ url_for("presensi.api_scan") }}',
+    extra: () => ({ mode: document.querySelector('input[name=mode]:checked').value }),
+    inputEl: document.getElementById('code'),
+    resultEl: document.getElementById('result'),
+    historyEl: document.getElementById('history'),
+    readerId: 'reader',
+  });
+</script>
+{% endblock %}

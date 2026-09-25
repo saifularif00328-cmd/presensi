@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import kelas_select, export_btns with context %}
+{% block title %}Rekap Ibadah{% endblock %}
+{% block content %}
+<div class="page-head"><h1>📋 Rekap Ibadah Harian</h1>{{ export_btns() }}</div>
+<form class="filters" method="get">
+  <div><label>Tanggal</label><input type="date" name="tanggal" value="{{ tgl }}"></div>
+  <div><label>Kelas</label>{{ kelas_select(kelas, kelas_id) }}</div>
+  <button class="btn">Tampilkan</button>
+</form>
+<div class="card">
+  {% if not jadwal %}<p class="empty">Tidak ada jadwal ibadah pada {{ tanggal_indo(tgl) }}.</p>{% else %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Nama</th><th>Kelas</th>{% for j in jadwal %}<th class="num">{{ j.nama }}</th>{% endfor %}</tr></thead>
+    <tbody>
+    {% for s in siswa %}
+    <tr><td>{{ s.nama }}</td><td>{{ s.kelas or '-' }}</td>
+      {% for j in jadwal %}{% set h = hadir.get((s.id, j.id)) %}
+      <td class="num">{% if h %}<span class="badge b-ok">{{ h }}</span>{% elif j.jk and s.jk and j.jk != s.jk %}<span class="muted">n/a</span>{% else %}<span class="badge b-err">–</span>{% endif %}</td>{% endfor %}</tr>
+    {% endfor %}
+    </tbody></table></div>
+  <div class="chips mt">{% for j in jadwal %}<span class="chip">{{ j.nama }}: {{ jumlah.get(j.id, 0) }} hadir</span>{% endfor %}</div>
+  {% endif %}
+</div>
+{% endblock %}

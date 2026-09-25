@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, del_btn with context %}
+{% block title %}Tahun Ajaran{% endblock %}
+{% block content %}
+<div class="page-head"><h1>📅 Tahun Ajaran & Semester</h1></div>
+<div class="card">
+  <h3>{{ 'Edit' if edit else 'Tambah' }} Periode</h3>
+  <form method="post" class="form-grid">
+    {{ csrf() }}<input type="hidden" name="id" value="{{ edit.id if edit }}">
+    <div><label>Tahun ajaran</label><input name="nama" value="{{ edit.nama if edit }}" placeholder="2026/2027" required></div>
+    <div><label>Semester</label><select name="semester">{% for s in ['Ganjil','Genap'] %}<option {{ 'selected' if edit and edit.semester == s }}>{{ s }}</option>{% endfor %}</select></div>
+    <div><label>Tanggal mulai</label><input type="date" name="tanggal_mulai" value="{{ edit.tanggal_mulai if edit }}" required></div>
+    <div><label>Tanggal selesai</label><input type="date" name="tanggal_selesai" value="{{ edit.tanggal_selesai if edit }}" required></div>
+    <div class="btn-row" style="align-self:end"><button class="btn">Simpan</button>{% if edit %}<a class="btn ghost" href="{{ url_for('master.tahun_ajaran') }}">Batal</a>{% endif %}</div>
+  </form>
+  <p class="help">Periode yang tidak aktif tetap tersimpan sebagai arsip dan dapat dipilih di menu SMT Presensi.</p>
+</div>
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Tahun Ajaran</th><th>Semester</th><th>Periode</th><th class="num">Data presensi</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr><td><b>{{ r.nama }}</b></td><td>{{ r.semester }}</td><td class="nowrap">{{ r.tanggal_mulai }} s.d. {{ r.tanggal_selesai }}</td><td class="num">{{ r.jml_presensi }}</td>
+    <td>{% if r.aktif %}<span class="badge b-ok">Aktif</span>{% else %}<span class="badge">Arsip</span>{% endif %}</td>
+    <td class="actions">
+      {% if not r.aktif %}<form class="inline" method="post" action="{{ url_for('master.tahun_ajaran_aktif', tid=r.id) }}">{{ csrf() }}<button class="btn sm ok">Aktifkan</button></form>{% endif %}
+      <a class="btn sm ghost" href="{{ url_for('presensi.smt', periode=r.id) }}">Rekap</a>
+      <a class="btn sm ghost" href="?edit={{ r.id }}">Edit</a>
+      {% if not r.aktif %}{{ del_btn(url_for('master.tahun_ajaran_hapus', tid=r.id)) }}{% endif %}
+    </td></tr>
+  {% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

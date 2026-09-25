@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import kelas_select, export_btns with context %}
+{% block title %}SMT Presensi{% endblock %}
+{% block content %}
+<div class="page-head"><h1>🗂️ Rekap Presensi Semester</h1>{% if p %}{{ export_btns({'periode': p.id}) if not request.args.get('periode') else export_btns() }}{% endif %}</div>
+<form class="filters" method="get">
+  <div><label>Periode</label><select name="periode">{% for x in periode %}<option value="{{ x.id }}" {{ 'selected' if p and p.id == x.id }}>{{ x.nama }} · {{ x.semester }}{{ ' (aktif)' if x.aktif }}</option>{% endfor %}</select></div>
+  <div><label>Kelas</label>{{ kelas_select(kelas, kelas_id) }}</div>
+  <button class="btn">Tampilkan</button>
+</form>
+{% if p %}
+<div class="card">
+  <p style="margin-top:0"><b>{{ p.nama }} {{ p.semester }}</b> · {{ p.tanggal_mulai }} s.d. {{ p.tanggal_selesai }} · <b>{{ efektif }}</b> hari efektif sampai hari ini (di luar hari libur & akhir pekan).</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>No</th><th>Nama</th><th>Kelas</th><th class="num">H</th><th class="num">Telat</th><th class="num">I</th><th class="num">S</th><th class="num">A</th><th class="num">D</th><th class="num hide-sm">Plg cepat</th><th class="num">% Hadir</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+    <tr><td>{{ loop.index }}</td><td><a href="{{ url_for('main.siswa_detail', sid=r.id) }}">{{ r.nama }}</a></td><td>{{ r.kelas or '-' }}</td>
+      <td class="num">{{ r.H }}</td><td class="num">{{ r.telat }}</td><td class="num">{{ r.I }}</td><td class="num">{{ r.S }}</td><td class="num">{{ r.A }}</td><td class="num">{{ r.D }}</td><td class="num hide-sm">{{ r.pulang_cepat }}</td>
+      <td class="num"><span class="badge {{ 'b-ok' if r.persen >= 90 else ('b-warn' if r.persen >= 75 else 'b-err') }}">{{ r.persen }}%</span></td></tr>
+    {% else %}<tr><td colspan="11" class="empty">Tidak ada siswa.</td></tr>{% endfor %}
+    </tbody></table></div>
+  <p class="help">% Hadir = (Hadir + Dispensasi) ÷ hari efektif.</p>
+</div>
+{% else %}<div class="card empty">Belum ada periode tahun ajaran. <a href="{{ url_for('master.tahun_ajaran') }}">Tambah</a>.</div>{% endif %}
+{% endblock %}

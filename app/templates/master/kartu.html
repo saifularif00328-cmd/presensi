@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Cetak Kartu{% endblock %}
+{% block content %}
+<div class="page-head"><h1>🪪 Cetak Kartu Pelajar</h1></div>
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Massal per kelas</h3>
+    <form method="get" action="{{ url_for('master.kartu_download') }}" target="_blank">
+      <div class="field"><label>Kelas</label><select name="kelas_id"><option value="">Semua kelas</option>{% for k in kelas %}<option value="{{ k.id }}">{{ k.nama }}</option>{% endfor %}</select></div>
+      <button class="btn">Buat PDF</button>
+    </form>
+  </div>
+  <div class="card">
+    <h3>Satuan</h3>
+    <form method="get" action="{{ url_for('master.kartu_download') }}" target="_blank">
+      <div class="field"><label>Siswa</label><select name="siswa_id" required>{% for s in siswa %}<option value="{{ s.id }}">{{ s.nama }} — {{ s.kelas_nama or '-' }}</option>{% endfor %}</select></div>
+      <button class="btn">Buat PDF</button>
+    </form>
+  </div>
+</div>
+<p class="help">PDF berisi grid 2×5 kartu ukuran standar ID card (85,6 × 54 mm) per halaman A4, siap dicetak lalu dipotong/laminasi. Setiap kartu memuat foto, nama, kelas, dan QR.</p>
+{% endblock %}

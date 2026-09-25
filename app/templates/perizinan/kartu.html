@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, siswa_select, status_badge, del_btn with context %}
+{% block title %}Pengajuan Kartu{% endblock %}
+{% block content %}
+<div class="page-head"><h1>🔁 Pengajuan Cetak Ulang Kartu</h1></div>
+{% if request.args.get('cetak') %}
+<div class="flash success">Kartu siap dicetak: <a target="_blank" href="{{ url_for('master.kartu_download', siswa_id=request.args.get('cetak')) }}"><b>Buka PDF kartu</b></a></div>
+{% endif %}
+<div class="card">
+  <form method="post" class="form-grid">
+    {{ csrf() }}
+    <div class="full"><label>Siswa</label>{{ siswa_select(siswa) }}</div>
+    <div><label>Alasan</label><select name="alasan">{% for a in alasan %}<option>{{ a }}</option>{% endfor %}</select></div>
+    <div class="full"><label>Keterangan</label><input name="keterangan" placeholder="opsional"></div>
+    <div><button class="btn">Ajukan</button></div>
+  </form>
+</div>
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Siswa</th><th>Alasan</th><th>Tanggal</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr><td><b>{{ r.nama }}</b><br><small>{{ r.kelas or '-' }}</small></td><td>{{ r.alasan }}{% if r.keterangan %}<br><small>{{ r.keterangan }}</small>{% endif %}</td>
+    <td class="nowrap"><small>{{ r.created_at[:16] }}{% if r.selesai_at %}<br>selesai {{ r.selesai_at[:16] }}{% endif %}</small></td>
+    <td>{{ status_badge(r.status) }}</td>
+    <td class="actions">
+      {% if r.status == 'Diproses' and can() %}
+      <form class="inline" method="post" action="{{ url_for('perizinan.kartu_selesai', pid=r.id) }}">{{ csrf() }}
+        <label class="check" style="display:inline-flex;font-size:.78rem"><input type="checkbox" name="ganti_qr" value="1" {{ 'checked' if r.alasan == 'Hilang' }}>Ganti QR</label>
+        <button class="btn sm ok">Selesai</button></form>
+      {% elif r.status == 'Selesai' and can() %}<a class="btn sm outline" target="_blank" href="{{ url_for('master.kartu_download', siswa_id=r.siswa_id) }}">Cetak</a>{% endif %}
+      {% if can() %}{{ del_btn(url_for('perizinan.kartu_hapus', pid=r.id)) }}{% endif %}
+    </td></tr>
+  {% else %}<tr><td colspan="5" class="empty">Belum ada pengajuan.</td></tr>{% endfor %}
+  </tbody></table></div>
+  <p class="help">“Ganti QR” membuat QR baru sehingga kartu lama (mis. yang hilang) tidak bisa dipakai lagi.</p>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, kelas_select, status_badge with context %}
+{% block title %}Presensi Manual{% endblock %}
+{% block content %}
+<div class="page-head"><h1>✍️ Presensi Manual</h1></div>
+<form class="filters" method="get">
+  <div><label>Kelas</label>{{ kelas_select(kelas, kelas_id, all_label='— pilih kelas —', autosubmit=True) }}</div>
+  <div><label>Tanggal</label><input type="date" name="tanggal" value="{{ tgl }}" max="{{ today() }}" data-autosubmit></div>
+</form>
+{% if libur %}<div class="alert-libur">🏖️ {{ tanggal_indo(tgl) }}: {{ libur }}</div>{% endif %}
+{% if kelas_id %}
+<form method="post" class="card">
+  {{ csrf() }}<input type="hidden" name="kelas_id" value="{{ kelas_id }}"><input type="hidden" name="tanggal" value="{{ tgl }}">
+  <div class="card-head"><h3>{{ tanggal_indo(tgl) }}</h3>
+    <div class="btn-row"><span class="muted">Isi semua:</span>
+      {% for k in ['H','I','S','A','D'] %}<button type="button" class="btn sm ghost" onclick="document.querySelectorAll('select.ket').forEach(s=>{if(!s.value)s.value='{{ k }}'})">{{ k }}</button>{% endfor %}
+    </div>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Nama</th><th>Keterangan</th><th>Jam masuk</th><th>Jam pulang</th><th>Catatan</th><th class="hide-sm">Sumber</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+    <tr>
+      <td><b>{{ r.nama }}</b><br><small>{{ r.nis or '' }}</small>
+        <input type="hidden" name="orig_{{ r.id }}" value="{{ r.keterangan or '' }}|{{ (r.jam_masuk or '')[:5] }}|{{ (r.jam_pulang or '')[:5] }}|{{ r.catatan or '' }}"></td>
+      <td><select name="ket_{{ r.id }}" class="ket" style="min-width:120px"><option value="">—</option>{% for k, v in KET.items() %}<option value="{{ k }}" {{ 'selected' if r.keterangan == k }}>{{ k }} · {{ v }}</option>{% endfor %}</select></td>
+      <td><input type="time" name="masuk_{{ r.id }}" value="{{ (r.jam_masuk or '')[:5] }}" style="min-width:100px"> {{ status_badge(r.status_masuk) if r.status_masuk }}</td>
+      <td><input type="time" name="pulang_{{ r.id }}" value="{{ (r.jam_pulang or '')[:5] }}" style="min-width:100px"> {{ status_badge(r.status_pulang) if r.status_pulang }}</td>
+      <td><input name="cat_{{ r.id }}" value="{{ r.catatan or '' }}" placeholder="opsional" style="min-width:140px"></td>
+      <td class="hide-sm"><small>{{ r.sumber or '' }}</small></td>
+    </tr>
+    {% else %}<tr><td colspan="6" class="empty">Tidak ada siswa di kelas ini.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  <p class="help">Keterangan H tanpa jam masuk akan diisi jam sekarang. Jam hanya disimpan untuk keterangan H. Hanya baris yang berubah yang disimpan.</p>
+  <button class="btn">Simpan presensi</button>
+</form>
+{% else %}<div class="card empty">Pilih kelas untuk mulai mengisi presensi manual.</div>{% endif %}
+{% endblock %}

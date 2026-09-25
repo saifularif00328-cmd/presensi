@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}Akun{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Akun</h1><a class="btn ghost" href="{{ url_for('auth.logout') }}">Keluar</a></div>
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Profil</h3>
+    <dl class="kv">
+      <dt>Nama</dt><dd>{{ g.user.nama }}</dd>
+      <dt>Username</dt><dd>{{ g.user.username }}</dd>
+      <dt>Role</dt><dd>{{ ROLES[g.user.role] }}</dd>
+      {% if guru %}<dt>Data Guru</dt><dd>{{ guru.nama }} ({{ guru.jabatan or '-' }})</dd>{% endif %}
+      <dt>Lisensi</dt><dd>{{ tier_label }}</dd>
+    </dl>
+    {% if g.user.role == 'admin' %}
+    <div class="btn-row mt">
+      <a class="btn outline sm" href="{{ url_for('sistem.users') }}">🔐 Akses User</a>
+      <a class="btn outline sm" href="{{ url_for('sistem.lisensi') }}">🔑 Lisensi</a>
+      <a class="btn outline sm" href="{{ url_for('sistem.pengaturan') }}">⚙️ Pengaturan</a>
+    </div>
+    {% endif %}
+  </div>
+  <div class="card">
+    <h3>Ganti Password</h3>
+    <form method="post">
+      {{ csrf() }}
+      <div class="field"><label>Password lama</label><input type="password" name="password_lama" required autocomplete="current-password"></div>
+      <div class="field"><label>Password baru</label><input type="password" name="password_baru" minlength="6" required autocomplete="new-password"></div>
+      <div class="field"><label>Ulangi password baru</label><input type="password" name="password_ulang" minlength="6" required autocomplete="new-password"></div>
+      <button class="btn">Simpan</button>
+    </form>
+  </div>
+</div>
+<p class="help" style="text-align:center">{{ APP_NAME }} v{{ APP_VERSION }}</p>
+{% endblock %}

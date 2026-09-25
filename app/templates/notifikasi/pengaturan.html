@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}Notifikasi WA{% endblock %}
+{% block content %}
+<div class="page-head"><h1>💬 Notifikasi WhatsApp</h1><a class="btn outline" href="{{ url_for('notifikasi.log') }}">🧾 Log</a></div>
+<form method="post">
+  {{ csrf() }}
+  <div class="card">
+    <h3>Fonnte API</h3>
+    <div class="form-grid">
+      <div class="full"><label>API Token Fonnte {% if masked %}(tersimpan: {{ masked }}){% endif %}</label>
+        <input name="fonnte_token" type="password" placeholder="{{ 'Isi untuk mengganti token' if masked else 'Tempel token dari dashboard fonnte.com' }}" autocomplete="off">
+        <div class="help">Token disimpan terenkripsi di database lokal.</div></div>
+      {% if masked %}<div><label class="check"><input type="checkbox" name="hapus_token" value="1">Hapus token</label></div>{% endif %}
+    </div>
+    <p class="help">Sisa kuota: <b>{{ kuota or 'belum dicek' }}</b>{% if kuota_cek %} · dicek {{ kuota_cek }}{% endif %}</p>
+  </div>
+  <div class="card">
+    <h3>Template & pemicu notifikasi</h3>
+    <p class="help">Variabel: <code>{nama_siswa}</code> <code>{kelas}</code> <code>{jam}</code> <code>{status}</code> <code>{keterangan}</code>. Nonaktifkan jenis yang tidak perlu agar orang tua tidak kebanjiran pesan.</p>
+    {% for j in jenis %}
+    <div class="field mt">
+      <label class="check" style="font-weight:700"><input type="checkbox" name="wa_on_{{ j.key }}" value="1" {{ 'checked' if j.on }}>{{ j.label }}</label>
+      <textarea name="wa_tpl_{{ j.key }}" style="min-height:70px">{{ j.tpl }}</textarea>
+    </div>
+    {% endfor %}
+    <button class="btn">Simpan</button>
+  </div>
+</form>
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Kirim pesan tes</h3>
+    <form method="post" action="{{ url_for('notifikasi.tes') }}" class="btn-row">{{ csrf() }}
+      <input name="nomor" placeholder="08xxxxxxxxxx" required style="flex:1"><button class="btn">Kirim</button></form>
+  </div>
+  <div class="card">
+    <h3>Kuota Fonnte</h3>
+    <form method="post" action="{{ url_for('notifikasi.kuota') }}">{{ csrf() }}<button class="btn outline">Cek kuota sekarang</button></form>
+  </div>
+</div>
+<div class="card">
+  <h3>Cara kerja offline</h3>
+  <ul class="help">
+    <li>Setiap pemicu (absen masuk/pulang, alpha, izin disetujui, pelanggaran) langsung masuk <b>antrian</b> — scan tidak pernah menunggu internet.</li>
+    <li>Proses latar belakang mengecek koneksi tiap 20 detik. Jika offline, pesan berstatus <b>Menunggu Koneksi</b>.</li>
+    <li>Saat internet kembali, antrian terkirim otomatis dan status menjadi <b>Terkirim</b>. Pesan yang ditolak Fonnte 3× berstatus <b>Gagal</b> dan bisa dikirim ulang dari Log.</li>
+  </ul>
+</div>
+{% endblock %}

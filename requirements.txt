@@ -1,0 +1,14 @@
+Flask>=3.0
+APScheduler>=3.10,<4
+qrcode>=7.4
+Pillow>=10.0
+openpyxl>=3.1
+reportlab>=4.0
+requests>=2.31
+cryptography>=41.0
+
+# Opsional — scan QR via webcam PC di sisi server (OpenCV + pyzbar).
+# Tanpa paket ini, scan tetap bisa lewat kamera browser (html5-qrcode)
+# atau scanner QR fisik USB.
+# opencv-python>=4.8
+# pyzbar>=0.1.9

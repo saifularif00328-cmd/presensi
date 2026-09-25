@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, del_btn with context %}
+{% block title %}Data Guru{% endblock %}
+{% block content %}
+<div class="page-head"><h1>👩‍🏫 Data Guru & Staf</h1></div>
+<div class="card">
+  <h3>{{ 'Edit' if edit else 'Tambah' }} Guru/Staf</h3>
+  <form method="post" class="form-grid">
+    {{ csrf() }}<input type="hidden" name="id" value="{{ edit.id if edit }}">
+    <div><label>Nama</label><input name="nama" value="{{ edit.nama if edit }}" required></div>
+    <div><label>NIP</label><input name="nip" value="{{ edit.nip or '' if edit }}"></div>
+    <div><label>Jabatan / peran</label>
+      <select name="jabatan">{% for j in jabatan %}<option {{ 'selected' if edit and edit.jabatan == j }}>{{ j }}</option>{% endfor %}</select></div>
+    <div><label>No. HP</label><input name="no_hp" value="{{ edit.no_hp or '' if edit }}"></div>
+    <div><label class="check"><input type="checkbox" name="aktif" value="1" {{ 'checked' if not edit or edit.aktif }}> Aktif</label></div>
+    <div class="btn-row" style="align-self:end"><button class="btn">Simpan</button>{% if edit %}<a class="btn ghost" href="{{ url_for('master.guru') }}">Batal</a>{% endif %}</div>
+  </form>
+  <p class="help">Untuk memberi akses login (Guru Piket / Guru BK), buat akun di menu <a href="{{ url_for('sistem.users') }}">Akses User</a> dan hubungkan ke data guru.</p>
+</div>
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Nama</th><th>NIP</th><th>Jabatan</th><th>Wali Kelas</th><th>Akun</th><th>No. HP</th><th></th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr><td><b>{{ r.nama }}</b>{% if not r.aktif %} <span class="badge b-err">nonaktif</span>{% endif %}</td><td>{{ r.nip or '-' }}</td><td>{{ r.jabatan or '-' }}</td>
+    <td>{{ r.wali_kelas or '-' }}</td><td>{{ r.username or '-' }}</td><td>{{ r.no_hp or '-' }}</td>
+    <td class="actions"><a class="btn sm ghost" href="?edit={{ r.id }}">Edit</a> {{ del_btn(url_for('master.guru_hapus', gid=r.id)) }}</td></tr>
+  {% else %}<tr><td colspan="7" class="empty">Belum ada data guru.</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

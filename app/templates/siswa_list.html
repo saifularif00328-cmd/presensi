@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, ket_badge, status_badge, kelas_select with context %}
+{% block title %}Siswa{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Siswa</h1>
+  {% if can() %}<a class="btn" href="{{ url_for('master.siswa_form') }}">＋ Tambah</a>{% endif %}
+</div>
+<form class="filters" method="get">
+  <input name="q" value="{{ q }}" placeholder="Cari nama / NIS / NISN">
+  {{ kelas_select(kelas, kelas_id, autosubmit=True) }}
+  <button class="btn">Cari</button>
+</form>
+<div class="card">
+  <p class="muted" style="margin-top:0">{{ rows|length }} siswa · status kehadiran hari ini</p>
+  <ul class="list">
+    {% for s in rows %}
+    <li>
+      <a class="row" href="{{ url_for('main.siswa_detail', sid=s.id) }}">
+        {{ avatar(s) }}
+        <div class="grow">
+          <div class="title">{{ s.nama }}</div>
+          <div class="sub">{{ s.kelas_nama or 'Tanpa kelas' }}{% if s.nis %} · {{ s.nis }}{% endif %}
+            {% if s.jam_masuk %} · masuk {{ s.jam_masuk|jam }}{% endif %}{% if s.jam_pulang %} · pulang {{ s.jam_pulang|jam }}{% endif %}</div>
+        </div>
+      </a>
+      {% if s.status_masuk == 'Telat' %}{{ status_badge('Telat') }}{% endif %}
+      {{ ket_badge(s.keterangan) }}
+    </li>
+    {% else %}<li class="empty">Tidak ada siswa.</li>{% endfor %}
+  </ul>
+</div>
+{% endblock %}

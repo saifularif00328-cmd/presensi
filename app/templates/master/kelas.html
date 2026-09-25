@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, del_btn with context %}
+{% block title %}Data Kelas{% endblock %}
+{% block content %}
+<div class="page-head"><h1>🏫 Data Kelas</h1></div>
+<div class="card">
+  <h3>{{ 'Edit Kelas' if edit else 'Tambah Kelas' }}</h3>
+  <form method="post" class="form-grid">
+    {{ csrf() }}<input type="hidden" name="id" value="{{ edit.id if edit }}">
+    <div><label>Nama kelas</label><input name="nama" value="{{ edit.nama if edit }}" placeholder="mis. 7A" required></div>
+    <div><label>Jenjang / tingkat</label><input name="jenjang" value="{{ edit.jenjang or '' if edit }}" placeholder="mis. 7 / X"></div>
+    <div><label>Wali kelas</label>
+      <select name="wali_guru_id"><option value="">— pilih —</option>
+        {% for g_ in guru %}<option value="{{ g_.id }}" {{ 'selected' if edit and edit.wali_guru_id == g_.id }}>{{ g_.nama }}</option>{% endfor %}
+      </select></div>
+    <div class="btn-row" style="align-self:end"><button class="btn">Simpan</button>{% if edit %}<a class="btn ghost" href="{{ url_for('master.kelas') }}">Batal</a>{% endif %}</div>
+  </form>
+</div>
+<div class="card">
+  <div class="table-wrap"><table>
+    <thead><tr><th>Kelas</th><th>Jenjang</th><th>Wali Kelas</th><th class="num">Siswa</th><th></th></tr></thead>
+    <tbody>
+    {% for k in rows %}
+    <tr><td><b>{{ k.nama }}</b></td><td>{{ k.jenjang or '-' }}</td><td>{{ k.wali or '-' }}</td>
+      <td class="num"><a href="{{ url_for('master.siswa', kelas_id=k.id) }}">{{ k.jumlah }}</a></td>
+      <td class="actions"><a class="btn sm ghost" href="?edit={{ k.id }}">Edit</a> {{ del_btn(url_for('master.kelas_hapus', kid=k.id), 'Hapus kelas ' ~ k.nama ~ '?') }}</td></tr>
+    {% else %}<tr><td colspan="5" class="empty">Belum ada kelas.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

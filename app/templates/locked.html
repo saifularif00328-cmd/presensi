@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Fitur terkunci{% endblock %}
+{% block content %}
+<div class="card" style="text-align:center;padding:2.5rem 1rem">
+  <div style="font-size:3rem">🔐</div>
+  <h1>{{ fitur }}</h1>
+  <p>Fitur ini tersedia mulai lisensi <b>{{ tier }}</b>. Lisensi saat ini: <b>{{ tier_label }}</b>.</p>
+  {% if g.user and g.user.role == 'admin' %}<a class="btn" href="{{ url_for('sistem.lisensi') }}">Kelola Lisensi</a>{% endif %}
+  <a class="btn ghost" href="{{ url_for('main.beranda') }}">Beranda</a>
+</div>
+{% endblock %}

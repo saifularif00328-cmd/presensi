@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, del_btn with context %}
+{% block title %}Daftar Ibadah{% endblock %}
+{% block content %}
+<div class="page-head"><h1>🕌 Daftar Ibadah</h1></div>
+<div class="card">
+  <h3>{{ 'Edit' if edit else 'Tambah' }} jadwal</h3>
+  <form method="post" class="form-grid">
+    {{ csrf() }}<input type="hidden" name="id" value="{{ edit.id if edit }}">
+    <div><label>Nama ibadah</label><input name="nama" value="{{ edit.nama if edit }}" placeholder="Sholat Dzuhur berjamaah" required></div>
+    <div><label>Jam mulai</label><input type="time" name="jam_mulai" value="{{ edit.jam_mulai if edit }}" required></div>
+    <div><label>Jam selesai</label><input type="time" name="jam_selesai" value="{{ edit.jam_selesai if edit }}" required></div>
+    <div><label>Berlaku untuk</label><select name="jk"><option value="">Semua siswa</option><option value="L" {{ 'selected' if edit and edit.jk == 'L' }}>Laki-laki</option><option value="P" {{ 'selected' if edit and edit.jk == 'P' }}>Perempuan</option></select></div>
+    <div class="full"><label>Hari</label><div class="checks">
+      {% set hs = (edit.hari if edit else '1,2,3,4,5').split(',') %}
+      {% for h in HARI %}<label class="check"><input type="checkbox" name="hari" value="{{ loop.index }}" {{ 'checked' if loop.index|string in hs }}>{{ h }}</label>{% endfor %}
+    </div></div>
+    <div><label class="check"><input type="checkbox" name="aktif" value="1" {{ 'checked' if not edit or edit.aktif }}>Aktif</label></div>
+    <div class="btn-row"><button class="btn">Simpan</button>{% if edit %}<a class="btn ghost" href="{{ url_for('ibadah.daftar') }}">Batal</a>{% endif %}</div>
+  </form>
+</div>
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Ibadah</th><th>Jam</th><th>Hari</th><th>Untuk</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr><td><b>{{ r.nama }}</b></td><td>{{ r.jam_mulai }}–{{ r.jam_selesai }}</td>
+    <td><small>{% for h in r.hari.split(',') if h %}{{ HARI[h|int - 1][:3] }}{{ ', ' if not loop.last }}{% endfor %}</small></td>
+    <td>{{ {'L':'Laki-laki','P':'Perempuan'}.get(r.jk, 'Semua') }}</td>
+    <td>{% if r.aktif %}<span class="badge b-ok">Aktif</span>{% else %}<span class="badge">Nonaktif</span>{% endif %}</td>
+    <td class="actions"><a class="btn sm ghost" href="?edit={{ r.id }}">Edit</a> {{ del_btn(url_for('ibadah.hapus', iid=r.id)) }}</td></tr>
+  {% else %}<tr><td colspan="6" class="empty">Belum ada jadwal ibadah.</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

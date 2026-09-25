@@ -1,0 +1,41 @@
+{% macro csrf() %}<input type="hidden" name="_csrf" value="{{ csrf_token() }}">{% endmacro %}
+
+{% macro ket_badge(k) -%}
+  {%- if k -%}<span class="badge b-{{ k }}" title="{{ KET.get(k, k) }}">{{ k }}</span>{%- else -%}<span class="badge">–</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro status_badge(s) -%}
+  {%- if s -%}<span class="badge b-{{ s|replace(' ', '') }}">{{ s }}</span>{%- else -%}<span class="muted">-</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro avatar(s, cls='avatar') -%}
+  {%- if s.foto -%}<img class="{{ cls }}" src="{{ url_for('uploads', filename=s.foto) }}" alt="">
+  {%- else -%}<span class="{{ cls }}">{{ (s.nama or '?')[:1]|upper }}</span>{%- endif -%}
+{%- endmacro %}
+
+{% macro kelas_select(kelas, selected, name='kelas_id', all_label='Semua kelas', autosubmit=False, required=False) %}
+<select name="{{ name }}" {% if autosubmit %}data-autosubmit{% endif %} {% if required %}required{% endif %}>
+  {% if all_label %}<option value="">{{ all_label }}</option>{% endif %}
+  {% for k in kelas %}<option value="{{ k.id }}" {{ 'selected' if selected == k.id }}>{{ k.nama }}</option>{% endfor %}
+</select>
+{% endmacro %}
+
+{% macro siswa_select(siswa, name='siswa_id', selected=None) %}
+<input list="dl-{{ name }}" placeholder="Ketik nama / NIS lalu pilih…" autocomplete="off"
+       oninput="(function(el){const o=[...document.getElementById('dl-{{ name }}').options].find(x=>x.value===el.value);el.nextElementSibling.value=o?o.dataset.id:'';})(this)" required>
+<input type="hidden" name="{{ name }}" value="{{ selected or '' }}">
+<datalist id="dl-{{ name }}">
+  {% for s in siswa %}<option data-id="{{ s.id }}" value="{{ s.nama }} — {{ s.kelas_nama or '-' }}{% if s.nis %} ({{ s.nis }}){% endif %}"></option>{% endfor %}
+</datalist>
+{% endmacro %}
+
+{% macro del_btn(url, msg='Hapus data ini?', label='Hapus') %}
+<form class="inline" method="post" action="{{ url }}" data-confirm="{{ msg }}">{{ csrf() }}<button class="btn sm danger">{{ label }}</button></form>
+{% endmacro %}
+
+{% macro export_btns(params={}) %}
+<div class="btn-row">
+  <a class="btn sm outline" href="{{ url_for(request.endpoint, **dict(request.args, format='xlsx', **params)) }}">⬇ Excel</a>
+  <a class="btn sm outline" href="{{ url_for(request.endpoint, **dict(request.args, format='pdf', **params)) }}">⬇ PDF</a>
+</div>
+{% endmacro %}

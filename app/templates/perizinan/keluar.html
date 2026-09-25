@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, siswa_select with context %}
+{% block title %}Izin Keluar{% endblock %}
+{% block content %}
+<div class="page-head"><h1>🚪 Izin Keluar</h1></div>
+<div class="card">
+  <h3>Catat siswa keluar sekolah</h3>
+  <form method="post" class="form-grid">
+    {{ csrf() }}
+    <div class="full"><label>Siswa</label>{{ siswa_select(siswa) }}</div>
+    <div><label>Jam keluar</label><input type="time" name="jam_keluar" value="{{ jam }}" required></div>
+    <div class="full"><label>Alasan</label><input name="alasan" required placeholder="mis. berobat, dijemput orang tua…"></div>
+    <div><button class="btn">Catat</button></div>
+  </form>
+</div>
+<form class="filters" method="get"><div><label>Tanggal</label><input type="date" name="tanggal" value="{{ tgl }}" data-autosubmit></div></form>
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Siswa</th><th>Keluar</th><th>Kembali</th><th>Alasan</th><th class="hide-sm">Pencatat</th><th></th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr><td><b>{{ r.nama }}</b><br><small>{{ r.kelas or '-' }}</small></td><td>{{ r.jam_keluar }}</td>
+    <td>{% if r.jam_kembali %}{{ r.jam_kembali }}{% else %}<span class="badge b-warn">Belum kembali</span>{% endif %}</td>
+    <td>{{ r.alasan }}</td><td class="hide-sm">{{ r.pencatat or '-' }}</td>
+    <td class="actions">{% if not r.jam_kembali %}<form class="inline" method="post" action="{{ url_for('perizinan.keluar_kembali', kid=r.id) }}">{{ csrf() }}<button class="btn sm ok">Sudah kembali</button></form>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="6" class="empty">Tidak ada catatan izin keluar pada {{ tanggal_indo(tgl) }}.</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

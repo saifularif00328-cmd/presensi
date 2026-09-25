@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="theme-color" content="#2563eb">
+  <title>{% block title %}{{ APP_NAME }}{% endblock %} · {{ APP_NAME }}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+{% set ep = request.endpoint or '' %}
+{% if g.user %}
+<header class="topbar">
+  {% if ep != 'main.beranda' %}<a class="back" href="{% block back %}{{ url_for('main.beranda') }}{% endblock %}" title="Kembali">‹</a>{% endif %}
+  <div>
+    <div class="brand">📋 Presensi Siswa <span class="tier-badge">{{ tier_label }}</span></div>
+    <div class="school">{{ nama_sekolah }}</div>
+  </div>
+  <div class="spacer"></div>
+  <div class="user">{{ g.user.nama }}<br><small style="color:#dbeafe">{{ ROLES[g.user.role] }}</small></div>
+</header>
+{% endif %}
+<main class="container">
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% for cat, m in msgs %}<div class="flash {{ cat if cat in ('success','error','info') else 'info' }}">{{ m }}</div>{% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+{% if g.user %}
+<nav class="bottomnav">
+  <a href="{{ url_for('main.beranda') }}" class="{{ 'active' if ep == 'main.beranda' }}"><span class="ic">🏠</span>Beranda</a>
+  <a href="{{ url_for('presensi.monitor') }}" class="{{ 'active' if ep == 'presensi.monitor' }}"><span class="ic">📡</span>Monitor</a>
+  <a href="{{ url_for('main.siswa') }}" class="{{ 'active' if ep in ('main.siswa', 'main.siswa_detail') }}"><span class="ic">🎓</span>Siswa</a>
+  <a href="{{ url_for('main.akun') }}" class="{{ 'active' if ep == 'main.akun' }}"><span class="ic">👤</span>Akun</a>
+</nav>
+{% endif %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

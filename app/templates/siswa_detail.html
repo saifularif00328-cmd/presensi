@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, ket_badge, status_badge, csrf with context %}
+{% block title %}{{ s.nama }}{% endblock %}
+{% block back %}{{ url_for('main.siswa') }}{% endblock %}
+{% block content %}
+<div class="card">
+  <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
+    {{ avatar(s, 'avatar lg') }}
+    <div style="flex:1;min-width:200px">
+      <h1 style="margin:0">{{ s.nama }}</h1>
+      <div class="muted">{{ s.kelas_nama or 'Tanpa kelas' }} · NIS {{ s.nis or '-' }} · NISN {{ s.nisn or '-' }}</div>
+      {% if not s.aktif %}<span class="badge b-err">Nonaktif</span>{% endif %}
+      <div class="btn-row mt">
+        {% for k in ['H','I','S','A','D'] %}<span class="chip">{{ ket_badge(k) }} {{ ringkas.get(k, 0) }}</span>{% endfor %}
+        <span class="chip">⚠️ {{ poin }} poin</span>
+      </div>
+    </div>
+    {% if can() %}
+    <div class="btn-row">
+      <a class="btn outline" href="{{ url_for('master.siswa_form', sid=s.id) }}">✏️ Edit</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Kartu QR</h3>
+    <div class="qr-box">
+      <img src="{{ url_for('master.siswa_qr', sid=s.id) }}" alt="QR {{ s.nama }}">
+      <div class="help">Isi QR: ID unik + checksum (bukan data pribadi)</div>
+    </div>
+    {% if can() %}
+    <div class="btn-row mt" style="justify-content:center">
+      <a class="btn sm" target="_blank" href="{{ url_for('master.kartu_download', siswa_id=s.id) }}">🪪 Cetak Kartu</a>
+      <form class="inline" method="post" action="{{ url_for('master.siswa_ganti_qr', sid=s.id) }}" data-confirm="Buat QR baru? Kartu lama tidak akan berlaku lagi.">{{ csrf() }}<button class="btn sm warn">🔁 Ganti QR</button></form>
+    </div>
+    {% endif %}
+  </div>
+  <div class="card">
+    <h3>Kontak Orang Tua / Wali</h3>
+    <dl class="kv">
+      <dt>WA Ayah</dt><dd>{{ s.wa_ayah or '-' }}</dd>
+      <dt>WA Ibu</dt><dd>{{ s.wa_ibu or '-' }}</dd>
+      <dt>WA Wali</dt><dd>{{ s.wa_wali or '-' }}</dd>
+      <dt>Jenis Kelamin</dt><dd>{{ {'L':'Laki-laki','P':'Perempuan'}.get(s.jk, '-') }}</dd>
+    </dl>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Histori Presensi <small>(60 hari tercatat terakhir)</small></h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Tanggal</th><th class="num">Ket</th><th>Masuk</th><th>Pulang</th><th class="hide-sm">Sumber</th><th class="hide-sm">Catatan</th></tr></thead>
+    <tbody>
+    {% for p in presensi %}
+      <tr><td class="nowrap">{{ tanggal_indo(p.tanggal) }}</td><td class="num">{{ ket_badge(p.keterangan) }}</td>
+        <td>{{ p.jam_masuk|jam }} {{ status_badge(p.status_masuk) if p.status_masuk }}</td>
+        <td>{{ p.jam_pulang|jam }} {{ status_badge(p.status_pulang) if p.status_pulang }}</td>
+        <td class="hide-sm">{{ p.sumber }}</td><td class="hide-sm">{{ p.catatan or '' }}</td></tr>
+    {% else %}<tr><td colspan="6" class="empty">Belum ada data presensi.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Izin & Sakit</h3>
+    <ul class="list">
+      {% for i in izin %}<li><div class="grow"><div class="title">{{ i.jenis }} · {{ i.tanggal_mulai }}{% if i.tanggal_selesai != i.tanggal_mulai %} s.d. {{ i.tanggal_selesai }}{% endif %}</div><div class="sub">{{ i.alasan or '' }}</div></div>{{ status_badge(i.status) }}</li>
+      {% else %}<li class="empty">Tidak ada.</li>{% endfor %}
+    </ul>
+    {% if keluar %}<h3 class="mt">Izin Keluar</h3>
+    <ul class="list">{% for k in keluar %}<li><div class="grow"><div class="title">{{ k.tanggal }} · {{ k.jam_keluar }} → {{ k.jam_kembali or 'belum kembali' }}</div><div class="sub">{{ k.alasan }}</div></div></li>{% endfor %}</ul>{% endif %}
+  </div>
+  <div class="card">
+    <h3>Pelanggaran <small>(total {{ poin }} poin)</small></h3>
+    <ul class="list">
+      {% for p in pelanggaran %}<li><div class="grow"><div class="title">{{ p.jenis or '-' }}</div><div class="sub">{{ p.tanggal }}{% if p.keterangan %} · {{ p.keterangan }}{% endif %}{% if p.tindak_lanjut %} · TL: {{ p.tindak_lanjut }}{% endif %}</div></div><span class="badge b-err">{{ p.poin }}</span></li>
+      {% else %}<li class="empty">Tidak ada pelanggaran. 👍</li>{% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

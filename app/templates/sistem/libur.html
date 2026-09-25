@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, del_btn with context %}
+{% block title %}Kalender Libur{% endblock %}
+{% block content %}
+<div class="page-head"><h1>🏖️ Kalender Libur</h1></div>
+<div class="card">
+  <h3>Tambah libur</h3>
+  <form method="post" class="form-grid">
+    {{ csrf() }}
+    <div><label>Tanggal</label><input type="date" name="tanggal" required></div>
+    <div><label>Sampai (opsional)</label><input type="date" name="sampai"></div>
+    <div class="full"><label>Keterangan</label><input name="keterangan" placeholder="mis. Hari Kemerdekaan RI / Cuti bersama / Libur semester" required></div>
+    <div><button class="btn">Simpan</button></div>
+  </form>
+  <p class="help">Hari sekolah aktif: {% for h in HARI %}{% if loop.index in hari_sekolah %}{{ h }} {% endif %}{% endfor %}(ubah di <a href="{{ url_for('sistem.pengaturan') }}">Pengaturan</a>). Pada tanggal libur, scan presensi ditolak dan tidak ada penandaan Alpha.</p>
+</div>
+<div class="tabs">{% for t in range(tahun - 1, tahun + 2) %}<a href="?tahun={{ t }}" class="{{ 'active' if t == tahun }}">{{ t }}</a>{% endfor %}</div>
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Tanggal</th><th>Keterangan</th><th></th></tr></thead>
+  <tbody>
+  {% for r in rows %}<tr><td class="nowrap">{{ tanggal_indo(r.tanggal) }}</td><td>{{ r.keterangan }}</td><td class="actions">{{ del_btn(url_for('sistem.libur_hapus', lid=r.id)) }}</td></tr>
+  {% else %}<tr><td colspan="3" class="empty">Belum ada tanggal libur di {{ tahun }}.</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

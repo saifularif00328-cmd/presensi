@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}Pengaturan{% endblock %}
+{% block content %}
+<div class="page-head"><h1>⚙️ Pengaturan</h1></div>
+<form method="post" class="card">
+  {{ csrf() }}
+  <h3>Identitas sekolah</h3>
+  <div class="form-grid">
+    <div><label>Nama sekolah</label><input name="nama_sekolah" value="{{ nama_sekolah }}"></div>
+    <div><label>Alamat</label><input name="alamat_sekolah" value="{{ alamat }}"></div>
+  </div>
+  <h3 class="mt">Hari sekolah</h3>
+  <div class="checks">{% for h in HARI %}<label class="check"><input type="checkbox" name="hari_sekolah" value="{{ loop.index }}" {{ 'checked' if loop.index in hari }}>{{ h }}</label>{% endfor %}</div>
+  <h3 class="mt">Modul & tampilan</h3>
+  <div class="form-grid">
+    <div><label class="check"><input type="checkbox" name="modul_ibadah_aktif" value="1" {{ 'checked' if ibadah_aktif() }}>Aktifkan modul Ibadah</label>
+      <div class="help">Modul ibadah butuh lisensi Enterprise.</div></div>
+    <div><label>Refresh Monitor Live (detik)</label><input type="number" name="monitor_refresh_detik" min="1" max="60" value="{{ refresh }}"></div>
+  </div>
+  <button class="btn mt">Simpan</button>
+</form>
+<div class="grid grid-2">
+  <div class="card">
+    <h3>💾 Backup data</h3>
+    <p class="help">Database tersimpan di <code>{{ data_dir }}</code>. Backup otomatis dibuat setiap hari (14 hari terakhir disimpan di folder <code>backup</code>).</p>
+    <a class="btn outline" href="{{ url_for('sistem.backup') }}">⬇ Unduh backup sekarang</a>
+    {% if backups %}<ul class="help">{% for b in backups[:5] %}<li>{{ b }}</li>{% endfor %}</ul>{% endif %}
+  </div>
+  <div class="card">
+    <h3>Lainnya</h3>
+    <div class="btn-row">
+      <a class="btn outline" href="{{ url_for('sistem.lisensi') }}">🔑 Lisensi</a>
+      <a class="btn outline" href="{{ url_for('notifikasi.pengaturan') }}">💬 Notifikasi WA</a>
+      <a class="btn outline" href="{{ url_for('kedisiplinan.aturan_jam') }}">⏰ Aturan Jam</a>
+      <a class="btn outline" href="{{ url_for('sistem.libur') }}">🏖️ Kalender Libur</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

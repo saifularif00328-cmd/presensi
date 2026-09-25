@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import kelas_select, export_btns with context %}
+{% block title %}SMT Ibadah{% endblock %}
+{% block content %}
+<div class="page-head"><h1>🗃️ Rekap Ibadah Semester</h1>{% if p %}{{ export_btns({'periode': p.id}) if not request.args.get('periode') else export_btns() }}{% endif %}</div>
+<form class="filters" method="get">
+  <div><label>Periode</label><select name="periode">{% for x in periode %}<option value="{{ x.id }}" {{ 'selected' if p and p.id == x.id }}>{{ x.nama }} · {{ x.semester }}</option>{% endfor %}</select></div>
+  <div><label>Kelas</label>{{ kelas_select(kelas, kelas_id) }}</div>
+  <button class="btn">Tampilkan</button>
+</form>
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>No</th><th>Nama</th><th>Kelas</th><th class="num">Hadir</th><th class="num">Wajib</th><th class="num">%</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr><td>{{ loop.index }}</td><td>{{ r.nama }}</td><td>{{ r.kelas or '-' }}</td><td class="num">{{ r.hadir }}</td><td class="num">{{ r.wajib }}</td>
+    <td class="num"><span class="badge {{ 'b-ok' if r.persen >= 90 else ('b-warn' if r.persen >= 75 else 'b-err') }}">{{ r.persen }}%</span></td></tr>
+  {% else %}<tr><td colspan="6" class="empty">Tidak ada data.</td></tr>{% endfor %}
+  </tbody></table></div>
+  <p class="help">Wajib = jumlah jadwal ibadah aktif yang berlaku pada hari efektif dalam periode (sampai hari ini).</p>
+</div>
+{% endblock %}

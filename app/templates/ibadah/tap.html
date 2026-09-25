@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Tap Ibadah{% endblock %}
+{% block content %}
+<div class="page-head"><h1>👆 Tap Ibadah</h1><div class="clock" id="clock"></div></div>
+{% if not jadwal %}
+<div class="card empty">Tidak ada jadwal ibadah aktif hari ini. <a href="{{ url_for('ibadah.daftar') }}">Atur jadwal</a>.</div>
+{% else %}
+<div class="scan-layout">
+  <div class="card">
+    <div class="field"><label>Jadwal ibadah</label>
+      <select id="ibadah">{% for j in jadwal %}<option value="{{ j.id }}" {{ 'selected' if j.id == ibadah_id }}>{{ j.nama }} ({{ j.jam_mulai }}–{{ j.jam_selesai }}){{ ' · ' ~ {'L':'Putra','P':'Putri'}[j.jk] if j.jk }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Scanner QR USB / input manual</label><input id="code" class="scan-input" placeholder="Arahkan scanner ke kartu…" autocomplete="off"></div>
+    <div class="btn-row">
+      <button type="button" class="btn" id="cam-start">📱 Buka Kamera</button>
+      <button type="button" class="btn danger" id="cam-stop" hidden>Tutup Kamera</button>
+      <select id="cam-select" hidden style="max-width:220px"></select>
+    </div>
+    <div id="reader" class="mt"></div>
+    <p class="help">Presensi ibadah terpisah dari presensi sekolah, memakai kartu QR yang sama.</p>
+  </div>
+  <div>
+    <div class="result" id="result"><div class="big-ic">🕌</div><div class="pesan">Siap menerima tap</div></div>
+    <div class="card mt"><h3>Tap terakhir</h3><ul class="list" id="history"></ul></div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+{% if jadwal %}
+<script src="{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/scanner.js') }}"></script>
+<script>
+  startClock(document.getElementById('clock'));
+  initScanner({
+    endpoint: '{{ url_for("ibadah.api_tap") }}',
+    extra: () => ({ ibadah_id: document.getElementById('ibadah').value }),
+    inputEl: document.getElementById('code'), resultEl: document.getElementById('result'),
+    historyEl: document.getElementById('history'), readerId: 'reader',
+  });
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, del_btn with context %}
+{% block title %}Akses User{% endblock %}
+{% block content %}
+<div class="page-head"><h1>🔐 Akses User</h1></div>
+<div class="card">
+  <h3>{{ 'Edit' if edit else 'Tambah' }} user</h3>
+  <form method="post" class="form-grid">
+    {{ csrf() }}<input type="hidden" name="id" value="{{ edit.id if edit }}">
+    <div><label>Nama</label><input name="nama" value="{{ edit.nama if edit }}" required></div>
+    <div><label>Username</label><input name="username" value="{{ edit.username if edit }}" required autocomplete="off"></div>
+    <div><label>Password {{ '(kosongkan jika tidak diganti)' if edit }}</label><input type="password" name="password" {{ '' if edit else 'required' }} minlength="6" autocomplete="new-password"></div>
+    <div><label>Role</label><select name="role">{% for k, v in ROLES.items() %}<option value="{{ k }}" {{ 'selected' if edit and edit.role == k }}>{{ v }}</option>{% endfor %}</select></div>
+    <div><label>Data guru (opsional)</label><select name="guru_id"><option value="">—</option>{% for g_ in guru %}<option value="{{ g_.id }}" {{ 'selected' if edit and edit.guru_id == g_.id }}>{{ g_.nama }} · {{ g_.jabatan or '' }}</option>{% endfor %}</select></div>
+    <div><label class="check"><input type="checkbox" name="aktif" value="1" {{ 'checked' if not edit or edit.aktif }}>Aktif</label></div>
+    <div class="btn-row"><button class="btn">Simpan</button>{% if edit %}<a class="btn ghost" href="{{ url_for('sistem.users') }}">Batal</a>{% endif %}</div>
+  </form>
+</div>
+<div class="card">
+  <h3>Hak akses per role</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Modul</th><th class="num">Admin/TU</th><th class="num">Guru Piket</th><th class="num">Guru BK</th></tr></thead>
+    <tbody>
+      {% for m, a, p, b in [('Data master, aturan jam, libur, pengaturan, user','✅','–','–'),('Scan QR & presensi manual','✅','✅','–'),('Monitor live, rekap & SMT presensi','✅','✅','✅'),('Izin & sakit, izin keluar','✅','✅','✅'),('Pengajuan kartu','✅','✅ (ajukan)','–'),('Pelanggaran & tata tertib','✅','lihat tatib','✅'),('Tap & rekap ibadah','✅','✅','✅'),('Notifikasi WA & lisensi','✅','–','–')] %}
+      <tr><td>{{ m }}</td><td class="num">{{ a }}</td><td class="num">{{ p }}</td><td class="num">{{ b }}</td></tr>
+      {% endfor %}
+    </tbody></table></div>
+</div>
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Nama</th><th>Username</th><th>Role</th><th>Guru</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for u in rows %}
+  <tr><td><b>{{ u.nama }}</b></td><td>{{ u.username }}</td><td>{{ ROLES[u.role] }}</td><td>{{ u.guru or '-' }}</td>
+    <td>{% if u.aktif %}<span class="badge b-ok">Aktif</span>{% else %}<span class="badge b-err">Nonaktif</span>{% endif %}</td>
+    <td class="actions"><a class="btn sm ghost" href="?edit={{ u.id }}">Edit</a> {% if u.id != g.user.id %}{{ del_btn(url_for('sistem.users_hapus', uid=u.id)) }}{% endif %}</td></tr>
+  {% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

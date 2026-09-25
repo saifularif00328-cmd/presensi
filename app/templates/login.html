@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}Masuk{% endblock %}
+{% block content %}
+<div class="login-wrap">
+  <div class="card login-card">
+    <div class="logo">📋</div>
+    <h1 style="text-align:center">{{ APP_NAME }}</h1>
+    <p class="muted" style="text-align:center;margin-top:-.3rem">{{ nama_sekolah }}</p>
+    <form method="post">
+      {{ csrf() }}
+      <div class="field"><label>Username</label><input name="username" autofocus required autocomplete="username"></div>
+      <div class="field"><label>Password</label><input name="password" type="password" required autocomplete="current-password"></div>
+      <button class="btn block">Masuk</button>
+    </form>
+    <p class="help" style="text-align:center">v{{ APP_VERSION }} · berjalan offline di jaringan lokal sekolah</p>
+  </div>
+</div>
+{% endblock %}

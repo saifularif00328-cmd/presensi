@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, del_btn, avatar with context %}
+{% block title %}{{ 'Edit' if s and s.id else 'Tambah' }} Siswa{% endblock %}
+{% block back %}{{ url_for('master.siswa') }}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ 'Edit' if s and s.id else 'Tambah' }} Siswa</h1>
+  {% if s and s.id %}{{ del_btn(url_for('master.siswa_hapus', sid=s.id), 'Hapus siswa beserta SELURUH data presensi, izin, dan pelanggarannya? Tindakan ini tidak dapat dibatalkan. (Pilihan lain: nonaktifkan siswa)', 'Hapus Siswa') }}{% endif %}
+</div>
+<form method="post" enctype="multipart/form-data" class="card">
+  {{ csrf() }}
+  <div class="form-grid">
+    <div class="full"><label>Nama lengkap</label><input name="nama" value="{{ s.nama if s }}" required></div>
+    <div><label>NIS</label><input name="nis" value="{{ s.nis or '' if s }}"></div>
+    <div><label>NISN</label><input name="nisn" value="{{ s.nisn or '' if s }}"></div>
+    <div><label>Jenis kelamin</label><select name="jk"><option value="">-</option>{% for v,l in [('L','Laki-laki'),('P','Perempuan')] %}<option value="{{ v }}" {{ 'selected' if s and s.jk == v }}>{{ l }}</option>{% endfor %}</select></div>
+    <div><label>Kelas</label><select name="kelas_id"><option value="">— pilih —</option>{% for k in kelas %}<option value="{{ k.id }}" {{ 'selected' if s and s.kelas_id|string == k.id|string }}>{{ k.nama }}</option>{% endfor %}</select></div>
+    <div><label>No. WA Ayah</label><input name="wa_ayah" value="{{ s.wa_ayah or '' if s }}" placeholder="08xxxxxxxxxx" inputmode="tel"></div>
+    <div><label>No. WA Ibu</label><input name="wa_ibu" value="{{ s.wa_ibu or '' if s }}" placeholder="08xxxxxxxxxx" inputmode="tel"></div>
+    <div><label>No. WA Wali</label><input name="wa_wali" value="{{ s.wa_wali or '' if s }}" placeholder="08xxxxxxxxxx" inputmode="tel"></div>
+    <div><label>Foto</label><input type="file" name="foto" accept="image/*">{% if s and s.foto %}<div class="help">{{ avatar(s) }} foto saat ini</div>{% endif %}</div>
+    <div><label>Status</label><select name="aktif"><option value="1">Aktif</option><option value="" {{ 'selected' if s and s.id and not s.aktif }}>Nonaktif (lulus/pindah)</option></select></div>
+  </div>
+  <p class="help">Notifikasi WA dikirim ke semua nomor yang diisi. QR code dibuat otomatis saat siswa disimpan.</p>
+  <div class="btn-row"><button class="btn">Simpan</button><a class="btn ghost" href="{{ url_for('master.siswa') }}">Batal</a></div>
+</form>
+{% endblock %}

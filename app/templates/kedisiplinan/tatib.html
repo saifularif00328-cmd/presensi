@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, del_btn with context %}
+{% block title %}Tata Tertib{% endblock %}
+{% block content %}
+<div class="page-head"><h1>📜 Tata Tertib Sekolah</h1></div>
+{% set editor = g.user.role in ('admin', 'bk') %}
+{% if editor %}
+<div class="card">
+  <h3>{{ 'Edit' if edit else 'Tambah' }} poin tata tertib</h3>
+  <form method="post" class="form-grid">
+    {{ csrf() }}<input type="hidden" name="id" value="{{ edit.id if edit }}">
+    <div><label>Judul</label><input name="judul" value="{{ edit.judul if edit }}" required></div>
+    <div><label>Urutan</label><input type="number" name="urutan" value="{{ edit.urutan if edit else rows|length + 1 }}"></div>
+    <div class="full"><label>Isi</label><textarea name="isi">{{ edit.isi if edit }}</textarea></div>
+    <div class="btn-row"><button class="btn">Simpan</button>{% if edit %}<a class="btn ghost" href="{{ url_for('kedisiplinan.tatib') }}">Batal</a>{% endif %}</div>
+  </form>
+</div>
+{% endif %}
+<div class="card">
+  {% for r in rows %}
+  <div class="info-item">
+    <div class="card-head" style="margin:0"><b style="flex:1">{{ loop.index }}. {{ r.judul }}</b>
+      {% if editor %}<a class="btn sm ghost" href="?edit={{ r.id }}">Edit</a> {{ del_btn(url_for('kedisiplinan.tatib_hapus', tid=r.id)) }}{% endif %}</div>
+    <div class="isi">{{ r.isi }}</div>
+  </div>
+  {% else %}<p class="empty">Belum ada tata tertib.</p>{% endfor %}
+</div>
+{% if jenis %}
+<div class="card">
+  <h3>Daftar poin pelanggaran</h3>
+  <div class="table-wrap"><table><thead><tr><th>Pelanggaran</th><th>Kategori</th><th class="num">Poin</th></tr></thead><tbody>
+  {% for j in jenis %}<tr><td>{{ j.nama }}</td><td>{{ j.kategori or '-' }}</td><td class="num">{{ j.poin }}</td></tr>{% endfor %}
+  </tbody></table></div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, siswa_select, status_badge, del_btn with context %}
+{% block title %}Izin & Sakit{% endblock %}
+{% block content %}
+<div class="page-head"><h1>🤒 Izin & Sakit</h1></div>
+<div class="card">
+  <h3>Pengajuan baru</h3>
+  <form method="post" class="form-grid">
+    {{ csrf() }}
+    <div class="full"><label>Siswa</label>{{ siswa_select(siswa) }}</div>
+    <div><label>Jenis</label><select name="jenis">{% for j in jenis %}<option>{{ j }}</option>{% endfor %}</select></div>
+    <div><label>Dari tanggal</label><input type="date" name="tanggal_mulai" value="{{ today() }}" required></div>
+    <div><label>Sampai tanggal</label><input type="date" name="tanggal_selesai" value="{{ today() }}" required></div>
+    <div class="full"><label>Alasan / keterangan</label><input name="alasan" placeholder="mis. demam, acara keluarga, lomba (dispensasi)…"></div>
+    <div><button class="btn">Ajukan</button></div>
+  </form>
+  <p class="help">Setelah disetujui, hari-hari efektif dalam rentang tanggal otomatis tercatat I/S/D di presensi dan orang tua menerima notifikasi konfirmasi.</p>
+</div>
+<div class="tabs">
+  {% for s in ['Menunggu','Disetujui','Ditolak','semua'] %}<a href="?status={{ s }}" class="{{ 'active' if status == s }}">{{ s|capitalize }}{% if counts.get(s) %} ({{ counts[s] }}){% endif %}</a>{% endfor %}
+</div>
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Siswa</th><th>Jenis</th><th>Tanggal</th><th>Alasan</th><th>Status</th><th class="hide-sm">Diajukan</th><th></th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr><td><a href="{{ url_for('main.siswa_detail', sid=r.siswa_id) }}"><b>{{ r.nama }}</b></a><br><small>{{ r.kelas or '-' }}</small></td>
+    <td>{{ r.jenis }}</td><td class="nowrap">{{ r.tanggal_mulai }}{% if r.tanggal_selesai != r.tanggal_mulai %}<br>s.d. {{ r.tanggal_selesai }}{% endif %}</td>
+    <td>{{ r.alasan or '-' }}{% if r.catatan_proses %}<br><small>Catatan: {{ r.catatan_proses }}</small>{% endif %}</td>
+    <td>{{ status_badge(r.status) }}{% if r.pemroses %}<br><small>oleh {{ r.pemroses }}</small>{% endif %}</td>
+    <td class="hide-sm"><small>{{ r.pengaju or '-' }}<br>{{ r.created_at[:16] }}</small></td>
+    <td class="actions">
+      {% if r.status == 'Menunggu' %}
+      <form class="inline" method="post" action="{{ url_for('perizinan.izin_proses', iid=r.id, aksi='setujui') }}">{{ csrf() }}<button class="btn sm ok">Setujui</button></form>
+      <form class="inline" method="post" action="{{ url_for('perizinan.izin_proses', iid=r.id, aksi='tolak') }}" onsubmit="const c=prompt('Alasan penolakan (opsional):');if(c===null)return false;this.catatan.value=c;">{{ csrf() }}<input type="hidden" name="catatan"><button class="btn sm danger">Tolak</button></form>
+      {% elif can() %}{{ del_btn(url_for('perizinan.izin_hapus', iid=r.id)) }}{% endif %}
+    </td></tr>
+  {% else %}<tr><td colspan="7" class="empty">Tidak ada data.</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

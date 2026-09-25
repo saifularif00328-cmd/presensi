@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, del_btn with context %}
+{% block title %}Aturan Jam{% endblock %}
+{% block content %}
+<div class="page-head"><h1>⏰ Aturan Jam</h1></div>
+<div class="card">
+  <h3>{{ 'Edit' if edit else 'Tambah' }} aturan</h3>
+  <form method="post" class="form-grid">
+    {{ csrf() }}<input type="hidden" name="id" value="{{ edit.id if edit }}">
+    <div><label>Nama aturan</label><input name="nama" value="{{ edit.nama if edit }}" placeholder="mis. Kelas 9 (jam tambahan)" required></div>
+    <div><label>Berlaku untuk jenjang</label><input name="jenjang" list="jenjang" value="{{ edit.jenjang or '' if edit }}" placeholder="kosong = semua">
+      <datalist id="jenjang">{% for j in jenjang %}<option value="{{ j }}">{% endfor %}</datalist></div>
+    <div><label>…atau kelas tertentu</label><select name="kelas_id"><option value="">—</option>{% for k in kelas %}<option value="{{ k.id }}" {{ 'selected' if edit and edit.kelas_id == k.id }}>{{ k.nama }}</option>{% endfor %}</select></div>
+    <div><label>Jam masuk</label><input type="time" name="jam_masuk" value="{{ edit.jam_masuk if edit else '07:00' }}" required></div>
+    <div><label>Batas telat</label><input type="time" name="batas_telat" value="{{ edit.batas_telat if edit else '07:15' }}" required></div>
+    <div><label>Mulai absen pulang</label><input type="time" name="batas_pulang_cepat" value="{{ edit.batas_pulang_cepat if edit else '11:00' }}" required></div>
+    <div><label>Jam pulang</label><input type="time" name="jam_pulang" value="{{ edit.jam_pulang if edit else '14:00' }}" required></div>
+    <div><label>Jam tutup sekolah</label><input type="time" name="jam_tutup" value="{{ edit.jam_tutup if edit else '16:00' }}" required></div>
+    <div class="btn-row" style="align-self:end"><button class="btn">Simpan</button>{% if edit %}<a class="btn ghost" href="{{ url_for('kedisiplinan.aturan_jam') }}">Batal</a>{% endif %}</div>
+  </form>
+  <ul class="help">
+    <li>Scan masuk setelah <b>batas telat</b> → status <b>Telat</b>.</li>
+    <li>Mode scan “Otomatis”: scan kedua mulai <b>mulai absen pulang</b> dihitung absen pulang. Pulang sebelum <b>jam pulang</b> → <b>Pulang Cepat</b>.</li>
+    <li>Setelah <b>jam tutup</b>: yang belum absen pulang → <b>Belum Pulang</b>; yang tidak tercatat sama sekali → <b>Alpha</b> + notifikasi WA.</li>
+    <li>Prioritas: aturan kelas → aturan jenjang → aturan default (tanpa jenjang/kelas).</li>
+  </ul>
+</div>
+<div class="card"><div class="table-wrap"><table>
+  <thead><tr><th>Nama</th><th>Berlaku</th><th>Masuk</th><th>Telat &gt;</th><th>Mulai pulang</th><th>Pulang</th><th>Tutup</th><th></th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr><td><b>{{ r.nama }}</b></td><td>{% if r.kelas %}Kelas {{ r.kelas }}{% elif r.jenjang %}Jenjang {{ r.jenjang }}{% else %}<span class="badge b-info">Default</span>{% endif %}</td>
+    <td>{{ r.jam_masuk }}</td><td>{{ r.batas_telat }}</td><td>{{ r.batas_pulang_cepat }}</td><td>{{ r.jam_pulang }}</td><td>{{ r.jam_tutup }}</td>
+    <td class="actions"><a class="btn sm ghost" href="?edit={{ r.id }}">Edit</a> {{ del_btn(url_for('kedisiplinan.aturan_jam_hapus', aid=r.id)) }}</td></tr>
+  {% endfor %}
+  </tbody></table></div></div>
+{% endblock %}

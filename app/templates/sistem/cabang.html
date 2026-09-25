@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, del_btn with context %}
+{% block title %}Multi-Cabang{% endblock %}
+{% block content %}
+<div class="page-head"><h1>🌐 Dashboard Multi-Cabang</h1></div>
+<div class="card">
+  <h3>Ringkasan hari ini</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Sekolah / cabang</th><th class="num">Siswa</th><th class="num">H</th><th class="num">Telat</th><th class="num">I</th><th class="num">S</th><th class="num">A</th><th class="num">D</th><th class="num">Belum</th><th class="num">% Hadir</th><th></th></tr></thead>
+    <tbody>
+      {% macro row(nama, d, extra='') %}
+      <tr><td><b>{{ nama }}</b>{{ extra }}</td><td class="num">{{ d.total }}</td><td class="num">{{ d.H }}</td><td class="num">{{ d.telat }}</td><td class="num">{{ d.I }}</td><td class="num">{{ d.S }}</td><td class="num">{{ d.A }}</td><td class="num">{{ d.D }}</td><td class="num">{{ d.belum }}</td>
+        <td class="num">{{ ((d.H + d.D) * 100 / d.total)|round(1) if d.total else 0 }}%</td>{{ caller() if caller }}</tr>
+      {% endmacro %}
+      {% call row(lokal.sekolah ~ ' (server ini)', lokal) %}<td></td>{% endcall %}
+      {% for x in data %}
+        {% if x.ok %}{% call row(x.c.nama, x.d, '') %}<td class="actions">{{ del_btn(url_for('sistem.cabang_hapus', cid=x.c.id)) }}</td>{% endcall %}
+        {% else %}<tr><td><b>{{ x.c.nama }}</b><br><small>{{ x.c.url }}</small></td><td colspan="9"><span class="badge b-err">Tidak terhubung: {{ x.err }}</span></td><td class="actions">{{ del_btn(url_for('sistem.cabang_hapus', cid=x.c.id)) }}</td></tr>{% endif %}
+      {% endfor %}
+    </tbody></table></div>
+</div>
+<div class="grid grid-2">
+  <div class="card">
+    <h3>Tambah cabang</h3>
+    <form method="post">{{ csrf() }}
+      <div class="field"><label>Nama</label><input name="nama" required></div>
+      <div class="field"><label>URL server cabang</label><input name="url" placeholder="http://192.168.1.20:5000" required></div>
+      <div class="field"><label>Token API cabang</label><input name="token" required></div>
+      <button class="btn">Tambah</button>
+    </form>
+  </div>
+  <div class="card">
+    <h3>Token API server ini</h3>
+    <p class="help">Masukkan URL server ini dan token berikut di dashboard pusat agar ringkasan presensi sekolah ini ikut tampil.</p>
+    <code class="key">{{ token }}</code>
+  </div>
+</div>
+{% endblock %}
