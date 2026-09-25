@@ -16,7 +16,9 @@ def server_url(db=None):
 
 
 def _post(url, data, timeout=15):
-    r = requests.post(url, json=data, timeout=timeout)
+    # header ngrok: lewati halaman peringatan ngrok (gratis) bila server lisensi memakai ngrok
+    r = requests.post(url, json=data, timeout=timeout,
+                      headers={"ngrok-skip-browser-warning": "1"})
     try:
         return r.json()
     except ValueError:

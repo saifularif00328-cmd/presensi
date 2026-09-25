@@ -126,7 +126,7 @@ Di folder aplikasi:
    ```
 2. Klik dua kali **`jalankan_server_lisensi.bat`**. Karena `config.yml` sudah ada, file ini
    otomatis membuka 2 jendela: server lisensi **dan** Cloudflare Tunnel.
-3. Browser membuka `http://localhost:8500` → buat password admin.
+3. Browser membuka `http://localhost:8501` (halaman admin) → buat password admin.
 
 Jendela "Cloudflare Tunnel" yang sehat menampilkan baris `Registered tunnel connection`.
 
@@ -136,9 +136,9 @@ Dari HP (pakai **data seluler**, bukan WiFi rumah) buka:
 
 - `https://lisensi.domainanda.com/api/check` → muncul teks singkat / *Method Not Allowed*
   → **berhasil**, server bisa dihubungi dari internet.
-- `https://lisensi.domainanda.com/` → muncul **403 Forbidden** → **benar**. Halaman admin
-  sengaja hanya bisa dibuka dari laptop Anda (`http://localhost:8500`), agar tidak bisa
-  diserang dari internet.
+- `https://lisensi.domainanda.com/` → muncul **Not Found** → **benar**. Halaman admin
+  sengaja hanya bisa dibuka dari laptop Anda (`http://localhost:8501`), agar tidak bisa
+  diserang dari internet. Tunnel hanya meneruskan port 8500 (API aktivasi).
 
 ## Langkah 11 — Pasang alamat server di aplikasi
 
@@ -154,7 +154,7 @@ Dari HP (pakai **data seluler**, bukan WiFi rumah) buka:
 
 ## Langkah 12 — Terbitkan lisensi pertama
 
-1. Di `http://localhost:8500` → **Buat lisensi baru** (nama sekolah, tier, masa berlaku).
+1. Di `http://localhost:8501` → **Buat lisensi baru** (nama sekolah, tier, masa berlaku).
 2. Kirim **kode aktivasi** (mis. `K7QX-M2LP-AD9R`) ke sekolah.
 3. Sekolah membuka **Akun → Lisensi → Aktivasi online**, memasukkan kode → **Aktifkan**.
    Kolom alamat server sudah terisi otomatis dari langkah 11.

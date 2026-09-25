@@ -77,7 +77,7 @@ Aplikasi hanya membawa kunci publik, sehingga lisensi tidak bisa dipalsukan wala
 
 - **Vendor:** jalankan `python tools/vendor_init.py` sekali (membuat kunci privat & publik), lalu
   kelola lisensi lewat **server aktivasi** (`jalankan_server_lisensi.bat`) — panduan lengkap
-  termasuk Cloudflare Tunnel di [`license_server/README.md`](license_server/README.md).
+  di [`license_server/README.md`](license_server/README.md), tutorial [ngrok](license_server/TUTORIAL_NGROK.md) (tanpa domain) dan [Cloudflare Tunnel](license_server/TUTORIAL_CLOUDFLARE.md) (domain sendiri).
   Kode offline juga bisa dibuat dengan `python tools/keygen.py --device <ID> --tier pro --hari 365`.
 - **Sekolah:** menu **Lisensi** → *Aktivasi online* (kode aktivasi + alamat server) atau
   *Aktivasi offline* (tempel kode lisensi). Status dicek otomatis ke server saat online:

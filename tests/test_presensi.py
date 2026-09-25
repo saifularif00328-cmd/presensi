@@ -351,7 +351,7 @@ def test_server_aktivasi_online(app, client, tmp_path, monkeypatch):
         def json(self):
             return self.r.get_json()
 
-    def fake_post(url, json=None, timeout=None):
+    def fake_post(url, json=None, timeout=None, headers=None):
         return Resp(sc.post(url.replace("http://lisensi.test", ""), json=json))
 
     monkeypatch.setattr(requests, "post", fake_post)
@@ -395,3 +395,7 @@ def test_admin_server_lisensi_tertutup_dari_internet(tmp_path):
     r = c.post("/api/activate", json={"code": "X", "device": "Y"},
                headers={"CF-Connecting-IP": "1.2.3.4"})
     assert r.status_code == 503  # API tetap terbuka (di sini: kunci privat belum ada)
+    pub = server_app({"TESTING": True, "DB_PATH": str(tmp_path / "s.db"),
+                      "KEY_PATH": str(tmp_path / "tidak-ada.pem")}, mode="public").test_client()
+    assert pub.get("/setup").status_code == 404 and pub.get("/").status_code == 404
+    assert pub.post("/api/check", json={}).status_code == 503

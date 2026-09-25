@@ -65,7 +65,9 @@ CREATE TABLE IF NOT EXISTS activations (
 """
 
 
-def create_app(test_config=None):
+def create_app(test_config=None, mode="all"):
+    """mode: "public" = hanya API (port yang dibuka ke internet lewat tunnel),
+    "admin" / "all" = halaman admin (hanya didengarkan di localhost)."""
     app = Flask(__name__, template_folder=os.path.join(HERE, "templates"),
                 static_folder=os.path.join(ROOT, "app", "static"))  # pakai CSS/ikon aplikasi
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -145,6 +147,8 @@ def create_app(test_config=None):
     def guard():
         if request.path.startswith("/api/") or request.endpoint in ("static", "favicon", None):
             return None
+        if mode == "public":
+            abort(404)  # port publik (tunnel) tidak pernah melayani halaman admin
         # Halaman admin hanya dari laptop vendor sendiri. Permintaan lewat Cloudflare Tunnel
         # selalu membawa header CF-Connecting-IP → ditolak (kecuali LISENSI_ADMIN_PUBLIK=1).
         if (request.headers.get("CF-Connecting-IP") or request.headers.get("X-Forwarded-For")) \
@@ -367,19 +371,26 @@ def create_app(test_config=None):
     return app
 
 
+def _serve(application, port):
+    try:
+        from waitress import serve
+        serve(application, host="127.0.0.1", port=port, threads=4)
+    except ImportError:
+        application.run(host="127.0.0.1", port=port, use_reloader=False, threaded=True)
+
+
 if __name__ == "__main__":
-    host = os.environ.get("LISENSI_HOST", "127.0.0.1")
-    port = int(os.environ.get("LISENSI_PORT", "8500"))
-    print("=" * 60)
+    import threading
+    api_port = int(os.environ.get("LISENSI_PORT", "8500"))
+    admin_port = int(os.environ.get("LISENSI_ADMIN_PORT", "8501"))
+    print("=" * 64)
     print(" Server Aktivasi Lisensi — Presensi Siswa Digital")
-    print(f"  Admin : http://localhost:{port}")
+    print(f"  Halaman admin (hanya laptop ini) : http://localhost:{admin_port}")
+    print(f"  API untuk sekolah (buka via tunnel): http://localhost:{api_port}")
     if not os.path.exists(KEY_PATH):
         print(f"  PERINGATAN: kunci privat belum ada ({KEY_PATH}).")
         print("  Jalankan dulu: python tools/vendor_init.py")
-    print("=" * 60)
-    application = create_app()
-    try:
-        from waitress import serve
-        serve(application, host=host, port=port)
-    except ImportError:
-        application.run(host=host, port=port)
+    print("=" * 64)
+    threading.Thread(target=_serve, args=(create_app(mode="admin"), admin_port),
+                     daemon=True).start()
+    _serve(create_app(mode="public"), api_port)

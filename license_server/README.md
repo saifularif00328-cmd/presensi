@@ -37,8 +37,14 @@ build, agar sekolah tidak perlu mengetik alamat server.
 
 ## 2. Menjalankan server
 
-Klik dua kali **`jalankan_server_lisensi.bat`** (atau `python license_server/server.py`), lalu buka
-`http://localhost:8500`. Pertama kali Anda diminta membuat password admin.
+Klik dua kali **`jalankan_server_lisensi.bat`** (atau `python license_server/server.py`). Server membuka dua port:
+
+| Port | Isi | Dibuka ke internet? |
+|---|---|---|
+| `8501` | **Halaman admin** — `http://localhost:8501` | Tidak, hanya laptop Anda |
+| `8500` | API aktivasi untuk aplikasi sekolah | Ya, lewat tunnel |
+
+Pertama kali membuka halaman admin Anda diminta membuat password.
 
 Di halaman admin Anda bisa:
 - **Buat lisensi** (nama sekolah, tier, masa berlaku, maks. perangkat) → muncul **kode aktivasi**
@@ -71,6 +77,8 @@ Alamat server untuk sekolah: `https://lisensi.domainanda.com`.
 Setelah itu cukup jalankan server + perintah terakhir setiap kali ingin melayani aktivasi.
 
 ### Opsi B — ngrok (tanpa domain sendiri)
+
+📘 **Tutorial langkah demi langkah: [`TUTORIAL_NGROK.md`](TUTORIAL_NGROK.md)**
 Daftar di ngrok.com → klaim 1 *static domain* gratis → lalu:
 ```bat
 ngrok http --url=nama-anda.ngrok-free.app 8500
@@ -85,5 +93,5 @@ Menampilkan alamat acak `https://xxxx.trycloudflare.com` — alamat berganti set
 jadi hanya untuk mencoba. Jika alamat server berganti, lisensi sekolah **tetap aktif**; hanya
 cek online harian yang gagal sampai admin sekolah memperbarui alamat server di halaman Lisensi.
 
-Keamanan: halaman admin hanya bisa dibuka dari laptop vendor (`http://localhost:8500`) — permintaan dari internet lewat tunnel mendapat 403 (bisa dibuka dengan env `LISENSI_ADMIN_PUBLIK=1`); admin dilindungi password; API aktivasi dibatasi 20 percobaan/menit per IP;
+Keamanan: halaman admin berjalan di port terpisah (8501) yang tidak pernah dilewatkan ke tunnel; port publik 8500 hanya melayani API; admin dilindungi password; API aktivasi dibatasi 20 percobaan/menit per IP;
 kode aktivasi acak 12 karakter (≈60 bit) sehingga tidak bisa ditebak.
