@@ -13,13 +13,21 @@ log = logging.getLogger(__name__)
 _state = {"thread": None, "stop": None, "mode": "auto", "last": None, "error": None}
 
 
-def available():
+def import_error():
+    """None bila OpenCV & pyzbar bisa dimuat, selain itu pesan error-nya."""
     try:
         import cv2  # noqa: F401
+    except Exception as e:
+        return f"opencv-python: {type(e).__name__}: {e}"
+    try:
         from pyzbar import pyzbar  # noqa: F401
-        return True
-    except Exception:  # ImportError atau DLL zbar tidak ada
-        return False
+    except Exception as e:  # di Windows sering karena DLL zbar / VC++ 2013 tidak ada
+        return f"pyzbar: {type(e).__name__}: {e}"
+    return None
+
+
+def available():
+    return import_error() is None
 
 
 def running():
@@ -28,8 +36,9 @@ def running():
 
 
 def status():
-    return {"available": available(), "running": running(), "mode": _state["mode"],
-            "last": _state["last"], "error": _state["error"]}
+    err = import_error()
+    return {"available": err is None, "import_error": err, "running": running(),
+            "mode": _state["mode"], "last": _state["last"], "error": _state["error"]}
 
 
 def start(app, camera_index=0, mode="auto"):
