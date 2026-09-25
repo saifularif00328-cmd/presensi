@@ -78,7 +78,15 @@ def tap():
     now = utils.now().strftime("%H:%M")
     default = next((j["id"] for j in jadwal if j["jam_mulai"] <= now <= j["jam_selesai"]),
                    jadwal[0]["id"] if jadwal else None)
-    return render_template("ibadah/tap.html", jadwal=jadwal,
+    # Bila tidak ada yang berlaku, jelaskan alasan tiap jadwal agar admin tahu apa yang diubah
+    lain = []
+    if not jadwal:
+        for r in query("SELECT * FROM ibadah ORDER BY jam_mulai"):
+            hari = [utils.HARI[int(h) - 1] for h in (r["hari"] or "").split(",") if h]
+            alasan = ("Nonaktif" if not r["aktif"] else
+                      f"Hanya hari {', '.join(hari) or '-'}; hari ini {utils.HARI[today.weekday()]}")
+            lain.append({"id": r["id"], "nama": r["nama"], "alasan": alasan})
+    return render_template("ibadah/tap.html", jadwal=jadwal, lain=lain,
                            ibadah_id=arg_int("ibadah_id", default))
 
 

@@ -1,4 +1,6 @@
-from app.db import connect
+from datetime import timedelta
+
+from app.db import connect, set_setting
 from app.license import make_license, parse_license
 from app.qr import make_payload, parse_payload
 
@@ -399,3 +401,18 @@ def test_admin_server_lisensi_tertutup_dari_internet(tmp_path):
                       "KEY_PATH": str(tmp_path / "tidak-ada.pem")}, mode="public").test_client()
     assert pub.get("/setup").status_code == 404 and pub.get("/").status_code == 404
     assert pub.post("/api/check", json={}).status_code == 503
+
+
+def test_tap_ibadah_jelaskan_jadwal_tidak_berlaku(app, client, clock):
+    with app.app_context():
+        db = connect()
+        set_setting("modul_ibadah_aktif", "1", db=db)
+        db.execute("INSERT INTO ibadah(nama, jam_mulai, jam_selesai, hari, aktif) "
+                   "VALUES ('Sholat Dhuha', '07:00', '07:30', '1,2,3,4,5', 1)")
+        db.commit()
+        db.close()
+    clock.set(7, 10, BASE_DAY + timedelta(days=5))  # Sabtu
+    h = client.get("/ibadah/tap").get_data(as_text=True)
+    assert "Sholat Dhuha" in h and "hari ini Sabtu" in h and 'id="reader"' not in h
+    clock.set(7, 10, BASE_DAY)  # Senin → jadwal berlaku, kamera tersedia
+    assert 'id="reader"' in client.get("/ibadah/tap").get_data(as_text=True)

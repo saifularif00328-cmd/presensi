@@ -3,7 +3,16 @@
 {% block content %}
 <div class="page-head"><h1>Tap Ibadah</h1><div class="clock" id="clock"></div></div>
 {% if not jadwal %}
-<div class="card empty">Tidak ada jadwal ibadah aktif hari ini. <a href="{{ url_for('ibadah.daftar') }}">Atur jadwal</a>.</div>
+<div class="card">
+  <p class="empty">Tidak ada jadwal ibadah yang berlaku hari ini.</p>
+  {% if lain %}
+  <p class="help">Jadwal yang sudah dibuat, tetapi tidak berlaku hari ini:</p>
+  <ul class="list">{% for r in lain %}<li><div class="grow"><div class="title">{{ r.nama }}</div><div class="sub">{{ r.alasan }}</div></div><a class="btn sm" href="{{ url_for('ibadah.daftar', edit=r.id) }}">Ubah</a></li>{% endfor %}</ul>
+  {% else %}
+  <p class="help">Belum ada jadwal ibadah di aplikasi ini.</p>
+  {% endif %}
+  <p class="mt"><a class="btn" href="{{ url_for('ibadah.daftar') }}">Atur jadwal</a></p>
+</div>
 {% else %}
 <div class="scan-layout">
   <div class="card">
