@@ -105,19 +105,29 @@ function initScanner(opt) {
       render({ ok: false, level: 'warning', pesan: 'Browser HP hanya mengizinkan kamera lewat HTTPS atau localhost. Lihat README bagian "Kamera HP".' });
     }
     await loadCameras();
+    // Kotak kamera harus sudah tampil SEBELUM kamera dinyalakan: html5-qrcode mengukur
+    // lebarnya saat start — bila masih tersembunyi, video dibuat selebar 0 px (tak terlihat).
+    const reader = document.getElementById(opt.readerId);
+    reader.hidden = false;
     camera = camera || new Html5Qrcode(opt.readerId);
     const src = camSelect.value ? camSelect.value : { facingMode: 'environment' };
+    const qrbox = function (w, h) {
+      const s = Math.max(120, Math.floor(Math.min(w, h) * 0.7));
+      return { width: s, height: s };
+    };
     try {
-      await camera.start(src, { fps: 10, qrbox: { width: 240, height: 240 } },
+      await camera.start(src, { fps: 10, qrbox: qrbox },
         function (text) { submit(text, 'kamera'); }, function () {});
       btnStart.hidden = true; btnStop.hidden = false;
     } catch (e) {
+      reader.hidden = true;
       render({ ok: false, level: 'error', pesan: 'Kamera tidak dapat dibuka: ' + e });
     }
   }
 
   async function stopCamera() {
     if (camera && camera.isScanning) await camera.stop();
+    document.getElementById(opt.readerId).hidden = true;
     btnStart.hidden = false; btnStop.hidden = true;
   }
 
