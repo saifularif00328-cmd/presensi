@@ -83,6 +83,13 @@ Aplikasi hanya membawa kunci publik, sehingga lisensi tidak bisa dipalsukan wala
   *Aktivasi offline* (tempel kode lisensi). Status dicek otomatis ke server saat online:
   pencabutan, perpanjangan, dan ganti tier diterima tanpa input ulang.
 
+## Dashboard Multi-Cabang (Enterprise)
+
+Menu **Sistem → Multi-Cabang** di server pusat menampilkan ringkasan presensi hari ini dari
+beberapa sekolah/cabang (hanya angka, tanpa data pribadi siswa). Setiap cabang cukup membagikan
+URL server + token API-nya. Panduan lengkap (satu jaringan, Tailscale, ngrok, Cloudflare):
+[`TUTORIAL_MULTICABANG.md`](TUTORIAL_MULTICABANG.md).
+
 ## Build `.exe` Windows
 
 Di Windows, jalankan `build_exe.bat` (memakai PyInstaller + waitress).

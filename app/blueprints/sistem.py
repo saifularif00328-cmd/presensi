@@ -288,14 +288,29 @@ def cabang():
     for c in rows:
         try:
             r = requests.get(f"{c['url']}/sistem/api/ringkasan", timeout=4,
-                             headers={"X-Cabang-Token": c["token"]})
-            data.append({"c": c, "ok": r.ok, "d": r.json() if r.ok else None,
-                         "err": None if r.ok else f"HTTP {r.status_code}"})
-        except (requests.RequestException, ValueError) as e:
-            data.append({"c": c, "ok": False, "d": None, "err": type(e).__name__})
+                             headers={"X-Cabang-Token": c["token"],
+                                      "ngrok-skip-browser-warning": "1"})
+            if r.status_code == 401:
+                err = "token salah"
+            elif not r.ok:
+                err = f"HTTP {r.status_code} (periksa URL)"
+            else:
+                err = None
+            data.append({"c": c, "ok": err is None, "d": r.json() if err is None else None,
+                         "err": err})
+        except ValueError:
+            data.append({"c": c, "ok": False, "d": None,
+                         "err": "alamat tersebut bukan server Presensi (periksa URL)"})
+        except requests.Timeout:
+            data.append({"c": c, "ok": False, "d": None,
+                         "err": "tidak ada jawaban (server cabang mati / beda jaringan)"})
+        except requests.RequestException:
+            data.append({"c": c, "ok": False, "d": None,
+                         "err": "tidak dapat terhubung (server cabang mati / URL salah)"})
     lokal = ringkasan_data()
     return render_template("sistem/cabang.html", data=data, lokal=lokal,
-                           token=get_setting("cabang_api_token"))
+                           token=get_setting("cabang_api_token"),
+                           url_lokal=f"http://{utils.local_ip()}:{config.PORT}")
 
 
 @bp.route("/cabang/<int:cid>/hapus", methods=["POST"])

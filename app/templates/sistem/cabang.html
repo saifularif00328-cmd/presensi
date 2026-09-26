@@ -15,7 +15,7 @@
       {% call row(lokal.sekolah ~ ' (server ini)', lokal) %}<td></td>{% endcall %}
       {% for x in data %}
         {% if x.ok %}{% call row(x.c.nama, x.d, '') %}<td class="actions">{{ del_btn(url_for('sistem.cabang_hapus', cid=x.c.id)) }}</td>{% endcall %}
-        {% else %}<tr><td><b>{{ x.c.nama }}</b><br><small>{{ x.c.url }}</small></td><td colspan="9"><span class="badge b-err">Tidak terhubung: {{ x.err }}</span></td><td class="actions">{{ del_btn(url_for('sistem.cabang_hapus', cid=x.c.id)) }}</td></tr>{% endif %}
+        {% else %}<tr><td><b>{{ x.c.nama }}</b><br><small>{{ x.c.url }}</small></td><td colspan="9"><span class="badge b-err">Tidak terhubung</span> <small>{{ x.err }}</small></td><td class="actions">{{ del_btn(url_for('sistem.cabang_hapus', cid=x.c.id)) }}</td></tr>{% endif %}
       {% endfor %}
     </tbody></table></div>
 </div>
@@ -32,7 +32,9 @@
   <div class="card">
     <h3>Token API server ini</h3>
     <p class="help">Masukkan URL server ini dan token berikut di dashboard pusat agar ringkasan presensi sekolah ini ikut tampil.</p>
-    <code class="key">{{ token }}</code>
+    <div class="field"><label>URL server ini (jaringan lokal)</label><code class="key">{{ url_lokal }}</code></div>
+    <div class="field"><label>Token API</label><code class="key">{{ token }}</code></div>
+    <p class="help">Rahasiakan token ini. Siapa pun yang memegang URL + token dapat melihat ringkasan presensi harian sekolah ini (tanpa data pribadi siswa).</p>
   </div>
 </div>
 {% endblock %}

@@ -416,3 +416,26 @@ def test_tap_ibadah_jelaskan_jadwal_tidak_berlaku(app, client, clock):
     assert "Sholat Dhuha" in h and "hari ini Sabtu" in h and 'id="reader"' not in h
     clock.set(7, 10, BASE_DAY)  # Senin → jadwal berlaku, kamera tersedia
     assert 'id="reader"' in client.get("/ibadah/tap").get_data(as_text=True)
+
+
+def test_multicabang_membaca_ringkasan_server_cabang(app, client, tmp_path):
+    import threading
+    from werkzeug.serving import make_server
+    from app import create_app
+    from app.db import get_setting
+    cabang = create_app({"TESTING": True, "DB_PATH": str(tmp_path / "cabang.db")}, start_jobs=False)
+    with cabang.app_context():
+        set_setting("nama_sekolah", "SMP Cabang Timur")
+        token = get_setting("cabang_api_token")
+    srv = make_server("127.0.0.1", 0, cabang)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    url = f"http://127.0.0.1:{srv.server_port}"
+    try:
+        assert client.post("/sistem/cabang", data={"nama": "Cabang Timur", "url": url,
+                                                   "token": token}).status_code == 302
+        client.post("/sistem/cabang", data={"nama": "Cabang Salah", "url": url, "token": "x"})
+        h = client.get("/sistem/cabang").get_data(as_text=True)
+        assert "Cabang Timur" in h and "token salah" in h
+        assert h.count("Tidak terhubung") == 1  # hanya cabang dengan token salah
+    finally:
+        srv.shutdown()

@@ -116,3 +116,16 @@ def normalize_wa(nomor):
     elif n.startswith("8"):
         n = "62" + n
     return n if len(n) >= 10 else ""
+
+
+def local_ip():
+    """IP komputer ini di jaringan lokal (untuk alamat yang dibuka HP / server lain)."""
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("10.255.255.255", 1))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except OSError:
+        return "127.0.0.1"
