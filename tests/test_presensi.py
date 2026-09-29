@@ -237,9 +237,9 @@ def test_exports(client, seed, clock):
         assert len(r.data) > 100, url
 
 
-def test_csrf_wajib(tmp_path, clock):
+def test_csrf_wajib(make_db, clock):
     from app import create_app
-    app = create_app({"TESTING": True, "DB_PATH": str(tmp_path / "c.db")}, start_jobs=False)
+    app = create_app({"TESTING": True, "DATABASE": make_db()}, start_jobs=False)
     c = app.test_client()
     assert c.post("/login", data={"username": "admin", "password": "admin123"}).status_code == 400
     c.get("/login")
@@ -418,12 +418,12 @@ def test_tap_ibadah_jelaskan_jadwal_tidak_berlaku(app, client, clock):
     assert 'id="reader"' in client.get("/ibadah/tap").get_data(as_text=True)
 
 
-def test_multicabang_membaca_ringkasan_server_cabang(app, client, tmp_path):
+def test_multicabang_membaca_ringkasan_server_cabang(app, client, make_db):
     import threading
     from werkzeug.serving import make_server
     from app import create_app
     from app.db import get_setting
-    cabang = create_app({"TESTING": True, "DB_PATH": str(tmp_path / "cabang.db")}, start_jobs=False)
+    cabang = create_app({"TESTING": True, "DATABASE": make_db()}, start_jobs=False)
     with cabang.app_context():
         set_setting("nama_sekolah", "SMP Cabang Timur")
         token = get_setting("cabang_api_token")
@@ -439,3 +439,87 @@ def test_multicabang_membaca_ringkasan_server_cabang(app, client, tmp_path):
         assert h.count("Tidak terhubung") == 1  # hanya cabang dengan token salah
     finally:
         srv.shutdown()
+
+
+def test_crawl_semua_halaman(app, client, seed):
+    """Buka semua halaman GET tanpa parameter; tidak boleh ada error 500."""
+    client.post("/perizinan/izin", data={"siswa_id": seed["ahmad"]["id"], "jenis": "Sakit",
+                "tanggal_mulai": "2030-01-07", "tanggal_selesai": "2030-01-08", "alasan": "demam"})
+    client.post("/presensi/api/scan", json={"code": seed["siti"]["qr"], "mode": "auto"})
+    gagal = []
+    for rule in app.url_map.iter_rules():
+        if "GET" not in rule.methods or rule.arguments or rule.endpoint in ("static", "auth.logout"):
+            continue
+        url = rule.rule
+        for q in ("", "?format=xlsx", "?format=pdf"):
+            r = client.get(url + q)
+            if r.status_code >= 500:
+                gagal.append((url + q, r.status_code))
+    assert not gagal, gagal
+
+
+def test_migrasi_sqlite_lama_ke_mysql(make_db, tmp_path, clock):
+    """Data versi lama (SQLite) pindah utuh ke MySQL, termasuk settings & tanggal kosong."""
+    import sqlite3
+    from pathlib import Path
+    from tools.migrasi_sqlite_ke_mysql import migrasi
+    lama = tmp_path / "presensi.db"
+    src = sqlite3.connect(lama)
+    src.executescript((Path(__file__).parent / "schema_sqlite_lama.sql").read_text())
+    src.execute("INSERT INTO settings(key, value) VALUES ('nama_sekolah', 'SMP Lama'), "
+                "('qr_secret', 'abc123')")
+    src.execute("INSERT INTO kelas(id, nama, jenjang) VALUES (1, '7A', '7')")
+    src.execute("INSERT INTO siswa(id, nama, kelas_id, qr_token) VALUES (1, 'Ahmad', 1, 'QR1'), "
+                "(2, 'Siti', 1, 'QR2')")
+    src.execute("INSERT INTO presensi(siswa_id, kelas_id, tanggal, jam_masuk, status_masuk) "
+                "VALUES (1, 1, '2030-01-07', '06:50:00', 'Hadir')")
+    src.execute("INSERT INTO izin(siswa_id, jenis, tanggal_mulai, tanggal_selesai, processed_at) "
+                "VALUES (2, 'Sakit', '2030-01-07', '2030-01-07', '')")
+    src.execute("INSERT INTO users(username, password_hash, nama, role) "
+                "VALUES ('admin', 'x', 'Admin Lama', 'admin')")
+    src.commit()
+    src.close()
+    cfg = make_db()
+    hasil = migrasi(str(lama), cfg, log=lambda *_: None)
+    assert hasil["siswa"] == 2 and hasil["presensi"] == 1 and hasil["izin"] == 1
+    from app.db import connect, get_setting
+    db = connect(cfg)
+    assert get_setting("nama_sekolah", db=db) == "SMP Lama"
+    assert get_setting("qr_secret", db=db) == "abc123"
+    assert db.execute("SELECT nama FROM users").fetchall()[0]["nama"] == "Admin Lama"
+    p = db.execute("SELECT * FROM presensi").fetchone()
+    assert p["tanggal"] == "2030-01-07" and p["jam_masuk"] == "06:50:00"
+    assert db.execute("SELECT processed_at FROM izin").fetchone()["processed_at"] is None
+    db.close()
+
+
+def test_backup_zip_dipulihkan_ke_database_lain(app, client, seed, make_db, tmp_path):
+    """Backup ZIP (database + foto + kunci) bisa dipulihkan utuh di server lain (mis. VPS)."""
+    import io
+    import os
+    import zipfile
+    from app import config
+    from app.db import connect
+    from app.services.backup import restore_zip
+    scan = client.post("/presensi/api/scan", json={"code": seed["ahmad"]["qr"], "mode": "auto"})
+    assert scan.get_json()["ok"]
+    foto = os.path.join(config.UPLOAD_DIR, "foto", "uji.jpg")
+    os.makedirs(os.path.dirname(foto), exist_ok=True)
+    with open(foto, "wb") as f:
+        f.write(b"jpegdata")
+    r = client.get("/sistem/backup")
+    assert r.status_code == 200 and r.mimetype == "application/zip"
+    names = zipfile.ZipFile(io.BytesIO(r.data)).namelist()
+    assert "database.sql" in names and "uploads/foto/uji.jpg" in names
+    cfg = make_db()
+    from app.db import ensure_database
+    ensure_database(cfg)
+    tujuan = tmp_path / "vps-data"
+    meta = restore_zip(r.data, cfg, str(tujuan))
+    assert meta["sekolah"]
+    db = connect(cfg)
+    assert db.execute("SELECT COUNT(*) AS n FROM siswa").fetchone()["n"] == 3
+    assert db.execute("SELECT COUNT(*) AS n FROM presensi").fetchone()["n"] == 1
+    db.close()
+    assert (tujuan / "uploads" / "foto" / "uji.jpg").read_bytes() == b"jpegdata"
+    assert (tujuan / "secret.key").exists() or (tujuan / "flask.key").exists()

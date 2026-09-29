@@ -113,7 +113,7 @@ def process_scan(text, mode="auto", metode="scanner", db=None):
         else:
             # Sebelumnya tercatat I/S/A tetapi siswa ternyata datang → jadi Hadir
             execute("UPDATE presensi SET jam_masuk = ?, status_masuk = ?, keterangan = 'H', "
-                    "sumber = 'scan', updated_at = datetime('now','localtime') WHERE id = ?",
+                    "sumber = 'scan', updated_at = NOW() WHERE id = ?",
                     (jam, st, rec["id"]), db=db, commit=False)
         pesan = f"Absen masuk berhasil — {st}"
         _log(db, siswa["id"], "masuk", st, pesan, metode)
@@ -125,7 +125,7 @@ def process_scan(text, mode="auto", metode="scanner", db=None):
     # mode == "pulang"
     st = status_pulang(jam, aturan)
     execute("UPDATE presensi SET jam_pulang = ?, status_pulang = ?, "
-            "updated_at = datetime('now','localtime') WHERE id = ?",
+            "updated_at = NOW() WHERE id = ?",
             (jam, st, rec["id"]), db=db, commit=False)
     pesan = f"Absen pulang berhasil — {st}"
     _log(db, siswa["id"], "pulang", st, pesan, metode)
@@ -152,11 +152,10 @@ def set_manual(db, siswa_id, tanggal, keterangan, jam_masuk=None, jam_pulang=Non
     execute("INSERT INTO presensi(siswa_id, kelas_id, tanggal, jam_masuk, status_masuk, "
             "jam_pulang, status_pulang, keterangan, sumber, catatan) "
             "VALUES (?,?,?,?,?,?,?,?, 'manual', ?) "
-            "ON CONFLICT(siswa_id, tanggal) DO UPDATE SET jam_masuk = excluded.jam_masuk, "
-            "status_masuk = excluded.status_masuk, jam_pulang = excluded.jam_pulang, "
-            "status_pulang = excluded.status_pulang, keterangan = excluded.keterangan, "
-            "sumber = 'manual', catatan = excluded.catatan, "
-            "updated_at = datetime('now','localtime')",
+            "ON DUPLICATE KEY UPDATE jam_masuk = VALUES(jam_masuk), "
+            "status_masuk = VALUES(status_masuk), jam_pulang = VALUES(jam_pulang), "
+            "status_pulang = VALUES(status_pulang), keterangan = VALUES(keterangan), "
+            "sumber = 'manual', catatan = VALUES(catatan), updated_at = NOW()",
             (siswa_id, siswa["kelas_id"], tanggal, jm, sm, jp, sp, keterangan, catatan),
             db=db, commit=False)
     _log(db, siswa_id, "manual", utils.KETERANGAN.get(keterangan),
@@ -174,10 +173,11 @@ def apply_izin(db, izin):
     end = utils.parse_date(izin["tanggal_selesai"])
     for d in utils.school_days(start, end, db=db):
         execute("INSERT INTO presensi(siswa_id, kelas_id, tanggal, keterangan, sumber, catatan) "
-                "VALUES (?,?,?,?, 'izin', ?) ON CONFLICT(siswa_id, tanggal) DO UPDATE SET "
-                "keterangan = excluded.keterangan, sumber = 'izin', catatan = excluded.catatan, "
-                "updated_at = datetime('now','localtime') "
-                "WHERE presensi.jam_masuk IS NULL",
+                "VALUES (?,?,?,?, 'izin', ?) ON DUPLICATE KEY UPDATE "
+                "keterangan = IF(jam_masuk IS NULL, VALUES(keterangan), keterangan), "
+                "sumber = IF(jam_masuk IS NULL, 'izin', sumber), "
+                "catatan = IF(jam_masuk IS NULL, VALUES(catatan), catatan), "
+                "updated_at = IF(jam_masuk IS NULL, NOW(), updated_at)",
                 (izin["siswa_id"], siswa["kelas_id"] if siswa else None, d.isoformat(), ket,
                  izin["alasan"]), db=db, commit=False)
 

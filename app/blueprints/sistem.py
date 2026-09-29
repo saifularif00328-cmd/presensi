@@ -3,8 +3,6 @@ import hmac
 import io
 import os
 import secrets
-import sqlite3
-import tempfile
 
 import requests
 from PIL import Image
@@ -14,7 +12,7 @@ from werkzeug.security import generate_password_hash
 
 from .. import config, utils
 from ..auth import ROLES, feature, roles
-from ..db import execute, get_db, get_setting, query, set_setting
+from ..db import IntegrityError, execute, get_db, get_setting, query, set_setting
 from ..license import (FEATURE_LABEL, TIER_LABEL, TIERS, current_license, current_tier,
                        device_id, features_for, public_key)
 from ..services import lisensi as lisensi_svc
@@ -38,8 +36,8 @@ def libur():
         else:
             n = 0
             for d in utils.daterange(mulai, selesai):
-                execute("INSERT INTO libur(tanggal, keterangan) VALUES (?, ?) ON CONFLICT(tanggal) "
-                        "DO UPDATE SET keterangan = excluded.keterangan", (d.isoformat(), ket),
+                execute("INSERT INTO libur(tanggal, keterangan) VALUES (?, ?) ON DUPLICATE KEY "
+                        "UPDATE keterangan = VALUES(keterangan)", (d.isoformat(), ket),
                         commit=False)
                 n += 1
             get_db().commit()
@@ -47,7 +45,7 @@ def libur():
                   "tersebut.", "success")
         return redirect(url_for("sistem.libur"))
     tahun = arg_int("tahun", utils.today().year)
-    rows = query("SELECT * FROM libur WHERE strftime('%Y', tanggal) = ? ORDER BY tanggal",
+    rows = query("SELECT * FROM libur WHERE YEAR(tanggal) = ? ORDER BY tanggal",
                  (str(tahun),))
     return render_template("sistem/libur.html", rows=rows, tahun=tahun,
                            hari_sekolah=utils.hari_sekolah(), HARI=utils.HARI)
@@ -93,7 +91,7 @@ def users():
                         "VALUES (?,?,?,?,?,?)", (username, generate_password_hash(pw), nama, role,
                                                  form_int("guru_id"), aktif))
             flash("User disimpan.", "success")
-        except sqlite3.IntegrityError:
+        except IntegrityError:
             flash(f"Username '{username}' sudah dipakai.", "error")
         return redirect(url_for("sistem.users"))
     rows = query("SELECT u.*, gu.nama AS guru FROM users u LEFT JOIN guru gu ON gu.id = u.guru_id "
@@ -218,19 +216,11 @@ def _simpan_gambar(db, field, key, prefix, max_size):
 @bp.route("/backup")
 @roles()
 def backup():
-    """Unduh salinan database saat ini (konsisten, memakai SQLite backup API)."""
-    fd, tmp = tempfile.mkstemp(suffix=".db")
-    os.close(fd)
-    try:
-        target = sqlite3.connect(tmp)
-        get_db().backup(target)
-        target.close()
-        with open(tmp, "rb") as f:
-            buf = io.BytesIO(f.read())
-    finally:
-        os.remove(tmp)
-    return send_file(buf, as_attachment=True, mimetype="application/octet-stream",
-                     download_name=f"presensi-backup-{utils.now():%Y%m%d-%H%M}.db")
+    """Unduh backup lengkap (database + foto + kunci) dalam satu file ZIP."""
+    from ..services.backup import make_zip
+    return send_file(io.BytesIO(make_zip(get_db())), as_attachment=True,
+                     mimetype="application/zip",
+                     download_name=f"presensi-backup-{utils.now():%Y%m%d-%H%M}.zip")
 
 
 # ================================================================ LISENSI

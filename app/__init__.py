@@ -26,7 +26,7 @@ def create_app(test_config=None, start_jobs=True):
                 static_folder=os.path.join(config.BUNDLE_DIR, "static"))
     app.config.update(
         SECRET_KEY=_secret_key(),
-        DB_PATH=config.DB_PATH,
+        DATABASE=config.database(),
         MAX_CONTENT_LENGTH=16 * 1024 * 1024,
         PERMANENT_SESSION_LIFETIME=timedelta(days=7),
         SESSION_COOKIE_SAMESITE="Lax",
@@ -34,7 +34,7 @@ def create_app(test_config=None, start_jobs=True):
     if test_config:
         app.config.update(test_config)
 
-    init_db(app.config["DB_PATH"])
+    init_db(app.config["DATABASE"])
     app.teardown_appcontext(close_db)
 
     from . import auth

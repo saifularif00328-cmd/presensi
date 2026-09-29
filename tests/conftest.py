@@ -45,10 +45,39 @@ def clock(monkeypatch):
     return c
 
 
+# Server MySQL/MariaDB untuk pengujian; setiap tes memakai database sementara sendiri.
+TEST_DB_URL = os.environ.get("PRESENSI_TEST_DB_URL", "mysql://presensi:presensi@127.0.0.1:3306/")
+
+
 @pytest.fixture
-def app(tmp_path, clock):
-    app = create_app({"TESTING": True, "DB_PATH": str(tmp_path / "t.db"),
-                      "WTF_CSRF_DISABLED": True}, start_jobs=False)
+def make_db():
+    """Pabrik konfigurasi database sementara; semua dihapus setelah tes selesai."""
+    import uuid
+    from urllib.parse import unquote, urlparse
+
+    import pymysql
+    u = urlparse(TEST_DB_URL)
+    base = {"host": u.hostname, "port": u.port or 3306, "user": unquote(u.username or "root"),
+            "password": unquote(u.password or "")}
+    dibuat = []
+
+    def buat():
+        cfg = dict(base, database="presensi_test_" + uuid.uuid4().hex[:10])
+        dibuat.append(cfg["database"])
+        return cfg
+
+    yield buat
+    conn = pymysql.connect(**base)
+    with conn.cursor() as cur:
+        for name in dibuat:
+            cur.execute(f"DROP DATABASE IF EXISTS `{name}`")
+    conn.close()
+
+
+@pytest.fixture
+def app(make_db, clock):
+    app = create_app({"TESTING": True, "DATABASE": make_db(), "WTF_CSRF_DISABLED": True},
+                     start_jobs=False)
     return app
 
 

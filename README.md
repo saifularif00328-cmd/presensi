@@ -35,20 +35,40 @@ secret per instalasi, jadi QR hasil menebak atau memalsukan ID akan ditolak. Tom
 
 ## Menjalankan
 
-Butuh Python 3.10+.
+Butuh Python 3.10+ dan server **MySQL 8 / MariaDB 10.6+**.
 
-```bash
-pip install -r requirements.txt
-python run.py            # tambahkan --open untuk otomatis membuka browser
-```
+1. Buat user database (sekali), mis. di MariaDB:
+   ```sql
+   CREATE USER 'presensi'@'localhost' IDENTIFIED BY 'passwordkuat';
+   GRANT ALL ON presensi.* TO 'presensi'@'localhost';
+   ```
+2. Isi `data/config.ini`:
+   ```ini
+   [database]
+   host = 127.0.0.1
+   port = 3306
+   user = presensi
+   password = passwordkuat
+   database = presensi
+   ```
+   (atau env `PRESENSI_DB_URL=mysql://presensi:passwordkuat@127.0.0.1:3306/presensi`).
+   Database & tabel dibuat otomatis saat aplikasi pertama kali jalan.
+3. Jalankan:
+   ```bash
+   pip install -r requirements.txt
+   python run.py            # tambahkan --open untuk otomatis membuka browser
+   ```
 
 Buka `http://localhost:5000`. **Login awal: `admin` / `admin123`** (segera ganti di menu Akun).
 HP di WiFi yang sama bisa membuka `http://<IP-komputer>:5000`; alamatnya tercetak di konsol saat start.
 
-Semua data (database SQLite, foto, kunci enkripsi, backup) tersimpan di folder `data/`.
-Lokasinya bisa diubah dengan env `PRESENSI_DATA_DIR`. Port diatur dengan env `PRESENSI_PORT`.
-Database memakai mode WAL + `synchronous=FULL` supaya tahan mati listrik, dan backup
-otomatis dibuat setiap hari (14 terakhir disimpan).
+Foto, kunci enkripsi, dan backup tersimpan di folder `data/` (ubah dengan env `PRESENSI_DATA_DIR`).
+Port diatur dengan env `PRESENSI_PORT`. Zona waktu sekolah (WIB/WITA/WIT) diatur di Pengaturan.
+Backup harian otomatis berupa ZIP (database + foto) di `data/backup/` (14 terakhir disimpan);
+menu **Backup** mengunduh ZIP yang sama.
+
+**Pindah dari versi lama (SQLite `data/presensi.db`):**
+`python tools/migrasi_sqlite_ke_mysql.py` — seluruh data dipindah ke MySQL.
 
 ### Metode scan
 1. **Scanner QR USB (HID)**: buka menu *Scan QR*. Kotak input selalu fokus, jadi scanner tinggal ditembakkan ke kartu.

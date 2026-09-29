@@ -1,6 +1,7 @@
 """Utilitas waktu, kalender sekolah, dan enkripsi."""
 import os
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from cryptography.fernet import Fernet, InvalidToken
 
@@ -13,10 +14,37 @@ BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustu
 KETERANGAN = {"H": "Hadir", "I": "Izin", "S": "Sakit", "A": "Alpha", "D": "Dispensasi"}
 
 
+ZONA = {"Asia/Jakarta": "WIB", "Asia/Makassar": "WITA", "Asia/Jayapura": "WIT"}
+_zona = None
+
+
 # ------------------------------------------------------------------ waktu
+def zona_cached():
+    """Zona waktu sekolah dari cache (tanpa akses database); default WIB."""
+    return _zona or ZoneInfo("Asia/Jakarta")
+
+
+def zona():
+    """Zona waktu sekolah (setting `zona_waktu`). Server (mis. VPS) boleh memakai UTC."""
+    global _zona
+    if _zona is None:
+        try:
+            nama = get_setting("zona_waktu") or "Asia/Jakarta"
+        except Exception:  # di luar app context / database belum siap
+            return zona_cached()
+        _zona = ZoneInfo(nama if nama in ZONA else "Asia/Jakarta")
+    return _zona
+
+
+def reset_zona():
+    global _zona
+    _zona = None
+
+
 def now():
-    """Satu-satunya sumber waktu aplikasi (mudah di-mock saat pengujian)."""
-    return datetime.now()
+    """Satu-satunya sumber waktu aplikasi (mudah di-mock saat pengujian).
+    Jam dinding sekolah (naive), apa pun zona waktu server."""
+    return datetime.now(zona()).replace(tzinfo=None)
 
 
 def today():

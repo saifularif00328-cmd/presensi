@@ -1,12 +1,20 @@
-"""Akses database SQLite lokal.
+"""Akses database MySQL / MariaDB.
 
-- WAL + synchronous=FULL: setiap commit langsung aman di disk, tahan mati listrik.
 - Satu koneksi per request (flask.g); job background memakai `connect()` sendiri.
+- Kode aplikasi tetap menulis SQL dengan placeholder `?`; diterjemahkan ke `%s` di sini.
+- Tabel InnoDB (transaksi + foreign key), karakter utf8mb4.
 """
 import os
 import secrets
-import sqlite3
 from contextlib import contextmanager
+from datetime import datetime
+from decimal import Decimal
+
+import pymysql
+import pymysql.converters
+import pymysql.cursors
+from pymysql.constants import FIELD_TYPE
+from pymysql.err import IntegrityError  # noqa: F401  (dipakai blueprint: from ..db import IntegrityError)
 
 from flask import current_app, g
 from werkzeug.security import generate_password_hash
@@ -16,6 +24,7 @@ from . import config
 DEFAULT_SETTINGS = {
     "nama_sekolah": "SMP Negeri Contoh",
     "alamat_sekolah": "Jl. Pendidikan No. 1",
+    "zona_waktu": "Asia/Jakarta",         # Asia/Jakarta (WIB) / Asia/Makassar (WITA) / Asia/Jayapura (WIT)
     "hari_sekolah": "1,2,3,4,5",          # ISO weekday (1 = Senin ... 7 = Minggu)
     "modul_ibadah_aktif": "1",
     "monitor_refresh_detik": "3",
@@ -62,21 +71,168 @@ DEFAULT_SETTINGS = {
 }
 
 
-def connect(path=None):
-    conn = sqlite3.connect(path or current_db_path(), timeout=15, detect_types=0,
-                           check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA journal_mode = WAL")
-    conn.execute("PRAGMA synchronous = FULL")
-    return conn
+class Row(dict):
+    """Baris hasil query: bisa diakses dengan nama kolom (row["nama"]) maupun indeks (row[0])."""
+
+    def __getitem__(self, k):
+        if isinstance(k, int):
+            return list(self.values())[k]
+        return dict.__getitem__(self, k)
 
 
-def current_db_path():
+def _decimal(b):
+    d = Decimal(b.decode() if isinstance(b, bytes) else b)
+    return int(d) if d == d.to_integral_value() else float(d)
+
+
+# Tanggal/jam dikembalikan sebagai teks ("YYYY-MM-DD", "YYYY-MM-DD HH:MM:SS") seperti versi SQLite,
+# sehingga kode & template yang memotong string tanggal tetap berjalan. SUM()/AVG() (DECIMAL)
+# dikembalikan sebagai int/float agar bisa langsung dihitung.
+_CONV = dict(pymysql.converters.conversions)
+for _t in (FIELD_TYPE.DATE, FIELD_TYPE.DATETIME, FIELD_TYPE.TIMESTAMP, FIELD_TYPE.TIME):
+    _CONV.pop(_t, None)
+_CONV[FIELD_TYPE.NEWDECIMAL] = _decimal
+_CONV[FIELD_TYPE.DECIMAL] = _decimal
+
+
+def _translate(sql):
+    """Placeholder gaya SQLite (?) -> gaya PyMySQL (%s); % literal di-escape."""
+    out, quote = [], None
+    for ch in sql:
+        if quote:
+            out.append("%%" if ch == "%" else ch)
+            if ch == quote:
+                quote = None
+        elif ch in ("'", '"', "`"):
+            quote = ch
+            out.append(ch)
+        elif ch == "?":
+            out.append("%s")
+        elif ch == "%":
+            out.append("%%")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+class Cursor:
+    def __init__(self, cur):
+        self._cur = cur
+
+    @property
+    def lastrowid(self):
+        return self._cur.lastrowid
+
+    @property
+    def rowcount(self):
+        return self._cur.rowcount
+
+    def fetchone(self):
+        r = self._cur.fetchone()
+        return Row(r) if r is not None else None
+
+    def fetchall(self):
+        return [Row(r) for r in self._cur.fetchall()]
+
+    def close(self):
+        self._cur.close()
+
+
+class Connection:
+    """Pembungkus tipis PyMySQL dengan antarmuka mirip sqlite3 (execute/executemany/commit)."""
+
+    def __init__(self, raw):
+        self.raw = raw
+
+    def execute(self, sql, args=()):
+        cur = self.raw.cursor()
+        cur.execute(_translate(sql), tuple(args))
+        return Cursor(cur)
+
+    def executemany(self, sql, seq):
+        cur = self.raw.cursor()
+        cur.executemany(_translate(sql), [tuple(a) for a in seq])
+        return Cursor(cur)
+
+    def executescript(self, script):
+        for stmt in split_sql(script):
+            self.raw.cursor().execute(stmt)
+
+    def commit(self):
+        self.raw.commit()
+
+    def rollback(self):
+        self.raw.rollback()
+
+    def close(self):
+        try:
+            self.raw.close()
+        except pymysql.Error:
+            pass
+
+
+def split_sql(script):
+    """Pisahkan skrip SQL per pernyataan (abaikan komentar `--` dan titik koma di dalam string)."""
+    stmts, buf, quote = [], [], None
+    i = 0
+    while i < len(script):
+        ch = script[i]
+        if quote:
+            buf.append(ch)
+            if ch == "\\" and i + 1 < len(script):
+                buf.append(script[i + 1])
+                i += 1
+            elif ch == quote:
+                quote = None
+        elif ch == "-" and script.startswith("--", i):
+            j = script.find("\n", i)
+            i = len(script) if j < 0 else j
+            continue
+        elif ch in ("'", '"', "`"):
+            quote = ch
+            buf.append(ch)
+        elif ch == ";":
+            stmt = "".join(buf).strip()
+            if stmt:
+                stmts.append(stmt)
+            buf = []
+        else:
+            buf.append(ch)
+        i += 1
+    stmt = "".join(buf).strip()
+    if stmt:
+        stmts.append(stmt)
+    return stmts
+
+
+def db_config():
     try:
-        return current_app.config["DB_PATH"]
-    except RuntimeError:
-        return config.DB_PATH
+        return current_app.config["DATABASE"]
+    except (RuntimeError, KeyError):
+        return config.database()
+
+
+def raw_connect(cfg=None, database=True):
+    cfg = dict(cfg or db_config())
+    return pymysql.connect(
+        host=cfg.get("host", "127.0.0.1"), port=int(cfg.get("port", 3306)),
+        user=cfg.get("user", "root"), password=cfg.get("password", ""),
+        database=cfg.get("database") if database else None,
+        charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor, conv=_CONV,
+        autocommit=False, connect_timeout=10,
+        init_command="SET time_zone = '%s', sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'"
+                     % tz_offset())
+
+
+def tz_offset():
+    """Offset zona waktu sekolah (mis. +07:00) untuk NOW()/CURRENT_TIMESTAMP di MySQL."""
+    from .utils import zona_cached
+    raw = datetime.now(zona_cached()).strftime("%z")  # +0700
+    return raw[:3] + ":" + raw[3:]
+
+
+def connect(cfg=None):
+    return Connection(raw_connect(cfg))
 
 
 def get_db():
@@ -92,9 +248,9 @@ def close_db(_exc=None):
 
 
 @contextmanager
-def standalone(path=None):
+def standalone(cfg=None):
     """Koneksi terpisah untuk thread background / scheduler."""
-    conn = connect(path)
+    conn = connect(cfg)
     try:
         yield conn
         conn.commit()
@@ -119,16 +275,19 @@ def execute(sql, args=(), db=None, commit=True):
 
 
 def get_setting(key, default=None, db=None):
-    row = query("SELECT value FROM settings WHERE key = ?", (key,), one=True, db=db)
-    if row is None or row["value"] is None:
+    row = query("SELECT nilai FROM settings WHERE kunci = ?", (key,), one=True, db=db)
+    if row is None or row["nilai"] is None:
         return DEFAULT_SETTINGS.get(key, default) if default is None else default
-    return row["value"]
+    return row["nilai"]
 
 
 def set_setting(key, value, db=None, commit=True):
-    execute("INSERT INTO settings(key, value) VALUES(?, ?) "
-            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+    execute("INSERT INTO settings(kunci, nilai) VALUES(?, ?) "
+            "ON DUPLICATE KEY UPDATE nilai = VALUES(nilai)",
             (key, "" if value is None else str(value)), db=db, commit=commit)
+    if key == "zona_waktu":
+        from .utils import reset_zona
+        reset_zona()
 
 
 def new_qr_token():
@@ -136,23 +295,50 @@ def new_qr_token():
 
 
 # ---------------------------------------------------------------- init
-def init_db(path):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    conn = connect(path)
-    with open(os.path.join(os.path.dirname(__file__), "schema.sql"), encoding="utf-8") as f:
-        conn.executescript(f.read())
-    _seed(conn)
-    conn.commit()
-    conn.close()
+def ensure_database(cfg=None):
+    """Buat database bila belum ada (butuh hak CREATE pada user MySQL)."""
+    cfg = dict(cfg or db_config())
+    raw = raw_connect(cfg, database=False)
+    try:
+        with raw.cursor() as cur:
+            cur.execute("CREATE DATABASE IF NOT EXISTS `%s` CHARACTER SET utf8mb4 "
+                        "COLLATE utf8mb4_unicode_ci" % cfg["database"].replace("`", ""))
+        raw.commit()
+    finally:
+        raw.close()
+
+
+def init_db(cfg=None):
+    ensure_database(cfg)
+    conn = connect(cfg)
+    try:
+        with open(os.path.join(os.path.dirname(__file__), "schema.sql"), encoding="utf-8") as f:
+            conn.executescript(f.read())
+        migrate(conn)
+        _seed(conn)
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _columns(conn, table):
+    return {r["COLUMN_NAME"] for r in conn.execute(
+        "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?", (table,)).fetchall()}
+
+
+def migrate(conn):
+    """Perubahan skema untuk database yang dibuat versi sebelumnya (idempoten).
+    Tambahkan ALTER TABLE di sini, cek dulu dengan _columns(conn, tabel)."""
 
 
 def _seed(conn):
     for k, v in DEFAULT_SETTINGS.items():
-        conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES (?, ?)", (k, v))
+        conn.execute("INSERT IGNORE INTO settings(kunci, nilai) VALUES (?, ?)", (k, v))
     # Secret untuk checksum QR & token API cabang — dibuat sekali per instalasi
-    conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES ('qr_secret', ?)",
+    conn.execute("INSERT IGNORE INTO settings(kunci, nilai) VALUES ('qr_secret', ?)",
                  (secrets.token_hex(16),))
-    conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES ('cabang_api_token', ?)",
+    conn.execute("INSERT IGNORE INTO settings(kunci, nilai) VALUES ('cabang_api_token', ?)",
                  (secrets.token_urlsafe(18),))
 
     if conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:

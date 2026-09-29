@@ -5,13 +5,11 @@
 - backup harian database lokal
 """
 import logging
-import os
-import sqlite3
 from datetime import timedelta
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from . import config, utils
+from . import utils
 from .db import standalone
 
 log = logging.getLogger(__name__)
@@ -53,15 +51,9 @@ def job_lisensi(db):
 
 
 def job_backup(db):
-    """Salin database ke data/backup/presensi-YYYY-MM-DD.db (simpan 14 terakhir)."""
-    config.ensure_dirs()
-    dest = os.path.join(config.BACKUP_DIR, f"presensi-{utils.today_str()}.db")
-    target = sqlite3.connect(dest)
-    db.backup(target)
-    target.close()
-    files = sorted(f for f in os.listdir(config.BACKUP_DIR) if f.startswith("presensi-"))
-    for old in files[:-14]:
-        os.remove(os.path.join(config.BACKUP_DIR, old))
+    """Backup harian ZIP (database + foto) ke data/backup (simpan 14 terakhir)."""
+    from .services.backup import backup_harian
+    backup_harian(db)
 
 
 def start(app):

@@ -60,7 +60,7 @@ def izin_proses(iid, aksi):
         return redirect(url_for("perizinan.izin"))
     status = "Disetujui" if aksi == "setujui" else "Ditolak"
     execute("UPDATE izin SET status = ?, diproses_oleh = ?, catatan_proses = ?, "
-            "processed_at = datetime('now','localtime') WHERE id = ?",
+            "processed_at = NOW() WHERE id = ?",
             (status, g.user["id"], request.form.get("catatan", "").strip() or None, iid),
             db=db, commit=False)
     if status == "Disetujui":
@@ -152,7 +152,7 @@ def kartu_selesai(pid):
         execute("UPDATE siswa SET qr_token = ? WHERE id = ?", (new_qr_token(), p["siswa_id"]),
                 db=db, commit=False)
     execute("UPDATE pengajuan_kartu SET status = 'Selesai', "
-            "selesai_at = datetime('now','localtime') WHERE id = ?", (pid,), db=db)
+            "selesai_at = NOW() WHERE id = ?", (pid,), db=db)
     flash("Pengajuan selesai. Silakan cetak kartu baru.", "success")
     return redirect(url_for("perizinan.kartu", cetak=p["siswa_id"]))
 

@@ -16,7 +16,22 @@ from app.config import HOST, PORT
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    app = create_app()
+    try:
+        app = create_app()
+    except Exception as e:  # biasanya MySQL/MariaDB belum berjalan atau password salah
+        import pymysql
+        if not isinstance(e, pymysql.Error):
+            raise
+        from app import config
+        cfg = config.database()
+        print("=" * 60)
+        print(" Tidak dapat terhubung ke database MySQL/MariaDB")
+        print(f"  Tujuan : {cfg['user']}@{cfg['host']}:{cfg['port']}/{cfg['database']}")
+        print(f"  Pesan  : {e}")
+        print("  Periksa: layanan MariaDB/MySQL sudah berjalan, dan isi")
+        print(f"           {config.CONFIG_FILE} bagian [database] sudah benar.")
+        print("=" * 60)
+        sys.exit(1)
     print("=" * 60)
     print(" Presensi Siswa Digital")
     print(f"  Komputer ini : http://localhost:{PORT}")

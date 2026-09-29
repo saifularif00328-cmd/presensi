@@ -10,7 +10,7 @@ a = Analysis(
     pathex=[],
     datas=[("app/templates", "app/templates"), ("app/static", "app/static"),
            ("app/schema.sql", "app"), ("app/fonts", "app/fonts")] + _pub,
-    hiddenimports=["apscheduler.triggers.interval", "apscheduler.triggers.cron",
+    hiddenimports=["apscheduler.triggers.interval", "apscheduler.triggers.cron", "pymysql", "tzdata",
                    "apscheduler.executors.pool", "apscheduler.jobstores.memory"],
     excludes=["tkinter", "pytest"],
     cipher=block_cipher,

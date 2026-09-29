@@ -1,6 +1,5 @@
 """Data Master: Kelas, Siswa (+ import & kartu QR), Guru, Tahun Ajaran."""
 import csv
-import sqlite3
 import io
 import os
 
@@ -11,7 +10,7 @@ from PIL import Image, ImageOps
 
 from .. import config
 from ..auth import feature, roles
-from ..db import execute, get_db, get_setting, new_qr_token, query, set_setting
+from ..db import IntegrityError, execute, get_db, get_setting, new_qr_token, query, set_setting
 from ..qr import make_payload, qr_png
 from ..services import kartu as kartu_svc
 from ..services.export import xlsx
@@ -47,7 +46,7 @@ def kelas():
                     execute("INSERT INTO kelas(nama, jenjang, wali_guru_id) VALUES (?,?,?)",
                             (nama, _f("jenjang"), form_int("wali_guru_id")))
                     flash("Kelas ditambahkan.", "success")
-            except sqlite3.IntegrityError:
+            except IntegrityError:
                 flash(f"Kelas '{nama}' sudah ada.", "error")
         return redirect(url_for("master.kelas"))
     rows = query("SELECT k.*, g.nama AS wali, (SELECT COUNT(*) FROM siswa s WHERE "
@@ -90,7 +89,7 @@ def guru():
             execute("INSERT INTO guru(nip, nama, jabatan, no_hp, aktif) VALUES (?,?,?,?,?)", vals)
             flash("Guru ditambahkan.", "success")
         return redirect(url_for("master.guru"))
-    rows = query("SELECT g.*, (SELECT GROUP_CONCAT(nama, ', ') FROM kelas WHERE "
+    rows = query("SELECT g.*, (SELECT GROUP_CONCAT(nama SEPARATOR ', ') FROM kelas WHERE "
                  "wali_guru_id = g.id) AS wali_kelas, (SELECT username FROM users u WHERE "
                  "u.guru_id = g.id LIMIT 1) AS username FROM guru g ORDER BY g.aktif DESC, g.nama")
     edit = query("SELECT * FROM guru WHERE id = ?", (arg_int("edit"),), one=True)

@@ -112,7 +112,7 @@ def process_queue(db, limit=25):
             break
         if ok:
             execute("UPDATE notif_queue SET status = 'Terkirim', error = NULL, "
-                    "percobaan = percobaan + 1, sent_at = datetime('now','localtime') "
+                    "percobaan = percobaan + 1, sent_at = NOW() "
                     "WHERE id = ?", (row["id"],), db=db)
             sent += 1
         else:
