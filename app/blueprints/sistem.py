@@ -13,8 +13,7 @@ from werkzeug.security import generate_password_hash
 from .. import config, utils
 from ..auth import ROLES, feature, roles
 from ..db import IntegrityError, execute, get_db, get_setting, query, set_setting
-from ..license import (FEATURE_LABEL, TIER_LABEL, TIERS, current_license, current_tier,
-                       device_id, features_for, public_key)
+from ..license import current_license, device_id, public_key
 from ..services import lisensi as lisensi_svc
 from ..services.rekap import rekap_kelas_hari
 from .common import arg_int, form_int
@@ -84,11 +83,12 @@ def users():
                     if len(pw) < 6:
                         flash("Password minimal 6 karakter.", "error")
                         return redirect(url_for("sistem.users", edit=uid))
-                    execute("UPDATE users SET password_hash = ? WHERE id = ?",
+                    # password diset admin = sementara; pengguna wajib menggantinya
+                    execute("UPDATE users SET password_hash = ?, wajib_ganti = 1 WHERE id = ?",
                             (generate_password_hash(pw), uid))
             else:
-                execute("INSERT INTO users(username, password_hash, nama, role, guru_id, aktif) "
-                        "VALUES (?,?,?,?,?,?)", (username, generate_password_hash(pw), nama, role,
+                execute("INSERT INTO users(username, password_hash, nama, role, guru_id, aktif, "
+                        "wajib_ganti) VALUES (?,?,?,?,?,?, 1)", (username, generate_password_hash(pw), nama, role,
                                                  form_int("guru_id"), aktif))
             flash("User disimpan.", "success")
         except IntegrityError:
@@ -160,6 +160,9 @@ def pengaturan():
                 set_setting(k, request.form.get(k, "").strip(), db=db, commit=False)
         hari = [h for h in request.form.getlist("hari_sekolah") if h.isdigit()]
         set_setting("hari_sekolah", ",".join(hari) or "1,2,3,4,5", db=db, commit=False)
+        zona = request.form.get("zona_waktu")
+        if zona in utils.ZONA:
+            set_setting("zona_waktu", zona, db=db, commit=False)
         set_setting("modul_ibadah_aktif", "1" if request.form.get("modul_ibadah_aktif") else "0",
                     db=db, commit=False)
         _simpan_gambar(db, "logo", "logo_sekolah", "logo_sekolah", (512, 512))
@@ -172,7 +175,7 @@ def pengaturan():
         return redirect(url_for("sistem.pengaturan"))
     backups = []
     if os.path.isdir(config.BACKUP_DIR):
-        backups = sorted((f for f in os.listdir(config.BACKUP_DIR) if f.endswith(".db")),
+        backups = sorted((f for f in os.listdir(config.BACKUP_DIR) if f.endswith((".db", ".zip"))),
                          reverse=True)
     return render_template("sistem/pengaturan.html", hari=utils.hari_sekolah(), HARI=utils.HARI,
                            backups=backups, data_dir=os.path.abspath(config.DATA_DIR),
@@ -180,7 +183,8 @@ def pengaturan():
                            prof={k: get_setting(k) for k in PROFIL_KEYS},
                            ttd_url=(url_for("uploads", filename=get_setting("ttd_kepsek"))
                                     if get_setting("ttd_kepsek") else None),
-                           refresh=get_setting("monitor_refresh_detik"))
+                           refresh=get_setting("monitor_refresh_detik"),
+                           ZONA=utils.ZONA, zona=get_setting("zona_waktu"))
 
 
 PROFIL_KEYS = ("nama_sekolah", "alamat_sekolah", "kota_sekolah", "telepon_sekolah", "email_sekolah",
@@ -233,7 +237,7 @@ def lisensi():
             ok, res = lisensi_svc.activate_online(db, request.form.get("server", ""),
                                                   request.form.get("kode", ""))
             if ok:
-                flash(f"Lisensi {TIER_LABEL[res['tier']]} aktif"
+                flash("Langganan aktif"
                       f"{' sampai ' + res['exp'] if res['exp'] else ' tanpa batas waktu'}.", "success")
             else:
                 flash(res, "error")
@@ -246,14 +250,12 @@ def lisensi():
         else:
             info = lisensi_svc.activate_offline(db, request.form.get("license_key", ""))
             if info["valid"]:
-                flash(f"Lisensi {TIER_LABEL[info['tier']]} berhasil diaktifkan.", "success")
+                flash("Kode lisensi berhasil diaktifkan.", "success")
             else:
                 flash(f"Kode lisensi ditolak: {info['reason']}", "error")
         return redirect(url_for("sistem.lisensi"))
-    tabel = [(t, TIER_LABEL[t], sorted(FEATURE_LABEL.get(f, f) for f in features_for(t)
-                                       if f in FEATURE_LABEL)) for t in TIERS]
-    return render_template("sistem/lisensi.html", device=device_id(), tier_now=current_tier(),
-                           tabel=tabel, info=current_license(), key=get_setting("license_key"),
+    return render_template("sistem/lisensi.html", device=device_id(),
+                           info=current_license(), key=get_setting("license_key"),
                            server=lisensi_svc.server_url(),
                            checked=get_setting("license_checked"),
                            pubkey_ok=public_key() is not None)

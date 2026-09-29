@@ -123,14 +123,18 @@ def akun():
         baru = request.form.get("password_baru", "")
         if not check_password_hash(g.user["password_hash"], lama):
             flash("Password lama salah.", "error")
-        elif len(baru) < 6:
-            flash("Password baru minimal 6 karakter.", "error")
+        elif len(baru) < 8:
+            flash("Password baru minimal 8 karakter.", "error")
+        elif baru == lama or baru.lower() in ("admin123", "password", "12345678", "presensi"):
+            flash("Gunakan password baru yang berbeda dan tidak mudah ditebak.", "error")
         elif baru != request.form.get("password_ulang", ""):
             flash("Konfirmasi password tidak sama.", "error")
         else:
-            execute("UPDATE users SET password_hash = ? WHERE id = ?",
+            execute("UPDATE users SET password_hash = ?, wajib_ganti = 0 WHERE id = ?",
                     (generate_password_hash(baru), g.user["id"]))
             flash("Password berhasil diganti.", "success")
+            if g.user["wajib_ganti"]:
+                return redirect(url_for("main.beranda"))
         return redirect(url_for("main.akun"))
     guru = None
     if g.user["guru_id"]:

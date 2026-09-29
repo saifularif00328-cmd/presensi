@@ -44,6 +44,11 @@
 
   <h3 class="mt">Hari sekolah</h3>
   <div class="checks">{% for h in HARI %}<label class="check"><input type="checkbox" name="hari_sekolah" value="{{ loop.index }}" {{ 'checked' if loop.index in hari }}>{{ h }}</label>{% endfor %}</div>
+  <div class="form-grid mt">
+    <div><label>Zona waktu sekolah</label>
+      <select name="zona_waktu">{% for k, v in ZONA.items() %}<option value="{{ k }}" {{ 'selected' if k == zona }}>{{ v }} ({{ k }})</option>{% endfor %}</select>
+      <div class="help">Dipakai untuk jam absen, status telat, dan laporan — tetap benar walau server berada di zona waktu lain.</div></div>
+  </div>
   <h3 class="mt">Modul & tampilan</h3>
   <div class="form-grid">
     <div><label class="check"><input type="checkbox" name="modul_ibadah_aktif" value="1" {{ 'checked' if ibadah_aktif() }}>Aktifkan modul Ibadah</label>

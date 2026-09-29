@@ -61,8 +61,17 @@ CREATE TABLE IF NOT EXISTS users (
     role           VARCHAR(20) NOT NULL,            -- admin / piket / bk
     guru_id        INT NULL,
     aktif          TINYINT NOT NULL DEFAULT 1,
+    wajib_ganti    TINYINT NOT NULL DEFAULT 0,      -- 1 = harus ganti password saat login berikutnya
     created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (guru_id) REFERENCES guru(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Percobaan login gagal (kunci = "akun:<username>" / "ip:<alamat>") untuk kunci sementara
+CREATE TABLE IF NOT EXISTS login_gagal (
+    kunci            VARCHAR(191) PRIMARY KEY,
+    jumlah           INT NOT NULL DEFAULT 0,
+    pertama          DATETIME NOT NULL,
+    terkunci_sampai  DATETIME NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ===================== PRESENSI =====================

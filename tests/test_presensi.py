@@ -1,4 +1,5 @@
-from datetime import timedelta
+import os
+from datetime import datetime, timedelta
 
 from app.db import connect, set_setting
 from app.license import make_license, parse_license
@@ -190,13 +191,7 @@ def test_lisensi_dan_tier(app, client):
     # jam komputer dimundurkan
     assert "mundur" in parse_license(k, "AAAA-BBBB-CCCC-DDDD", today=date(2030, 1, 7),
                                      last_seen=date(2030, 3, 1))["reason"]
-    set_tier(app, None)
-    assert client.get("/perizinan/izin").status_code == 402
-    assert client.get("/ibadah/tap").status_code == 402
-    assert client.get("/presensi/scan").status_code == 200
-    set_tier(app, "pro")
-    assert client.get("/perizinan/izin").status_code == 200
-    assert client.get("/ibadah/tap").status_code == 402
+
 
 
 def test_role_piket(app, client):
@@ -357,34 +352,73 @@ def test_server_aktivasi_online(app, client, tmp_path, monkeypatch):
         return Resp(sc.post(url.replace("http://lisensi.test", ""), json=json))
 
     monkeypatch.setattr(requests, "post", fake_post)
+
+    def status():
+        with app.app_context():
+            from app.license import langganan
+            return langganan()["status"]
+
     set_tier(app, None)
-    assert client.get("/ibadah/tap").status_code == 402
+    assert status() == "uji_coba"
     r = client.post("/sistem/lisensi", data={"aksi": "online", "kode": kode.lower(),
                                              "server": "http://lisensi.test"})
     assert r.status_code == 302
-    assert client.get("/ibadah/tap").status_code == 200  # Enterprise aktif
+    assert status() == "aktif"
     # kode yang sama tidak bisa dipakai di perangkat lain (maks 1)
     other = sc.post("/api/activate", json={"code": kode, "device": "LAIN-0000-0000-0000"})
     assert other.status_code == 409
-    # vendor mencabut → aplikasi turun ke Basic setelah cek online
+    # vendor mencabut → aplikasi menjadi baca-saja setelah cek online
     sc.post("/lisensi/1", data={"_csrf": tok, "aksi": "cabut"})
     with app.app_context():
         from app.db import connect
         db = connect()
         assert svc.check_online(db) == "dicabut"
         db.close()
-    assert client.get("/ibadah/tap").status_code == 402
-    # dipulihkan + diturunkan ke Pro → diterima otomatis
+    assert status() == "habis"
+    assert client.post("/presensi/api/scan", json={"code": "x"}).status_code == 402
+    assert client.get("/presensi/rekap").status_code == 200  # data tetap bisa dilihat
+    # dipulihkan → diterima otomatis
     sc.post("/lisensi/1", data={"_csrf": tok, "aksi": "pulihkan"})
-    sc.post("/lisensi/1", data={"_csrf": tok, "aksi": "simpan", "tier": "pro", "exp": "",
-                                "max_device": "1", "sekolah": "SMPN Uji"})
     with app.app_context():
         from app.db import connect
         db = connect()
         assert svc.check_online(db) == "aktif"
         db.close()
-    assert client.get("/ibadah/tap").status_code == 402
-    assert client.get("/perizinan/izin").status_code == 200
+    assert status() == "aktif"
+
+
+def test_langganan_uji_coba_tenggang_habis(app, client, seed, clock):
+    """Uji coba 14 hari → habis (baca-saja); lisensi berakhir → tenggang 7 hari → habis."""
+    from datetime import date
+    from app.license import langganan
+    from .conftest import PRIV_KEY
+
+    def st():
+        with app.app_context():
+            return langganan()
+    set_tier(app, None)
+    assert st()["status"] == "uji_coba" and st()["sisa"] == 14
+    clock.set(7, 0, BASE_DAY + timedelta(days=15))
+    assert st()["status"] == "habis"
+    r = client.post("/presensi/api/scan", json={"code": seed["ahmad"]["qr"], "mode": "auto"})
+    assert r.status_code == 402 and "baca-saja" in r.get_json()["pesan"]
+    assert "mode baca-saja" in client.get("/presensi/rekap").get_data(as_text=True)
+    # langganan dengan batas waktu & batas siswa
+    with app.app_context():
+        db = connect()
+        set_setting("license_key", make_license(PRIV_KEY, os.environ["PRESENSI_DEVICE_ID"],
+                                                exp=date(2030, 2, 28), maks_siswa=3), db=db)
+        db.close()
+    assert st()["status"] == "aktif" and st()["maks_siswa"] == 3
+    r = client.post("/master/siswa/baru", data={"nama": "Siswa Keempat", "aktif": "1"},
+                    follow_redirects=True)
+    assert "Batas jumlah siswa" in r.get_data(as_text=True)
+    clock.set(7, 0, datetime(2030, 3, 3))
+    assert st()["status"] == "tenggang" and st()["sisa"] == 4
+    assert client.post("/presensi/api/scan", json={"code": seed["ahmad"]["qr"],
+                                                   "mode": "auto"}).status_code == 200
+    clock.set(7, 0, datetime(2030, 3, 10))
+    assert st()["status"] == "habis"
 
 
 def test_admin_server_lisensi_tertutup_dari_internet(tmp_path):
@@ -523,3 +557,91 @@ def test_backup_zip_dipulihkan_ke_database_lain(app, client, seed, make_db, tmp_
     db.close()
     assert (tujuan / "uploads" / "foto" / "uji.jpg").read_bytes() == b"jpegdata"
     assert (tujuan / "secret.key").exists() or (tujuan / "flask.key").exists()
+
+
+def test_wajib_ganti_password_awal(app, client):
+    """Admin dengan password bawaan dipaksa ganti password sebelum membuka halaman lain."""
+    app.config["WAJIB_GANTI_PASSWORD"] = True
+    r = client.get("/presensi/scan")
+    assert r.status_code == 302 and r.headers["Location"].endswith("/akun")
+    assert client.get("/akun").status_code == 200
+    r = client.post("/akun", data={"password_lama": "admin123", "password_baru": "admin123",
+                                   "password_ulang": "admin123"})
+    assert client.get("/presensi/scan").status_code == 302  # password lemah ditolak
+    client.post("/akun", data={"password_lama": "admin123", "password_baru": "Sekolah#2030",
+                               "password_ulang": "Sekolah#2030"})
+    assert client.get("/presensi/scan").status_code == 200
+
+
+def test_login_dikunci_setelah_banyak_gagal(app, clock):
+    c = app.test_client()
+    for _ in range(5):
+        r = c.post("/login", data={"username": "admin", "password": "salah"})
+        assert r.status_code == 200
+    r = c.post("/login", data={"username": "admin", "password": "admin123"})
+    assert r.status_code == 429  # password benar pun ditolak selama terkunci
+    clock.set(7, 30)  # 45 menit kemudian kunci sudah lepas
+    assert c.post("/login", data={"username": "admin", "password": "admin123"}).status_code == 302
+
+
+def test_ip_asli_hanya_dari_proxy_lokal(app):
+    """Header CF-Connecting-IP hanya dipercaya dari cloudflared/Nginx lokal (127.0.0.1)."""
+    from flask import request
+    seen = {}
+
+    @app.route("/_ip")
+    def _ip():
+        seen["ip"], seen["https"] = request.remote_addr, request.is_secure
+        return "ok"
+
+    c = app.test_client()
+    c.get("/_ip", headers={"CF-Connecting-IP": "36.1.2.3", "X-Forwarded-Proto": "https"},
+          environ_base={"REMOTE_ADDR": "127.0.0.1"})
+    assert seen == {"ip": "36.1.2.3", "https": True}
+    c.get("/_ip", headers={"CF-Connecting-IP": "36.1.2.3", "X-Forwarded-Proto": "https"},
+          environ_base={"REMOTE_ADDR": "192.168.1.50"})
+    assert seen == {"ip": "192.168.1.50", "https": False}
+    r = c.get("/login", environ_base={"REMOTE_ADDR": "127.0.0.1"},
+              headers={"X-Forwarded-Proto": "https"})
+    assert "Strict-Transport-Security" in r.headers and r.headers["X-Frame-Options"] == "SAMEORIGIN"
+
+
+def test_zona_waktu_sekolah_wita(app, client):
+    """Sekolah WITA di server berzona lain: waktu MySQL NOW() mengikuti zona sekolah."""
+    from zoneinfo import ZoneInfo
+    from app import utils
+    from app.db import tz_offset
+    client.post("/sistem/pengaturan", data={"zona_waktu": "Asia/Makassar", "nama_sekolah": "X"})
+    with app.app_context():
+        utils.reset_zona()
+        assert utils.zona() == ZoneInfo("Asia/Makassar")
+        assert tz_offset() == "+08:00"
+        db = connect()
+        mysql_now = utils.parse_datetime(db.execute("SELECT NOW() AS n").fetchone()["n"])
+        db.close()
+    selisih = abs((mysql_now - datetime.now(ZoneInfo("Asia/Makassar")).replace(tzinfo=None))
+                  .total_seconds())
+    assert selisih < 60
+    with app.app_context():
+        utils.reset_zona()
+        set_setting("zona_waktu", "Asia/Jakarta", db=connect())
+
+
+def test_mode_cloud_status_dari_berkas_vendor(app, client, monkeypatch):
+    import json
+    from app import config
+    from app.license import langganan
+    monkeypatch.setenv("PRESENSI_MODE", "cloud")
+    path = os.path.join(config.DATA_DIR, "_vendor.json")
+    try:
+        with app.app_context():
+            if os.path.exists(path):
+                os.remove(path)
+            assert langganan()["status"] == "habis"
+            with open(path, "w") as f:
+                json.dump({"status": "aktif", "berlaku_sampai": "2030-12-31", "maks_siswa": 500}, f)
+            L = langganan()
+            assert L["status"] == "aktif" and L["maks_siswa"] == 500 and L["sisa"] > 300
+    finally:
+        if os.path.exists(path):
+            os.remove(path)

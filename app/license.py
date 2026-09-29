@@ -1,4 +1,9 @@
-"""Sistem lisensi berjenjang (Basic / Pro / Enterprise) dengan tanda tangan digital Ed25519.
+"""Lisensi langganan (satu paket, semua fitur) dengan tanda tangan digital Ed25519.
+
+Status langganan sekolah: uji coba (14 hari sejak instalasi, tanpa kode) -> aktif (kode
+lisensi valid) -> masa tenggang (7 hari setelah berakhir) -> habis (mode baca-saja: data
+tetap bisa dilihat & diekspor, tetapi tidak bisa absen / mengubah data).
+Server VPS milik vendor (PRESENSI_MODE=cloud) membaca status dari berkas data/_vendor.json.
 
 - Vendor memegang KUNCI PRIVAT (vendor/private_key.pem, tidak pernah ikut dibagikan).
 - Aplikasi sekolah hanya membawa KUNCI PUBLIK (app/license_public.pem) — cukup untuk
@@ -6,8 +11,9 @@
   dibongkar, lisensi tetap tidak bisa dipalsukan.
 
 Format kode lisensi:  PSD1-<payload base64url>.<tanda tangan base64url>
-Payload (JSON): lid (ID lisensi), tier, sekolah, device (ID perangkat), exp (YYYY-MM-DD
-atau null = selamanya), iat (tanggal terbit).
+Payload (JSON): lid (ID lisensi), tier (lama; kini diabaikan — semua fitur aktif), sekolah,
+device (ID perangkat), exp (YYYY-MM-DD atau null = selamanya), iat (tanggal terbit),
+maks_siswa (0/null = tanpa batas).
 
 Lisensi dibuat oleh vendor lewat server aktivasi (license_server/) atau secara offline
 dengan `python tools/keygen.py`. Kunci dibuat sekali dengan `python tools/vendor_init.py`.
@@ -24,21 +30,17 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-TIERS = ["basic", "pro", "enterprise"]
-TIER_LABEL = {"basic": "Basic", "pro": "Pro", "enterprise": "Enterprise"}
+TIERS = ["lengkap", "basic", "pro", "enterprise"]  # tier lama tetap diterima (setara lengkap)
+TIER_LABEL = {"lengkap": "Paket Lengkap", "basic": "Paket Lengkap", "pro": "Paket Lengkap",
+              "enterprise": "Paket Lengkap"}
 PREFIX = "PSD1-"
-WARN_DAYS = 30  # peringatan menjelang kedaluwarsa
+WARN_DAYS = 14      # pengingat menjelang berakhir
+TRIAL_DAYS = 14     # uji coba tanpa kode lisensi
+GRACE_DAYS = 7      # masa tenggang setelah berakhir
 
 # Alamat server aktivasi bawaan (bisa diganti admin sekolah di halaman Lisensi).
 # Vendor: isi dengan URL server aktivasi Anda sebelum build, mis. "https://lisensi.domainanda.com"
 DEFAULT_SERVER_URL = os.environ.get("PRESENSI_LICENSE_SERVER", "")
-
-# Fitur yang dibuka tiap tier (kumulatif)
-_FEATURES = {
-    "basic": {"presensi", "master", "rekap", "kartu"},
-    "pro": {"perizinan", "pelanggaran", "whatsapp", "multiuser"},
-    "enterprise": {"ibadah", "multicabang"},
-}
 
 FEATURE_LABEL = {
     "perizinan": "Modul Perizinan",
@@ -50,18 +52,13 @@ FEATURE_LABEL = {
 }
 
 
-def features_for(tier):
-    out = set()
-    for t in TIERS[:TIERS.index(tier) + 1]:
-        out |= _FEATURES[t]
-    return out
+def features_for(_tier=None):
+    """Satu paket: semua fitur tersedia (pembatasan kini lewat status langganan)."""
+    return {"presensi", "master", "rekap", "kartu", *FEATURE_LABEL}
 
 
-def min_tier(feature):
-    for t in TIERS:
-        if feature in _FEATURES[t]:
-            return t
-    return "enterprise"
+def min_tier(_feature):
+    return "lengkap"
 
 
 # ------------------------------------------------------------------ ID perangkat
@@ -163,15 +160,17 @@ def _verify(token, pub=None):
         return None
 
 
-def make_license(private_key, device, tier, sekolah="", exp=None, lid=None):
+def make_license(private_key, device, tier="lengkap", sekolah="", exp=None, lid=None,
+                 maks_siswa=0):
     """Terbitkan kode lisensi. `exp`: date/str YYYY-MM-DD atau None (tanpa batas)."""
-    tier = tier.lower()
+    tier = (tier or "lengkap").lower()
     if tier not in TIERS:
-        raise ValueError("tier harus basic/pro/enterprise")
+        raise ValueError("tier tidak dikenal")
     if isinstance(exp, (date, datetime)):
         exp = exp.strftime("%Y-%m-%d")
     obj = {"lid": lid or uuid.uuid4().hex[:12].upper(), "tier": tier, "sekolah": sekolah or "",
-           "device": device.strip().upper(), "exp": exp, "iat": date.today().isoformat()}
+           "device": device.strip().upper(), "exp": exp, "iat": date.today().isoformat(),
+           "maks_siswa": int(maks_siswa or 0)}
     return PREFIX + _sign(private_key, obj)
 
 
@@ -193,11 +192,11 @@ def _today():
 def parse_license(key, dev=None, today=None, last_seen=None):
     """Periksa kode lisensi. Selalu mengembalikan dict:
     valid (bool), reason (str), tier, sekolah, lid, exp, days_left (int/None), payload."""
-    out = {"valid": False, "reason": "", "tier": "basic", "sekolah": "", "lid": None,
-           "exp": None, "days_left": None, "payload": None}
+    out = {"valid": False, "reason": "", "tier": "lengkap", "sekolah": "", "lid": None,
+           "exp": None, "days_left": None, "payload": None, "maks_siswa": 0, "expired": False}
     key = (key or "").strip()
     if not key:
-        out["reason"] = "Belum ada lisensi (mode Basic)."
+        out["reason"] = "Belum ada kode lisensi."
         return out
     if public_key() is None:
         out["reason"] = "Kunci publik vendor belum dipasang di aplikasi."
@@ -209,8 +208,8 @@ def parse_license(key, dev=None, today=None, last_seen=None):
     if p is None:
         out["reason"] = "Tanda tangan lisensi tidak valid (kode rusak atau palsu)."
         return out
-    out.update(payload=p, tier=p.get("tier", "basic"), sekolah=p.get("sekolah", ""),
-               lid=p.get("lid"), exp=p.get("exp"))
+    out.update(payload=p, tier=p.get("tier") or "lengkap", sekolah=p.get("sekolah", ""),
+               lid=p.get("lid"), exp=p.get("exp"), maks_siswa=int(p.get("maks_siswa") or 0))
     if p.get("device", "").upper() != (dev or device_id()).upper():
         out["reason"] = "Lisensi ini untuk perangkat lain."
         return out
@@ -223,6 +222,7 @@ def parse_license(key, dev=None, today=None, last_seen=None):
         out["days_left"] = (exp - today).days
         if today > exp:
             out["reason"] = f"Lisensi kedaluwarsa sejak {out['exp']}."
+            out["expired"] = True
             return out
     if out["tier"] not in TIERS:
         out["reason"] = "Tier tidak dikenal."
@@ -255,12 +255,78 @@ def current_license(db=None):
 
 
 def current_tier(db=None):
-    info = current_license(db)
-    return info["tier"] if info["valid"] else "basic"
+    return "lengkap"
 
 
-def has_feature(feature, db=None):
-    return feature in features_for(current_tier(db))
+def has_feature(_feature, db=None):
+    """Semua fitur termasuk paket. Pembatasan saat langganan habis: lihat langganan()."""
+    return True
+
+
+def _cloud_status(today):
+    """Status dari berkas vendor (hanya di server VPS vendor, PRESENSI_MODE=cloud)."""
+    from . import config
+    path = os.path.join(config.DATA_DIR, "_vendor.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            v = json.load(f)
+    except (OSError, ValueError):
+        return {"status": "habis", "sampai": None, "maks_siswa": 0,
+                "alasan": "Berkas status vendor (_vendor.json) tidak ada atau rusak."}
+    sampai = v.get("berlaku_sampai")
+    out = {"status": "aktif", "sampai": sampai, "maks_siswa": int(v.get("maks_siswa") or 0),
+           "alasan": ""}
+    if v.get("status") == "uji_coba":
+        out["status"] = "uji_coba"
+    if v.get("status") == "nonaktif":
+        out.update(status="habis", alasan="Langganan dinonaktifkan oleh vendor.")
+    return out
+
+
+def langganan(db=None):
+    """Status langganan sekolah saat ini:
+    status  : aktif / uji_coba / tenggang / habis
+    sampai  : tanggal berakhir (YYYY-MM-DD) atau None (tanpa batas)
+    sisa    : sisa hari (int/None); tenggang = sisa hari masa tenggang
+    maks_siswa, alasan, label, baca_saja (bool), peringatan (bool)
+    """
+    from .db import get_setting
+    today = _today()
+    if os.environ.get("PRESENSI_MODE") == "cloud":
+        out = _cloud_status(today)
+    else:
+        info = current_license(db)
+        if info["valid"]:
+            out = {"status": "aktif", "sampai": info["exp"], "maks_siswa": info["maks_siswa"],
+                   "alasan": ""}
+        elif info["expired"] and get_setting("license_status", db=db) != "dicabut":
+            out = {"status": "aktif", "sampai": info["exp"], "maks_siswa": info["maks_siswa"],
+                   "alasan": info["reason"]}
+        elif (get_setting("license_key", db=db) or "").strip():
+            out = {"status": "habis", "sampai": None, "maks_siswa": 0, "alasan": info["reason"]}
+        else:
+            mulai = get_setting("install_date", db=db) or today.isoformat()
+            akhir = datetime.strptime(mulai, "%Y-%m-%d").date() + timedelta(days=TRIAL_DAYS)
+            out = {"status": "uji_coba", "sampai": akhir.isoformat(), "maks_siswa": 0,
+                   "alasan": ""}
+    out["sisa"] = None
+    if out["status"] != "habis" and out.get("sampai"):
+        sampai = datetime.strptime(out["sampai"], "%Y-%m-%d").date()
+        sisa = (sampai - today).days
+        out["sisa"] = sisa
+        if sisa < 0:
+            batas_tenggang = 0 if out["status"] == "uji_coba" else GRACE_DAYS
+            if -sisa <= batas_tenggang:
+                out.update(status="tenggang", sisa=batas_tenggang + sisa)
+            else:
+                out.update(status="habis", sisa=None,
+                           alasan=out["alasan"] or f"Masa langganan berakhir {out['sampai']}.")
+    out["label"] = {"aktif": "Aktif", "uji_coba": "Uji coba", "tenggang": "Masa tenggang",
+                    "habis": "Habis"}[out["status"]]
+    out["baca_saja"] = out["status"] == "habis"
+    out["peringatan"] = (out["status"] in ("uji_coba", "tenggang", "habis")
+                         or (out["sisa"] is not None and out["sisa"] <= WARN_DAYS))
+    return out
 
 
 def touch_last_seen(db):

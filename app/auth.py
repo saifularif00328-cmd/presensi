@@ -7,6 +7,7 @@ from flask import (Blueprint, abort, flash, g, redirect, render_template, reques
                    session, url_for)
 from werkzeug.security import check_password_hash
 
+from . import security
 from .db import query
 from .license import FEATURE_LABEL, TIER_LABEL, has_feature, min_tier
 
@@ -24,6 +25,42 @@ def load_user():
     g.user = None
     if uid:
         g.user = query("SELECT * FROM users WHERE id = ? AND aktif = 1", (uid,), one=True)
+
+
+BEBAS_GANTI = {"main.akun", "auth.logout", "static", "uploads", "favicon"}
+
+
+def wajib_ganti_password():
+    """Paksa ganti password awal/sementara sebelum membuka halaman lain."""
+    from flask import current_app
+    if (g.user is not None and g.user.get("wajib_ganti")
+            and current_app.config.get("WAJIB_GANTI_PASSWORD", True)
+            and request.endpoint not in BEBAS_GANTI):
+        if request.method == "GET":
+            flash("Demi keamanan, ganti password Anda terlebih dahulu.", "info")
+        return redirect(url_for("main.akun"))
+    return None
+
+
+BEBAS_LANGGANAN = {"auth.login", "auth.logout", "main.akun", "sistem.lisensi", "static"}
+
+
+def cek_langganan():
+    """Langganan habis = mode baca-saja: data tetap bisa dilihat & diekspor, tetapi
+    absen dan perubahan data ditolak sampai langganan diperpanjang."""
+    if request.method in ("GET", "HEAD", "OPTIONS") or request.endpoint in BEBAS_LANGGANAN:
+        return None
+    from .license import langganan
+    status = langganan()
+    if not status["baca_saja"]:
+        return None
+    pesan = ("Masa langganan telah berakhir — aplikasi dalam mode baca-saja. "
+             "Hubungi penyedia untuk memperpanjang.")
+    if request.is_json or "/api/" in request.path:
+        from flask import jsonify
+        return jsonify({"ok": False, "level": "error", "pesan": pesan}), 402
+    flash(pesan, "error")
+    return redirect(request.referrer or url_for("main.beranda"))
 
 
 def csrf_token():
@@ -86,9 +123,15 @@ def can(*allowed):
 @bp.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        user = query("SELECT * FROM users WHERE username = ? AND aktif = 1",
-                     (request.form.get("username", "").strip(),), one=True)
+        username = request.form.get("username", "").strip()
+        ip = request.remote_addr or ""
+        menit = security.terkunci(username, ip)
+        if menit:
+            flash(f"Terlalu banyak percobaan login gagal. Coba lagi dalam {menit} menit.", "error")
+            return render_template("login.html"), 429
+        user = query("SELECT * FROM users WHERE username = ? AND aktif = 1", (username,), one=True)
         if user and check_password_hash(user["password_hash"], request.form.get("password", "")):
+            security.reset_gagal(username)
             # Tier Basic tanpa multi-user: hanya akun admin yang bisa login
             if user["role"] != "admin" and not has_feature("multiuser"):
                 flash("Multi-user hanya tersedia di lisensi Pro/Enterprise.", "error")
@@ -100,6 +143,7 @@ def login():
             if not nxt.startswith("/") or nxt.startswith("//"):
                 nxt = url_for("main.beranda")
             return redirect(nxt)
+        security.catat_gagal(username, ip)
         flash("Username atau password salah.", "error")
     return render_template("login.html")
 

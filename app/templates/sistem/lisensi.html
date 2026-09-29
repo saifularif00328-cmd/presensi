@@ -1,27 +1,29 @@
 {% extends "base.html" %}
 {% from "_macros.html" import csrf with context %}
-{% block title %}Lisensi{% endblock %}
+{% block title %}Langganan{% endblock %}
 {% block content %}
-<div class="page-head"><h1>Lisensi</h1></div>
+<div class="page-head"><h1>Langganan &amp; Lisensi</h1></div>
 {% if not pubkey_ok %}
 <div class="flash error">{{ icon('alert') }}<span>Kunci publik vendor belum dipasang (<code>app/license_public.pem</code>). Vendor: jalankan <code>python tools/vendor_init.py</code> lalu build ulang aplikasi.</span></div>
 {% endif %}
 <div class="grid grid-2">
   <div class="card">
-    <div class="card-head"><h3>{{ icon('key') }}Status lisensi</h3>
-      {% if info.valid %}<span class="badge b-ok">{{ icon('check', 'sm') }}Aktif</span>{% else %}<span class="badge">Basic</span>{% endif %}</div>
+    {% set L = langganan() %}
+    <div class="card-head"><h3>{{ icon('key') }}Status langganan</h3>
+      <span class="badge {{ 'b-ok' if L.status == 'aktif' else ('b-err' if L.status in ('habis', 'tenggang') else 'b-info') }}">{{ L.label }}</span></div>
     <dl class="kv">
-      <dt>Tier aktif</dt><dd><span class="badge b-info">{{ tier_label }}</span></dd>
+      <dt>Paket</dt><dd><span class="badge b-info">Paket Lengkap — semua fitur</span></dd>
+      <dt>Berlaku sampai</dt><dd>{% if L.sampai %}{{ tanggal_indo(L.sampai) }}{% if L.sisa is not none and L.status != 'tenggang' %} <small>({{ L.sisa }} hari lagi)</small>{% endif %}{% elif L.status == 'habis' %}-{% else %}Tanpa batas{% endif %}</dd>
+      <dt>Batas siswa</dt><dd>{{ L.maks_siswa or 'Tanpa batas' }}</dd>
       {% if info.payload %}
       <dt>Terdaftar untuk</dt><dd>{{ info.sekolah or '-' }}</dd>
       <dt>ID lisensi</dt><dd><code>{{ info.lid }}</code></dd>
-      <dt>Berlaku sampai</dt><dd>{% if info.exp %}{{ tanggal_indo(info.exp) }}{% if info.days_left is not none and info.days_left >= 0 %} <small>({{ info.days_left }} hari lagi)</small>{% endif %}{% else %}Selamanya{% endif %}</dd>
       {% endif %}
       <dt>ID perangkat</dt><dd><code class="key">{{ device }}</code></dd>
       {% if checked %}<dt>Cek terakhir</dt><dd>{{ checked }}</dd>{% endif %}
     </dl>
-    {% if not info.valid %}<div class="alert-libur mt" style="margin-bottom:0">{{ icon('alert') }}<span>{{ info.reason }}</span></div>
-    {% elif info.days_left is not none and info.days_left <= 30 %}<div class="alert-libur mt" style="margin-bottom:0">{{ icon('clock') }}<span>Lisensi akan berakhir dalam {{ info.days_left }} hari. Hubungi vendor untuk perpanjangan.</span></div>{% endif %}
+    {% if L.status == 'uji_coba' %}<div class="alert-libur mt" style="margin-bottom:0">{{ icon('clock') }}<span>Masa uji coba {{ L.sisa }} hari lagi. Masukkan kode aktivasi dari penyedia untuk berlangganan.</span></div>
+    {% elif L.alasan %}<div class="alert-libur mt" style="margin-bottom:0">{{ icon('alert') }}<span>{{ L.alasan }}</span></div>{% endif %}
     {% if info.lid and server %}
     <form method="post" class="mt">{{ csrf() }}<input type="hidden" name="aksi" value="cek"><button class="btn sm outline">{{ icon('refresh') }}Cek status ke server</button></form>
     {% endif %}
@@ -47,15 +49,4 @@
   <p class="help">Untuk sekolah tanpa internet: kirim <b>ID perangkat</b> di atas ke vendor, lalu tempel kode lisensi yang diberikan.</p>
 </div>
 
-<div class="card">
-  <h3>Fitur per tier</h3>
-  <div class="table-wrap"><table>
-    <thead><tr><th>Tier</th><th>Fitur</th></tr></thead>
-    <tbody>
-      {% for t, label, fitur in tabel %}
-      <tr><td><b>{{ label }}</b>{% if t == tier_now %} <span class="badge b-ok">aktif</span>{% endif %}</td>
-        <td>Presensi &amp; QR dasar, data master, rekap presensi, cetak kartu{% if fitur %}, {{ fitur|join(', ') }}{% endif %}</td></tr>
-      {% endfor %}
-    </tbody></table></div>
-</div>
 {% endblock %}

@@ -43,6 +43,16 @@
       </a>
     </header>
     <main class="content">
+      {% set L = langganan() %}
+      {% if L.peringatan %}
+        <div class="flash {{ 'error' if L.status in ('habis', 'tenggang') else 'info' }}">{{ icon('alert') }}<span>
+          {% if L.status == 'habis' %}<b>Masa langganan berakhir.</b> Aplikasi dalam mode baca-saja: data tetap bisa dilihat &amp; diekspor, tetapi absen dan perubahan data dinonaktifkan.
+          {% elif L.status == 'tenggang' %}<b>Langganan sudah berakhir</b> — masa tenggang tinggal {{ L.sisa }} hari sebelum aplikasi menjadi baca-saja.
+          {% elif L.status == 'uji_coba' %}<b>Masa uji coba</b> — tinggal {{ L.sisa }} hari{% if L.sisa is not none and L.sisa <= 0 %} (berakhir hari ini){% endif %}.
+          {% else %}Langganan berakhir {{ tanggal_indo(L.sampai) }} ({{ L.sisa }} hari lagi).{% endif %}
+          {% if g.user.role == 'admin' %} <a href="{{ url_for('sistem.lisensi') }}">Kelola langganan</a>{% else %} Hubungi admin sekolah.{% endif %}
+        </span></div>
+      {% endif %}
       {% with msgs = get_flashed_messages(with_categories=true) %}
         {% for cat, m in msgs %}<div class="flash {{ cat if cat in ('success','error','info') else 'info' }}">{{ icon('ok' if cat == 'success' else ('err' if cat == 'error' else 'alert')) }}<span>{{ m }}</span></div>{% endfor %}
       {% endwith %}

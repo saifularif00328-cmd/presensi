@@ -10,6 +10,7 @@ from PIL import Image, ImageOps
 
 from .. import config
 from ..auth import feature, roles
+from ..license import langganan
 from ..db import IntegrityError, execute, get_db, get_setting, new_qr_token, query, set_setting
 from ..qr import make_payload, qr_png
 from ..services import kartu as kartu_svc
@@ -188,6 +189,15 @@ def _save_foto(file, sid):
     return name
 
 
+def kuota_siswa(db=None):
+    """Sisa kuota siswa aktif menurut paket langganan (None = tanpa batas)."""
+    maks = langganan(db)["maks_siswa"]
+    if not maks:
+        return None
+    n = query("SELECT COUNT(*) AS n FROM siswa WHERE aktif = 1", one=True, db=db)["n"]
+    return maks - n
+
+
 @bp.route("/siswa/baru", methods=["GET", "POST"])
 @bp.route("/siswa/<int:sid>/edit", methods=["GET", "POST"])
 @roles()
@@ -210,6 +220,11 @@ def siswa_form(sid=None):
                     "wa_ayah = ?, wa_ibu = ?, wa_wali = ?, aktif = ? WHERE id = ?",
                     vals + (sid,), db=db)
         else:
+            sisa = kuota_siswa(db)
+            if sisa is not None and sisa <= 0:
+                flash(f"Batas jumlah siswa paket langganan ({langganan()['maks_siswa']}) sudah "
+                      "tercapai. Hubungi penyedia untuk menambah kuota.", "error")
+                return redirect(url_for("master.siswa"))
             # QR code dibuat otomatis saat siswa ditambahkan
             sid = execute("INSERT INTO siswa(nis, nisn, nama, jk, kelas_id, wa_ayah, wa_ibu, "
                           "wa_wali, aktif, qr_token) VALUES (?,?,?,?,?,?,?,?,?,?)",
@@ -300,7 +315,8 @@ def siswa_import():
             return redirect(url_for("master.siswa_import"))
         db = get_db()
         kelas_map = {r["nama"].upper(): r["id"] for r in query("SELECT id, nama FROM kelas", db=db)}
-        baru = update = 0
+        baru = update = ditolak = 0
+        sisa = kuota_siswa(db)
         for d in data:
             kid = None
             kn = d.get("kelas", "").strip()
@@ -320,6 +336,8 @@ def siswa_import():
                         "wa_ibu = ?, wa_wali = ? WHERE id = ?", vals + (existing["id"],),
                         db=db, commit=False)
                 update += 1
+            elif sisa is not None and baru >= sisa:
+                ditolak += 1
             else:
                 execute("INSERT INTO siswa(nisn, nama, jk, kelas_id, wa_ayah, wa_ibu, wa_wali, "
                         "nis, qr_token) VALUES (?,?,?,?,?,?,?,?,?)",
@@ -328,6 +346,9 @@ def siswa_import():
         db.commit()
         flash(f"Import selesai: {baru} siswa baru, {update} diperbarui. QR code dibuat "
               "otomatis.", "success")
+        if ditolak:
+            flash(f"{ditolak} siswa tidak ditambahkan karena batas jumlah siswa paket langganan "
+                  f"({langganan()['maks_siswa']}) tercapai.", "error")
         return redirect(url_for("master.siswa"))
     return render_template("master/siswa_import.html", cols=IMPORT_COLS)
 

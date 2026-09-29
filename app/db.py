@@ -330,6 +330,8 @@ def _columns(conn, table):
 def migrate(conn):
     """Perubahan skema untuk database yang dibuat versi sebelumnya (idempoten).
     Tambahkan ALTER TABLE di sini, cek dulu dengan _columns(conn, tabel)."""
+    if "wajib_ganti" not in _columns(conn, "users"):
+        conn.execute("ALTER TABLE users ADD COLUMN wajib_ganti TINYINT NOT NULL DEFAULT 0")
 
 
 def _seed(conn):
@@ -340,9 +342,14 @@ def _seed(conn):
                  (secrets.token_hex(16),))
     conn.execute("INSERT IGNORE INTO settings(kunci, nilai) VALUES ('cabang_api_token', ?)",
                  (secrets.token_urlsafe(18),))
+    # Tanggal instalasi = awal masa uji coba (lihat license.langganan)
+    from .utils import today
+    conn.execute("INSERT IGNORE INTO settings(kunci, nilai) VALUES ('install_date', ?)",
+                 (today().isoformat(),))
 
     if conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
-        conn.execute("INSERT INTO users(username, password_hash, nama, role) VALUES (?,?,?,?)",
+        conn.execute("INSERT INTO users(username, password_hash, nama, role, wajib_ganti) "
+                     "VALUES (?,?,?,?, 1)",
                      ("admin", generate_password_hash("admin123"), "Administrator", "admin"))
 
     if conn.execute("SELECT COUNT(*) FROM aturan_jam").fetchone()[0] == 0:

@@ -41,7 +41,7 @@ def create_app(test_config=None, start_jobs=True):
     from .blueprints import (ibadah, kedisiplinan, main, master_data, notifikasi, perizinan,
                              presensi, sistem)
     from .menu import build_menu
-    from .license import TIER_LABEL, current_tier, has_feature
+    from .license import TIER_LABEL, current_tier, has_feature, langganan
     from . import utils
 
     app.register_blueprint(auth.bp)
@@ -54,7 +54,14 @@ def create_app(test_config=None, start_jobs=True):
     app.register_blueprint(sistem.bp)
     app.register_blueprint(notifikasi.bp)
 
+    from . import security
+    app.wsgi_app = security.ProxyLokal(app.wsgi_app)
+    app.session_interface = security.SesiAman()
+    app.after_request(security.header_keamanan)
+
     app.before_request(auth.load_user)
+    app.before_request(auth.wajib_ganti_password)
+    app.before_request(auth.cek_langganan)
     if not app.config.get("WTF_CSRF_DISABLED"):
         app.before_request(auth.csrf_protect)
 
@@ -68,6 +75,7 @@ def create_app(test_config=None, start_jobs=True):
             "tier": tier,
             "tier_label": TIER_LABEL[tier],
             "has_feature": has_feature,
+            "langganan": langganan,
             "can": auth.can,
             "csrf_token": auth.csrf_token,
             "ROLES": auth.ROLES,

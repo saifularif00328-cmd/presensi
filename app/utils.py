@@ -66,6 +66,20 @@ def parse_date(s, default=None):
         return default
 
 
+def parse_datetime(s):
+    """'YYYY-MM-DD HH:MM[:SS]' -> datetime (None bila kosong/tidak valid)."""
+    if not s:
+        return None
+    if isinstance(s, datetime):
+        return s
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+        try:
+            return datetime.strptime(str(s)[:19], fmt)
+        except ValueError:
+            continue
+    return None
+
+
 def tanggal_indo(d):
     if isinstance(d, str):
         d = parse_date(d)

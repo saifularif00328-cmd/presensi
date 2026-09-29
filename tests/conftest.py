@@ -76,8 +76,8 @@ def make_db():
 
 @pytest.fixture
 def app(make_db, clock):
-    app = create_app({"TESTING": True, "DATABASE": make_db(), "WTF_CSRF_DISABLED": True},
-                     start_jobs=False)
+    app = create_app({"TESTING": True, "DATABASE": make_db(), "WTF_CSRF_DISABLED": True,
+                      "WAJIB_GANTI_PASSWORD": False}, start_jobs=False)
     return app
 
 
