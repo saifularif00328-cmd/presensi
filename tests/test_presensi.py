@@ -645,3 +645,117 @@ def test_mode_cloud_status_dari_berkas_vendor(app, client, monkeypatch):
     finally:
         if os.path.exists(path):
             os.remove(path)
+
+
+def test_rfid_uid_dikenali_dari_reader_usb_dan_esp32(app, client, seed, clock):
+    """Kartu didaftarkan lewat reader USB (desimal, urutan byte terbalik) tetap dikenali di
+    ESP32 (hex); tap memakai logika presensi yang sama dan tercatat sebagai metode rfid."""
+    from app import rfid
+    assert rfid.normalize("A1:B2:C3:D4") == "A1B2C3D4"
+    le_desimal = str(int("D4C3B2A1", 16))  # 3569595041
+    assert set(rfid.candidates(le_desimal)) == {"D4C3B2A1", "A1B2C3D4"}
+    r = client.post("/master/rfid/pasang", json={"siswa_id": seed["ahmad"]["id"], "uid": le_desimal})
+    assert r.get_json()["ok"]
+    # kartu yang sama tidak bisa dipasang ke siswa lain (bentuk hex dari ESP32)
+    r = client.post("/master/rfid/pasang", json={"siswa_id": seed["siti"]["id"], "uid": "A1B2C3D4"})
+    assert not r.get_json()["ok"] and "Ahmad" in r.get_json()["pesan"]
+    res = client.post("/presensi/api/scan", json={"code": "a1 b2 c3 d4"}).get_json()
+    assert res["ok"] and res["siswa"]["nama"] == "Ahmad Fauzi" and res["jenis"] == "masuk"
+    with app.app_context():
+        db = connect()
+        assert db.execute("SELECT metode FROM scan_log ORDER BY id DESC LIMIT 1").fetchone()[0] == "rfid"
+        db.close()
+    # kartu tak dikenal dicatat untuk didaftarkan
+    res = client.post("/presensi/api/scan", json={"code": "0099887766"}).get_json()
+    assert not res["ok"] and "belum terdaftar" in res["pesan"]
+    assert client.get("/master/rfid/tak-dikenal").get_json()[0]["uid"] == rfid.normalize("0099887766")
+    # kartu hilang diblokir
+    client.post(f"/master/rfid/{seed['ahmad']['id']}/lepas", data={"blokir": "1"})
+    res = client.post("/presensi/api/scan", json={"code": "A1B2C3D4"}).get_json()
+    assert not res["ok"] and "diblokir" in res["pesan"] and "Ahmad" in res["pesan"]
+    page = client.get(f"/master/rfid?kelas_id=1").get_data(as_text=True)
+    assert "Ahmad Fauzi" in page and "Tap kartu untuk" in page
+
+
+def _perangkat(app, client, mode="auto"):
+    client.post("/sistem/perangkat", data={"nama": "Gerbang Utama", "mode": mode, "aktif": "1"})
+    with app.app_context():
+        db = connect()
+        p = db.execute("SELECT * FROM perangkat ORDER BY id DESC LIMIT 1").fetchone()
+        db.close()
+    return p["kode"], p["rahasia"]
+
+
+def _kirim(client, kode, rahasia, path, body, waktu=None, nonce=None, tanda=None):
+    import hashlib
+    import hmac
+    import json
+    import secrets
+    import time
+    raw = json.dumps(body).encode()
+    waktu = str(int(waktu if waktu is not None else time.time()))
+    nonce = nonce or secrets.token_hex(8)
+    sig = tanda or hmac.new(rahasia.encode(), f"{kode}\n{waktu}\n{nonce}\n".encode() + raw,
+                            hashlib.sha256).hexdigest()
+    return client.post(path, data=raw, content_type="application/json",
+                       headers={"X-Perangkat": kode, "X-Waktu": waktu, "X-Nonce": nonce,
+                                "X-Tanda": sig, "X-Versi": "1.0.0"})
+
+
+def test_api_perangkat_esp32(app, client, seed, clock):
+    import time
+    from datetime import datetime as dt
+    from app import utils
+    client.post("/master/rfid/pasang", json={"siswa_id": seed["budi"]["id"], "uid": "04A1B2C3"})
+    kode, rahasia = _perangkat(app, client)
+    anon = app.test_client()  # perangkat tidak memakai sesi login / CSRF
+    r = _kirim(anon, kode, rahasia, "/api/perangkat/ping", {})
+    assert r.status_code == 200 and r.get_json()["ok"]
+    # tap offline: jam tap asli 06:40 hari ini dikirim belakangan pukul 06:45
+    ts = int(dt(2030, 1, 7, 6, 40, tzinfo=utils.zona()).timestamp())
+    real_now = time.time()
+    clock.set(6, 45)
+    r = _kirim(anon, kode, rahasia, "/api/perangkat/tap", {"uid": "04A1B2C3", "ts": ts},
+               waktu=real_now)
+    j = r.get_json()
+    assert r.status_code == 200 and j["ok"] and j["baris1"] == "BUDI SANTOSO"
+    assert j["baris2"].startswith("MASUK 06:40") and j["nada"] == "ok"
+    with app.app_context():
+        db = connect()
+        assert db.execute("SELECT jam_masuk FROM presensi WHERE siswa_id = ?",
+                          (seed["budi"]["id"],)).fetchone()[0] == "06:40:00"
+        assert db.execute("SELECT terakhir_aktif FROM perangkat").fetchone()[0]
+        db.close()
+    # tap ulang = peringatan, nada warn
+    j = _kirim(anon, kode, rahasia, "/api/perangkat/tap", {"uid": "04A1B2C3"}).get_json()
+    assert not j["ok"] and j["nada"] == "warn"
+    # replay nonce, rahasia salah, jam perangkat meleset
+    r1 = _kirim(anon, kode, rahasia, "/api/perangkat/tap", {"uid": "04A1B2C3"}, nonce="sama")
+    r2 = _kirim(anon, kode, rahasia, "/api/perangkat/tap", {"uid": "04A1B2C3"}, nonce="sama")
+    assert r1.status_code == 200 and r2.status_code == 409
+    assert _kirim(anon, kode, "salah", "/api/perangkat/tap", {"uid": "1"}).status_code == 401
+    r = _kirim(anon, kode, rahasia, "/api/perangkat/tap", {"uid": "1"}, waktu=real_now - 3600)
+    assert r.status_code == 401 and r.get_json()["error"] == "waktu" and r.get_json()["server_time"]
+    # kartu tak dikenal dari perangkat tercatat dengan nama perangkat
+    _kirim(anon, kode, rahasia, "/api/perangkat/tap", {"uid": "DEADBEEF"})
+    assert client.get("/master/rfid/tak-dikenal").get_json()[0]["perangkat"] == "Gerbang Utama"
+    assert "Gerbang Utama" in client.get("/sistem/perangkat").get_data(as_text=True)
+
+
+def test_perangkat_mode_ibadah(app, client, seed, clock):
+    with app.app_context():
+        db = connect()
+        set_setting("modul_ibadah_aktif", "1", db=db)
+        db.execute("INSERT INTO ibadah(nama, jam_mulai, jam_selesai, hari, aktif) "
+                   "VALUES ('Sholat Dzuhur', '12:00', '12:45', '1,2,3,4,5', 1)")
+        db.commit()
+        db.close()
+    client.post("/master/rfid/pasang", json={"siswa_id": seed["siti"]["id"], "uid": "11223344"})
+    kode, rahasia = _perangkat(app, client, mode="ibadah")
+    anon = app.test_client()
+    clock.set(12, 10)
+    j = _kirim(anon, kode, rahasia, "/api/perangkat/tap", {"uid": "11223344"}).get_json()
+    assert j["ok"] and "Dzuhur" in j["pesan"] and j["baris2"].startswith("IBADAH 12:10")
+    clock.set(15, 0)
+    j = _kirim(anon, kode, rahasia, "/api/perangkat/tap", {"uid": "11223344"}).get_json()
+    assert not j["ok"] and "Tidak ada jadwal" in j["pesan"]

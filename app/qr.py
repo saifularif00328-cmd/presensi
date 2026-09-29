@@ -42,8 +42,23 @@ def parse_payload(text, db=None):
     return token
 
 
+def jenis_kartu(text):
+    """'qr' untuk isi QR kartu, 'rfid' untuk UID kartu RFID, None bila tidak dikenali."""
+    t = (text or "").strip().upper()
+    if t.startswith(PREFIX + "."):
+        return "qr"
+    from .rfid import looks_like_uid
+    return "rfid" if looks_like_uid(t) else None
+
+
 def find_siswa(text, db=None):
-    """Cari siswa dari hasil scan. Mengembalikan (row, pesan_error)."""
+    """Cari siswa dari hasil scan QR atau tap kartu RFID. Mengembalikan (row, pesan_error)."""
+    if jenis_kartu(text) == "rfid":
+        from .rfid import find_by_uid
+        row, err = find_by_uid(text, db=db)
+        if row is not None and not row["aktif"]:
+            return None, f"Siswa {row['nama']} berstatus nonaktif"
+        return row, err
     token = parse_payload(text, db=db)
     if token is None:
         return None, "QR tidak valid / bukan kartu presensi sekolah ini"

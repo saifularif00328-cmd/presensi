@@ -29,6 +29,8 @@ ICONS = {
     "bell": "bell", "arrow-right": "arrow-right", "logo": "clipboard-check", "menu": "menu",
     "x": "x", "user-check": "user-check", "user-x": "user-x", "wifi": "wifi",
     "wifi-off": "wifi-off", "hourglass": "hourglass", "inbox": "inbox", "sun": "sun",
+    "rfid": "nfc", "perangkat": "router", "portal": "smartphone", "cloud": "cloud",
+    "ban": "ban", "link": "link", "users-round": "users-round", "calendar": "calendar-days",
 }
 
 

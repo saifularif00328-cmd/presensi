@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS siswa (
     wa_ibu      VARCHAR(30),
     wa_wali     VARCHAR(30),
     qr_token    VARCHAR(32) NOT NULL UNIQUE,        -- ID unik di dalam QR (diganti saat kartu dicetak ulang)
+    rfid_uid    VARCHAR(40) NULL UNIQUE,            -- UID kartu RFID (hex), NULL = belum punya kartu RFID
     aktif       TINYINT NOT NULL DEFAULT 1,
     created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_siswa_kelas (kelas_id),
@@ -264,4 +265,47 @@ CREATE TABLE IF NOT EXISTS notif_queue (
     sent_at     DATETIME NULL,
     INDEX idx_notif_status (status),
     FOREIGN KEY (siswa_id) REFERENCES siswa(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===================== RFID =====================
+-- Kartu yang dilaporkan hilang/rusak: ditolak bila di-tap lagi
+CREATE TABLE IF NOT EXISTS rfid_blokir (
+    id        INT AUTO_INCREMENT PRIMARY KEY,
+    uid       VARCHAR(40) NOT NULL,
+    siswa_id  INT NULL,
+    alasan    VARCHAR(100),
+    waktu     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_rfid_blokir_uid (uid),
+    FOREIGN KEY (siswa_id) REFERENCES siswa(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Kartu yang di-tap tetapi belum terdaftar (memudahkan pendaftaran kartu)
+CREATE TABLE IF NOT EXISTS rfid_tak_dikenal (
+    uid        VARCHAR(40) PRIMARY KEY,
+    perangkat  VARCHAR(100),
+    waktu      DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Perangkat tap mandiri (ESP32 + RC522) di gerbang / musala
+CREATE TABLE IF NOT EXISTS perangkat (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    nama            VARCHAR(100) NOT NULL,
+    kode            VARCHAR(40) NOT NULL UNIQUE,    -- ID perangkat (dikirim di header)
+    rahasia         VARCHAR(80) NOT NULL,           -- kunci HMAC (diisikan ke perangkat)
+    mode            VARCHAR(10) NOT NULL DEFAULT 'auto', -- auto / masuk / pulang / ibadah
+    ibadah_id       INT NULL,                       -- mode ibadah: NULL = jadwal yang sedang berlangsung
+    aktif           TINYINT NOT NULL DEFAULT 1,
+    terakhir_aktif  DATETIME NULL,
+    versi           VARCHAR(20),
+    ip              VARCHAR(45),
+    FOREIGN KEY (ibadah_id) REFERENCES ibadah(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Anti-replay: nonce permintaan perangkat yang sudah dipakai (dibersihkan setelah 2 hari)
+CREATE TABLE IF NOT EXISTS perangkat_nonce (
+    kode   VARCHAR(40) NOT NULL,
+    nonce  VARCHAR(40) NOT NULL,
+    waktu  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (kode, nonce),
+    INDEX idx_nonce_waktu (waktu)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

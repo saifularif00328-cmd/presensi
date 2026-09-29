@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, csrf, kelas_select with context %}
+{% block title %}Kartu RFID{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Kartu RFID</h1>
+  <span class="badge b-info">{{ total.punya or 0 }} dari {{ total.n or 0 }} siswa sudah punya kartu</span>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h3>{{ icon('rfid') }}Daftarkan kartu per kelas</h3>
+    <form class="filters" method="get" style="margin:0">
+      {{ kelas_select(kelas, kelas_id, all_label='Pilih kelas…', autosubmit=True) }}
+    </form>
+    <p class="help">Pilih kelas, lalu tap kartu RFID satu per satu di <b>reader USB</b> komputer ini
+      mengikuti urutan nama. Siswa berikutnya otomatis dipilih setelah kartu tersimpan.</p>
+  </div>
+  <div class="card">
+    <h3>{{ icon('alert') }}Kartu baru yang di-tap</h3>
+    <p class="help">Kartu yang di-tap di <b>perangkat gerbang (ESP32)</b> tetapi belum terdaftar muncul di sini
+      (2 hari terakhir). Pilih siswa pemiliknya lalu klik Pasang.</p>
+    <ul class="list" id="tak-dikenal">
+      {% for t in tak_dikenal %}
+      <li><div class="grow"><div class="title"><code>{{ t.uid }}</code></div>
+          <div class="sub">{{ t.perangkat or 'reader' }} · {{ t.waktu[11:16] }}</div></div>
+        <form method="post" action="{{ url_for('master.rfid_pasang') }}" class="inline-form">{{ csrf() }}
+          <input type="hidden" name="uid" value="{{ t.uid }}">
+          <select name="siswa_id" required style="max-width:190px"><option value="">Pilih siswa…</option>
+            {% for s in semua %}<option value="{{ s.id }}">{{ s.nama }} ({{ s.kelas_nama or '-' }})</option>{% endfor %}</select>
+          <button class="btn sm">Pasang</button>
+        </form></li>
+      {% else %}<li class="empty">Belum ada kartu baru.</li>{% endfor %}
+    </ul>
+  </div>
+</div>
+
+{% if kelas_id %}
+<div class="card">
+  <div class="field">
+    <label>Tap kartu untuk: <b id="target-nama">–</b></label>
+    <input id="uid-input" class="scan-input" placeholder="Tap kartu RFID di reader USB…" autocomplete="off" autofocus>
+    <div class="help" id="uid-status">Klik baris siswa untuk memilih siswa lain.</div>
+  </div>
+  <div class="table-wrap"><table id="tbl-rfid">
+    <thead><tr><th></th><th>Nama</th><th>NIS</th><th>UID kartu</th><th></th></tr></thead>
+    <tbody>
+    {% for s in rows %}
+    <tr data-id="{{ s.id }}" data-nama="{{ s.nama }}" class="{{ 'punya' if s.rfid_uid }}" style="cursor:pointer">
+      <td>{{ avatar(s) }}</td><td><b>{{ s.nama }}</b></td><td>{{ s.nis or '-' }}</td>
+      <td class="uid">{% if s.rfid_uid %}<code>{{ s.rfid_uid }}</code>{% else %}<span class="muted">belum ada</span>{% endif %}</td>
+      <td class="actions">
+        {% if s.rfid_uid %}
+        <form class="inline" method="post" action="{{ url_for('master.rfid_lepas', sid=s.id) }}" data-confirm="Lepas kartu dari {{ s.nama }}? (kartu bisa dipasang ke siswa lain)">{{ csrf() }}<button class="btn sm ghost">Lepas</button></form>
+        <form class="inline" method="post" action="{{ url_for('master.rfid_lepas', sid=s.id) }}" data-confirm="Blokir kartu {{ s.nama }} karena hilang? Kartu lama akan ditolak bila di-tap.">{{ csrf() }}<input type="hidden" name="blokir" value="1"><button class="btn sm danger">{{ icon('ban') }}Blokir</button></form>
+        {% endif %}
+      </td></tr>
+    {% else %}<tr><td colspan="5" class="empty">Tidak ada siswa aktif di kelas ini.</td></tr>{% endfor %}
+    </tbody></table></div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if kelas_id %}
+<script>
+(function () {
+  const input = document.getElementById('uid-input');
+  const status = document.getElementById('uid-status');
+  const namaEl = document.getElementById('target-nama');
+  const rows = [...document.querySelectorAll('#tbl-rfid tbody tr[data-id]')];
+  let target = null;
+
+  function pilih(tr) {
+    rows.forEach(r => r.classList.remove('dipilih'));
+    target = tr;
+    if (tr) { tr.classList.add('dipilih'); namaEl.textContent = tr.dataset.nama; tr.scrollIntoView({block: 'nearest'}); }
+    else namaEl.textContent = 'semua siswa sudah punya kartu';
+    input.focus();
+  }
+  function berikutnya() {
+    const i = rows.indexOf(target);
+    pilih(rows.slice(i + 1).concat(rows.slice(0, i + 1)).find(r => !r.classList.contains('punya')) || null);
+  }
+  rows.forEach(r => r.addEventListener('click', e => { if (!e.target.closest('form')) pilih(r); }));
+  pilih(rows.find(r => !r.classList.contains('punya')) || null);
+
+  input.addEventListener('keydown', async function (e) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const uid = input.value.trim(); input.value = '';
+    if (!uid || !target) return;
+    const res = await postJSON('{{ url_for("master.rfid_pasang") }}', {siswa_id: target.dataset.id, uid: uid});
+    status.textContent = (res.ok ? '✓ ' : '✗ ') + target.dataset.nama + ': ' + res.pesan;
+    status.className = 'help ' + (res.ok ? 'ok-text' : 'err-text');
+    beep(res.ok ? 'success' : 'error');
+    if (res.ok) {
+      target.classList.add('punya');
+      target.querySelector('.uid').innerHTML = '<code>' + escapeHtml(res.uid) + '</code>';
+      berikutnya();
+    }
+  });
+  setInterval(function () { const a = document.activeElement; if (!a || a === document.body) input.focus(); }, 800);
+})();
+</script>
+{% endif %}
+{% endblock %}

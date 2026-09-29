@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}Perangkat RFID{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Perangkat RFID</h1></div>
+
+{% if lihat %}
+<div class="card">
+  <div class="card-head"><h3>{{ icon('key') }}Isian untuk perangkat “{{ lihat.nama }}”</h3>
+    <a class="btn sm ghost" href="{{ url_for('perangkat.daftar') }}">Tutup</a></div>
+  <p class="help">Nyalakan perangkat pertama kali (atau tahan tombol SETEL 5 detik), sambungkan HP ke WiFi
+    <b>PRESENSI-SETUP</b>, buka <b>192.168.4.1</b>, lalu isi data berikut. Rahasia bersifat seperti password —
+    jangan dibagikan.</p>
+  <dl class="config-box">
+    <dt>Alamat server</dt><dd>{{ server }}</dd>
+    <dt>Kode perangkat</dt><dd>{{ lihat.kode }}</dd>
+    <dt>Rahasia</dt><dd>{{ lihat.rahasia }}</dd>
+  </dl>
+  <p class="help">Alamat server harus bisa dibuka perangkat. Untuk server yang dibuka lewat Cloudflare, pakai
+    alamat publik sekolah (mis. <code>https://smpn1.presensiku.biz.id</code>) agar perangkat tidak perlu disetel
+    ulang saat server pindah.</p>
+  <form method="post" data-confirm="Buat rahasia baru? Perangkat harus disetel ulang dengan rahasia baru.">{{ csrf() }}
+    <input type="hidden" name="aksi" value="rahasia"><input type="hidden" name="id" value="{{ lihat.id }}">
+    <button class="btn sm outline">{{ icon('refresh') }}Buat rahasia baru</button></form>
+</div>
+{% endif %}
+
+<div class="grid grid-2">
+  <div class="card">
+    <h3>{{ icon('perangkat') }}Daftar perangkat</h3>
+    <ul class="list">
+      {% for p in rows %}
+      <li><div class="grow">
+          <div class="title"><span class="dot {{ 'on' if p.online }}"></span>{{ p.nama }}
+            {% if not p.aktif %}<span class="badge b-err">nonaktif</span>{% endif %}</div>
+          <div class="sub">{{ MODES[p.mode] }}{% if p.mode == 'ibadah' %} · {{ p.ibadah or 'jadwal berlangsung' }}{% endif %}
+            · <code>{{ p.kode }}</code> · {% if p.terakhir_aktif %}aktif {{ p.terakhir_aktif[:16] }}{% else %}belum pernah terhubung{% endif %}
+            {% if p.versi %} · v{{ p.versi }}{% endif %}</div></div>
+        <a class="btn sm ghost" href="{{ url_for('perangkat.daftar', lihat=p.id) }}">Isian</a>
+        <a class="btn sm ghost" href="{{ url_for('perangkat.daftar', edit=p.id) }}">Edit</a>
+        <form class="inline" method="post" data-confirm="Hapus perangkat {{ p.nama }}?">{{ csrf() }}
+          <input type="hidden" name="aksi" value="hapus"><input type="hidden" name="id" value="{{ p.id }}">
+          <button class="btn sm danger">{{ icon('trash') }}</button></form></li>
+      {% else %}<li class="empty">Belum ada perangkat. Tambahkan perangkat gerbang di samping.</li>{% endfor %}
+    </ul>
+    <p class="help"><span class="dot on"></span>= terhubung dalam 3 menit terakhir.</p>
+  </div>
+  <div class="card">
+    <h3>{{ icon('plus') }}{{ 'Edit' if edit else 'Tambah' }} perangkat</h3>
+    <form method="post">{{ csrf() }}
+      {% if edit %}<input type="hidden" name="id" value="{{ edit.id }}">{% endif %}
+      <div class="field"><label>Nama / lokasi</label><input name="nama" value="{{ edit.nama if edit }}" placeholder="Gerbang Utama" required></div>
+      <div class="field"><label>Mode</label>
+        <select name="mode" id="mode">{% for k, v in MODES.items() %}<option value="{{ k }}" {{ 'selected' if edit and edit.mode == k }}>{{ v }}</option>{% endfor %}</select></div>
+      <div class="field" id="f-ibadah"><label>Jadwal ibadah</label>
+        <select name="ibadah_id"><option value="">Otomatis: jadwal yang sedang berlangsung</option>
+          {% for i in ibadah %}<option value="{{ i.id }}" {{ 'selected' if edit and edit.ibadah_id == i.id }}>{{ i.nama }}</option>{% endfor %}</select></div>
+      <label class="check"><input type="checkbox" name="aktif" value="1" {{ 'checked' if not edit or edit.aktif }}>Aktif</label>
+      <div class="btn-row mt"><button class="btn">{{ icon('save') }}Simpan</button>
+        {% if edit %}<a class="btn outline" href="{{ url_for('perangkat.daftar') }}">Batal</a>{% endif %}</div>
+    </form>
+    <p class="help">Mode <b>Otomatis</b>: tap pertama = masuk, tap setelah jam pulang = pulang (sama seperti halaman Scan).</p>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  (function () {
+    const m = document.getElementById('mode'), f = document.getElementById('f-ibadah');
+    function upd() { f.hidden = m.value !== 'ibadah'; }
+    m.addEventListener('change', upd); upd();
+  })();
+</script>
+{% endblock %}

@@ -9,7 +9,7 @@ from ..services import webcam
 from ..services.attendance import aturan_for, close_day, process_scan, set_manual
 from ..services.rekap import rekap_semester
 from .common import (arg_date, arg_int, kelas_options, semester_aktif, send_export,
-                     valid_time)
+                     valid_time, waktu_tertunda)
 
 bp = Blueprint("presensi", __name__, url_prefix="/presensi")
 
@@ -31,7 +31,7 @@ def scan():
 def api_scan():
     data = request.get_json(silent=True) or request.form
     res = process_scan(data.get("code", ""), data.get("mode", "auto"),
-                       data.get("metode", "scanner"))
+                       data.get("metode", "scanner"), waktu=waktu_tertunda(data))
     return jsonify(res)
 
 

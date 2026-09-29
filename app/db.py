@@ -63,7 +63,7 @@ DEFAULT_SETTINGS = {
             "Mengembangkan potensi akademik dan non-akademik peserta didik secara optimal.\n"
             "Membangun budaya sekolah yang bersih, aman, dan ramah lingkungan.",
     "kartu_ketentuan": "Kartu ini adalah identitas resmi siswa dan wajib dibawa setiap hari.\n"
-                       "Kartu digunakan untuk presensi masuk dan pulang dengan memindai kode QR.\n"
+                       "Kartu digunakan untuk presensi masuk dan pulang dengan tap kartu atau memindai QR.\n"
                        "Kartu tidak boleh dipinjamkan, diperjualbelikan, atau disalahgunakan.\n"
                        "Kehilangan atau kerusakan kartu wajib segera dilaporkan ke Tata Usaha.\n"
                        "Bagi yang menemukan kartu ini, mohon dikembalikan ke alamat sekolah.",
@@ -332,6 +332,8 @@ def migrate(conn):
     Tambahkan ALTER TABLE di sini, cek dulu dengan _columns(conn, tabel)."""
     if "wajib_ganti" not in _columns(conn, "users"):
         conn.execute("ALTER TABLE users ADD COLUMN wajib_ganti TINYINT NOT NULL DEFAULT 0")
+    if "rfid_uid" not in _columns(conn, "siswa"):
+        conn.execute("ALTER TABLE siswa ADD COLUMN rfid_uid VARCHAR(40) NULL UNIQUE AFTER qr_token")
 
 
 def _seed(conn):

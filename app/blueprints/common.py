@@ -53,3 +53,21 @@ def send_export(fmt, filename, title, headers, rows, subtitle=None):
 
 def semester_aktif():
     return query("SELECT * FROM tahun_ajaran WHERE aktif = 1 ORDER BY id DESC LIMIT 1", one=True)
+
+
+def waktu_tertunda(data, maks_jam=12):
+    """Jam tap asli dari antrian offline browser (field `ts` = epoch milidetik).
+    Hanya diterima untuk hari yang sama dan tidak di masa depan; selain itu None (= sekarang)."""
+    from datetime import datetime
+    try:
+        ts = float(data.get("ts") or 0) / 1000
+    except (TypeError, ValueError):
+        return None
+    if ts <= 0:
+        return None
+    t = datetime.fromtimestamp(ts, utils.zona()).replace(tzinfo=None)
+    now = utils.now()
+    if t.date() != now.date() or (t - now).total_seconds() > 60 or \
+            (now - t).total_seconds() > maks_jam * 3600:
+        return None
+    return t

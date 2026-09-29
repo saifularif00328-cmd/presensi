@@ -17,12 +17,13 @@ MENU = [
         ("Tahun Ajaran", "tahun", "master.tahun_ajaran", (), "master"),
     ]),
     ("Presensi", [
-        ("Scan QR", "scan", "presensi.scan", ("piket",), "presensi"),
+        ("Scan Kartu", "scan", "presensi.scan", ("piket",), "presensi"),
         ("Monitor Live", "monitor", "presensi.monitor", ("piket", "bk"), "presensi"),
         ("Presensi Manual", "manual", "presensi.manual", ("piket",), "presensi"),
         ("Rekap Presensi", "rekap", "presensi.rekap", ("piket", "bk"), "rekap"),
         ("SMT Presensi", "smt", "presensi.smt", ("piket", "bk"), "rekap"),
         ("Cetak Kartu", "kartu", "master.kartu", (), "kartu"),
+        ("Kartu RFID", "rfid", "master.rfid", (), "kartu"),
     ]),
     ("Perizinan", [
         ("Izin & Sakit", "izin", "perizinan.izin", ("piket", "bk"), "perizinan"),
@@ -47,6 +48,7 @@ MENU = [
         ("Pengaturan", "pengaturan", "sistem.pengaturan", (), "presensi"),
         ("Notifikasi WA", "wa", "notifikasi.pengaturan", (), "whatsapp"),
         ("Log Notifikasi", "log", "notifikasi.log", (), "whatsapp"),
+        ("Perangkat RFID", "perangkat", "perangkat.daftar", (), "presensi"),
         ("Multi-Cabang", "cabang", "sistem.cabang", (), "multicabang"),
     ]),
 ]

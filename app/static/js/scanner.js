@@ -1,6 +1,8 @@
-/* Scanner QR serbaguna:
- *  - Scanner fisik USB (HID): mengetik isi QR ke input lalu Enter
+/* Scanner kartu serbaguna:
+ *  - Reader RFID USB / scanner QR USB (HID): mengetik UID / isi QR ke input lalu Enter
  *  - Kamera HP / webcam lewat browser (html5-qrcode, dimuat lokal, tetap jalan offline)
+ *  - Antrean offline: bila koneksi ke server putus, scan disimpan di browser lalu dikirim
+ *    otomatis (dengan jam scan asli) begitu koneksi kembali
  *
  * initScanner({ endpoint, extra: () => ({...}), resultEl, inputEl, readerId, historyEl })
  */
@@ -39,6 +41,49 @@ function initScanner(opt) {
     }
   }
 
+  // ---- antrean offline (localStorage)
+  const QKEY = 'antrean:' + opt.endpoint;
+  const antreanEl = opt.antreanEl || (function () {
+    const el = document.createElement('div');
+    el.className = 'help antrean';
+    input.insertAdjacentElement('afterend', el);
+    return el;
+  })();
+  function bacaAntrean() {
+    try { return JSON.parse(localStorage.getItem(QKEY) || '[]'); } catch (e) { return []; }
+  }
+  function simpanAntrean(q) {
+    try { localStorage.setItem(QKEY, JSON.stringify(q)); } catch (e) { /* penyimpanan penuh */ }
+    antreanEl.textContent = q.length ? q.length + ' scan tersimpan offline — dikirim otomatis saat koneksi kembali' : '';
+    antreanEl.classList.toggle('err-text', q.length > 0);
+  }
+  let mengirim = false;
+  async function kirimAntrean() {
+    if (mengirim) return;
+    let q = bacaAntrean();
+    if (!q.length) return simpanAntrean(q);
+    mengirim = true;
+    try {
+      while (q.length) {
+        try {
+          const res = await postJSON(opt.endpoint, q[0]);
+          if (opt.historyEl && res.siswa) render(Object.assign({}, res, { pesan: res.pesan + ' (offline)' }));
+        } catch (e) {
+          if (e instanceof TypeError) break;  // masih offline
+          // server menjawab error (mis. 500): buang agar antrean tidak macet
+        }
+        q = bacaAntrean().slice(1);
+        simpanAntrean(q);
+      }
+    } finally {
+      mengirim = false;
+    }
+  }
+  simpanAntrean(bacaAntrean());
+  window.addEventListener('online', kirimAntrean);
+  setInterval(kirimAntrean, 10000);
+  kirimAntrean();
+
   async function submit(code, metode) {
     code = (code || '').trim();
     if (!code || busy) return;
@@ -46,11 +91,19 @@ function initScanner(opt) {
     if (code === lastCode && now - lastTime < 3000) return; // cegah double-read kamera
     lastCode = code; lastTime = now;
     busy = true;
+    const payload = Object.assign({ code: code, metode: metode }, opt.extra ? opt.extra() : {});
     try {
-      const payload = Object.assign({ code: code, metode: metode }, opt.extra ? opt.extra() : {});
       render(await postJSON(opt.endpoint, payload));
     } catch (e) {
-      render({ ok: false, level: 'error', pesan: 'Gagal menghubungi server: ' + e.message });
+      if (e instanceof TypeError) {
+        // jaringan putus: simpan dengan jam scan asli, kirim ulang nanti
+        const q = bacaAntrean();
+        q.push(Object.assign({ ts: now }, payload));
+        simpanAntrean(q);
+        render({ ok: true, level: 'warning', pesan: 'Koneksi terputus — scan disimpan dan akan dikirim otomatis' });
+      } else {
+        render({ ok: false, level: 'error', pesan: 'Gagal menghubungi server: ' + e.message });
+      }
     } finally {
       busy = false;
     }

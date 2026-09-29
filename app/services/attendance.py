@@ -47,26 +47,33 @@ def _siswa_dict(s):
             "nis": s["nis"] or "", "foto": s["foto"]}
 
 
-def _log(db, siswa_id, jenis, status, pesan, metode):
+def _log(db, siswa_id, jenis, status, pesan, metode, waktu=None):
     execute("INSERT INTO scan_log(siswa_id, waktu, jenis, status, pesan, metode) "
             "VALUES (?,?,?,?,?,?)",
-            (siswa_id, utils.now().strftime("%Y-%m-%d %H:%M:%S"), jenis, status, pesan, metode),
-            db=db, commit=False)
+            (siswa_id, (waktu or utils.now()).strftime("%Y-%m-%d %H:%M:%S"), jenis, status, pesan,
+             metode), db=db, commit=False)
 
 
-def process_scan(text, mode="auto", metode="scanner", db=None):
-    """Proses satu hasil scan QR. Selalu mengembalikan dict hasil untuk UI."""
+def process_scan(text, mode="auto", metode="scanner", db=None, waktu=None):
+    """Proses satu scan QR / tap kartu RFID. Selalu mengembalikan dict hasil untuk UI.
+
+    `waktu`: jam tap sebenarnya untuk tap yang tertunda (antrian offline perangkat/browser);
+    None = sekarang. Notifikasi WA hanya dikirim untuk tap hari ini."""
     from ..db import get_db
+    from ..qr import jenis_kartu
     db = db or get_db()
     mode = mode if mode in MODES else "auto"
+    if metode in ("scanner", "kamera") and jenis_kartu(text) == "rfid":
+        metode = "rfid"
+    now = waktu or utils.now()
     siswa, err = find_siswa(text, db=db)
     if siswa is None:
-        _log(db, None, "gagal", None, err, metode)
+        _log(db, None, "gagal", None, err, metode, now)
         db.commit()
         return {"ok": False, "level": "error", "pesan": err}
 
-    now = utils.now()
     tgl = now.date()
+    kirim_wa = tgl == utils.today()
     if not utils.is_school_day(tgl, db=db):
         ket = utils.libur_on(tgl, db=db) or "bukan hari sekolah"
         return {"ok": False, "level": "error", "siswa": _siswa_dict(siswa),
@@ -94,13 +101,13 @@ def process_scan(text, mode="auto", metode="scanner", db=None):
             pesan = f"Sudah absen pulang pukul {rec['jam_pulang'][:5]}"
         else:
             pesan = f"Sudah absen masuk pukul {rec['jam_masuk'][:5]}"
-        _log(db, siswa["id"], "peringatan", None, pesan, metode)
+        _log(db, siswa["id"], "peringatan", None, pesan, metode, now)
         db.commit()
         return {**base, "ok": False, "level": "warning", "jenis": "ulang", "pesan": pesan}
 
     if mode == "pulang" and not sudah_masuk:
         pesan = "Belum absen masuk hari ini — tidak bisa absen pulang"
-        _log(db, siswa["id"], "peringatan", None, pesan, metode)
+        _log(db, siswa["id"], "peringatan", None, pesan, metode, now)
         db.commit()
         return {**base, "ok": False, "level": "warning", "jenis": "pulang", "pesan": pesan}
 
@@ -116,8 +123,9 @@ def process_scan(text, mode="auto", metode="scanner", db=None):
                     "sumber = 'scan', updated_at = NOW() WHERE id = ?",
                     (jam, st, rec["id"]), db=db, commit=False)
         pesan = f"Absen masuk berhasil — {st}"
-        _log(db, siswa["id"], "masuk", st, pesan, metode)
-        notify.enqueue(db, siswa, "masuk", {"jam": jam[:5], "status": st})
+        _log(db, siswa["id"], "masuk", st, pesan, metode, now)
+        if kirim_wa:
+            notify.enqueue(db, siswa, "masuk", {"jam": jam[:5], "status": st})
         db.commit()
         return {**base, "ok": True, "level": "success" if st == "Hadir" else "warning",
                 "jenis": "masuk", "status": st, "pesan": pesan}
@@ -128,8 +136,9 @@ def process_scan(text, mode="auto", metode="scanner", db=None):
             "updated_at = NOW() WHERE id = ?",
             (jam, st, rec["id"]), db=db, commit=False)
     pesan = f"Absen pulang berhasil — {st}"
-    _log(db, siswa["id"], "pulang", st, pesan, metode)
-    notify.enqueue(db, siswa, "pulang", {"jam": jam[:5], "status": st})
+    _log(db, siswa["id"], "pulang", st, pesan, metode, now)
+    if kirim_wa:
+        notify.enqueue(db, siswa, "pulang", {"jam": jam[:5], "status": st})
     db.commit()
     return {**base, "ok": True, "level": "success" if st == "Tepat Waktu" else "warning",
             "jenis": "pulang", "status": st, "pesan": pesan}

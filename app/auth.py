@@ -69,9 +69,13 @@ def csrf_token():
     return session["_csrf"]
 
 
+# API perangkat memakai tanda tangan HMAC sendiri (bukan sesi browser)
+CSRF_BEBAS = {"static", "perangkat.api_ping", "perangkat.api_tap"}
+
+
 def csrf_protect():
     """Tolak POST tanpa token CSRF yang valid (form field `_csrf` atau header)."""
-    if request.method != "POST" or request.endpoint == "static":
+    if request.method != "POST" or request.endpoint in CSRF_BEBAS:
         return None
     sent = request.form.get("_csrf") or request.headers.get("X-CSRF-Token") or ""
     expected = session.get("_csrf") or ""

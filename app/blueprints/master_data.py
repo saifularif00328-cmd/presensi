@@ -2,16 +2,18 @@
 import csv
 import io
 import os
+from datetime import timedelta
 
-from flask import (Blueprint, abort, flash, redirect, render_template, request, send_file,
-                   url_for)
+from flask import (Blueprint, abort, flash, jsonify, redirect, render_template, request,
+                   send_file, url_for)
 from openpyxl import load_workbook
 from PIL import Image, ImageOps
 
-from .. import config
+from .. import config, utils
+from .. import rfid as rfid_mod
 from ..auth import feature, roles
-from ..license import langganan
 from ..db import IntegrityError, execute, get_db, get_setting, new_qr_token, query, set_setting
+from ..license import langganan
 from ..qr import make_payload, qr_png
 from ..services import kartu as kartu_svc
 from ..services.export import xlsx
@@ -297,6 +299,63 @@ def _read_import(file):
                     d[k] = d[k][:-2]
             out.append(d)
     return out
+
+
+# ================================================================ KARTU RFID
+@bp.route("/rfid")
+@roles()
+@feature("kartu")
+def rfid():
+    kelas_id = arg_int("kelas_id")
+    rows = []
+    if kelas_id:
+        rows = query("SELECT s.id, s.nama, s.nis, s.foto, s.rfid_uid FROM siswa s "
+                     "WHERE s.kelas_id = ? AND s.aktif = 1 ORDER BY s.nama", (kelas_id,))
+    total = query("SELECT COUNT(*) AS n, SUM(rfid_uid IS NOT NULL) AS punya FROM siswa "
+                  "WHERE aktif = 1", one=True)
+    return render_template("master/rfid.html", kelas=kelas_options(), kelas_id=kelas_id,
+                           rows=rows, total=total, tak_dikenal=_tak_dikenal(),
+                           semua=query("SELECT s.id, s.nama, k.nama AS kelas_nama, s.nis FROM "
+                                       "siswa s LEFT JOIN kelas k ON k.id = s.kelas_id WHERE "
+                                       "s.aktif = 1 AND s.rfid_uid IS NULL ORDER BY s.nama"))
+
+
+def _tak_dikenal():
+    batas = (utils.now() - timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S")
+    return query("SELECT uid, perangkat, waktu FROM rfid_tak_dikenal WHERE waktu >= ? "
+                 "ORDER BY waktu DESC LIMIT 20", (batas,))
+
+
+@bp.route("/rfid/tak-dikenal")
+@roles()
+def rfid_tak_dikenal():
+    return jsonify([dict(r) for r in _tak_dikenal()])
+
+
+@bp.route("/rfid/pasang", methods=["POST"])
+@roles()
+@feature("kartu")
+def rfid_pasang():
+    data = request.get_json(silent=True) or request.form
+    sid = int(data.get("siswa_id") or 0)
+    if not query("SELECT id FROM siswa WHERE id = ?", (sid,), one=True):
+        return jsonify({"ok": False, "pesan": "Siswa tidak ditemukan"})
+    ok, pesan = rfid_mod.pasang(sid, str(data.get("uid") or ""))
+    uid = query("SELECT rfid_uid FROM siswa WHERE id = ?", (sid,), one=True)["rfid_uid"]
+    if request.is_json:
+        return jsonify({"ok": ok, "pesan": pesan, "uid": uid})
+    flash(pesan, "success" if ok else "error")
+    return redirect(request.referrer or url_for("master.rfid"))
+
+
+@bp.route("/rfid/<int:sid>/lepas", methods=["POST"])
+@roles()
+def rfid_lepas(sid):
+    blokir = request.form.get("blokir") == "1"
+    if rfid_mod.lepas(sid, blokir=blokir, alasan=request.form.get("alasan") or "Hilang"):
+        flash("Kartu diblokir — tidak bisa dipakai lagi." if blokir else "Kartu dilepas dari siswa.",
+              "success")
+    return redirect(request.referrer or url_for("master.rfid"))
 
 
 @bp.route("/siswa/import", methods=["GET", "POST"])

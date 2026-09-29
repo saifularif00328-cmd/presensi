@@ -7,10 +7,9 @@ from flask import (Blueprint, flash, jsonify, redirect, render_template, request
 from .. import utils
 from ..auth import feature, roles
 from ..db import execute, get_db, get_setting, query
-from ..qr import find_siswa
-from ..services.attendance import _log
+from ..services import ibadah as ibadah_svc
 from .common import arg_date, arg_int, form_int, kelas_options, semester_aktif, send_export, \
-    valid_time
+    valid_time, waktu_tertunda
 
 bp = Blueprint("ibadah", __name__, url_prefix="/ibadah")
 
@@ -99,26 +98,8 @@ def api_tap():
     ib = query("SELECT * FROM ibadah WHERE id = ?", (int(data.get("ibadah_id") or 0),), one=True)
     if ib is None:
         return jsonify({"ok": False, "level": "error", "pesan": "Pilih jadwal ibadah dahulu"})
-    siswa, err = find_siswa(data.get("code", ""))
-    if siswa is None:
-        return jsonify({"ok": False, "level": "error", "pesan": err})
-    info = {"siswa": {"id": siswa["id"], "nama": siswa["nama"], "kelas": siswa["kelas_nama"],
-                      "foto": siswa["foto"]}}
-    if ib["jk"] and siswa["jk"] and ib["jk"] != siswa["jk"]:
-        return jsonify({**info, "ok": False, "level": "warning",
-                        "pesan": f"{ib['nama']} tidak berlaku untuk siswa ini"})
-    tgl, jam = utils.today_str(), utils.now().strftime("%H:%M:%S")
-    ada = query("SELECT jam FROM presensi_ibadah WHERE siswa_id = ? AND ibadah_id = ? AND "
-                "tanggal = ?", (siswa["id"], ib["id"], tgl), one=True)
-    if ada:
-        return jsonify({**info, "ok": False, "level": "warning",
-                        "pesan": f"Sudah tap {ib['nama']} pukul {ada['jam'][:5]}"})
-    execute("INSERT INTO presensi_ibadah(siswa_id, ibadah_id, tanggal, jam) VALUES (?,?,?,?)",
-            (siswa["id"], ib["id"], tgl, jam), db=db, commit=False)
-    _log(db, siswa["id"], "ibadah", ib["nama"], f"Tap {ib['nama']} berhasil", "kamera")
-    db.commit()
-    return jsonify({**info, "ok": True, "level": "success", "jam": jam[:5],
-                    "pesan": f"Tap {ib['nama']} berhasil"})
+    return jsonify(ibadah_svc.tap(data.get("code", ""), ib, db, waktu=waktu_tertunda(data),
+                                  metode=data.get("metode") or "kamera"))
 
 
 # ================================================================ REKAP

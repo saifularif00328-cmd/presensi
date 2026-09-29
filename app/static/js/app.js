@@ -10,7 +10,13 @@
       body: JSON.stringify(data),
       credentials: 'same-origin',
     });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (!r.ok) {
+      // respons JSON berisi pesan (mis. 402 langganan habis) tetap ditampilkan apa adanya
+      let j = null;
+      try { j = await r.json(); } catch (e) { /* bukan JSON */ }
+      if (j && j.pesan) return j;
+      throw new Error('HTTP ' + r.status);
+    }
     return r.json();
   };
 

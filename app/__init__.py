@@ -38,8 +38,8 @@ def create_app(test_config=None, start_jobs=True):
     app.teardown_appcontext(close_db)
 
     from . import auth
-    from .blueprints import (ibadah, kedisiplinan, main, master_data, notifikasi, perizinan,
-                             presensi, sistem)
+    from .blueprints import (ibadah, kedisiplinan, main, master_data, notifikasi, perangkat,
+                             perizinan, presensi, sistem)
     from .menu import build_menu
     from .license import TIER_LABEL, current_tier, has_feature, langganan
     from . import utils
@@ -53,6 +53,7 @@ def create_app(test_config=None, start_jobs=True):
     app.register_blueprint(kedisiplinan.bp)
     app.register_blueprint(sistem.bp)
     app.register_blueprint(notifikasi.bp)
+    app.register_blueprint(perangkat.bp)
 
     from . import security
     app.wsgi_app = security.ProxyLokal(app.wsgi_app)
