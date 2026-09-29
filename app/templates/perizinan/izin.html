@@ -27,7 +27,7 @@
     <td>{{ r.jenis }}</td><td class="nowrap">{{ r.tanggal_mulai }}{% if r.tanggal_selesai != r.tanggal_mulai %}<br>s.d. {{ r.tanggal_selesai }}{% endif %}</td>
     <td>{{ r.alasan or '-' }}{% if r.catatan_proses %}<br><small>Catatan: {{ r.catatan_proses }}</small>{% endif %}</td>
     <td>{{ status_badge(r.status) }}{% if r.pemroses %}<br><small>oleh {{ r.pemroses }}</small>{% endif %}</td>
-    <td class="hide-sm"><small>{{ r.pengaju or '-' }}<br>{{ r.created_at[:16] }}</small></td>
+    <td class="hide-sm"><small>{{ r.pengaju or '-' }}<br>{{ r.created_at[:16] }}{% if r.lampiran %}<br><a href="{{ url_for('uploads', filename=r.lampiran) }}" target="_blank">Lihat surat</a>{% endif %}</small></td>
     <td class="actions">
       {% if r.status == 'Menunggu' %}
       <form class="inline" method="post" action="{{ url_for('perizinan.izin_proses', iid=r.id, aksi='setujui') }}">{{ csrf() }}<button class="btn sm ok">Setujui</button></form>

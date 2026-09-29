@@ -37,7 +37,8 @@ def izin():
     where, args = "", []
     if status in ("Menunggu", "Disetujui", "Ditolak"):
         where, args = "WHERE i.status = ?", [status]
-    rows = query("SELECT i.*, s.nama, k.nama AS kelas, u.nama AS pengaju, v.nama AS pemroses "
+    rows = query("SELECT i.*, s.nama, k.nama AS kelas, COALESCE(u.nama, i.pengaju) AS pengaju, "
+                 "v.nama AS pemroses "
                  "FROM izin i JOIN siswa s ON s.id = i.siswa_id LEFT JOIN kelas k ON "
                  "k.id = s.kelas_id LEFT JOIN users u ON u.id = i.diajukan_oleh LEFT JOIN users v "
                  f"ON v.id = i.diproses_oleh {where} ORDER BY i.id DESC LIMIT 300", args)

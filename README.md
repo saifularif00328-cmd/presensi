@@ -1,13 +1,24 @@
 # Presensi Siswa Digital
 
-Aplikasi absensi sekolah berbasis **QR code** yang berjalan sebagai server lokal
-(offline-first) dan diakses lewat browser oleh admin, guru piket, dan guru BK.
-Dibuat sesuai PRD *Presensi Siswa Digital v1.0*.
+Aplikasi absensi sekolah dengan **kartu RFID + QR**, database **MySQL/MariaDB**, dan
+**portal siswa & orang tua** yang bisa dibuka dari mana saja lewat **Cloudflare**.
+Admin, guru piket, dan guru BK memakai browser; siswa tap kartu di reader USB atau perangkat
+ESP32 di gerbang.
+
+| Panduan | Isi |
+|---|---|
+| [`TUTORIAL_SERVER_SEKOLAH.md`](TUTORIAL_SERVER_SEKOLAH.md) | Tahap 1: installer Windows di komputer sekolah + Cloudflare Tunnel |
+| [`TUTORIAL_VPS.md`](TUTORIAL_VPS.md) | Tahap 2: semua sekolah di satu VPS (alamat tidak berubah) |
+| [`TUTORIAL_RFID.md`](TUTORIAL_RFID.md) · [`firmware/README.md`](firmware/README.md) | Kartu RFID, reader USB, perakitan ESP32 |
+| [`TUTORIAL_PORTAL.md`](TUTORIAL_PORTAL.md) | Panduan portal untuk orang tua & siswa |
+| [`TUTORIAL_MULTICABANG.md`](TUTORIAL_MULTICABANG.md) | Dashboard beberapa sekolah/cabang |
 
 ## Fitur
 
 | Modul | Isi |
 |---|---|
+| **Kartu RFID** | Tap kartu MIFARE 13,56 MHz lewat reader USB atau perangkat ESP32 + RC522 (LCD, buzzer, antrean offline); daftar kartu massal per kelas, blokir kartu hilang; menu Perangkat RFID (HMAC, anti-replay) |
+| **Portal siswa & orang tua** | `/portal`: orang tua masuk dengan nomor WA + kode OTP, siswa dengan NIS + PIN; status hari ini, kalender kehadiran, rekap semester, kedisiplinan, ibadah, pengumuman; orang tua mengajukan izin/sakit + foto surat; bisa dipasang seperti aplikasi (PWA) |
 | **Data Master** | Kelas (jenjang, wali kelas), Siswa (foto, NIS/NISN, WA ayah/ibu/wali, QR otomatis, import Excel/CSV), Guru/Staf, Tahun Ajaran & Semester (arsip) |
 | **Presensi** | Scan QR (masuk/pulang, mode otomatis), Monitor Live (auto-refresh, filter kelas), Presensi Manual, Rekap (H/I/S/A/D + telat, ekspor Excel/PDF), SMT (rekap semester + % kehadiran) |
 | **Perizinan** | Izin & Sakit (setujui/tolak, otomatis tercatat di presensi), Izin Keluar (jam keluar/kembali), Pengajuan Cetak Ulang Kartu |
@@ -84,36 +95,46 @@ Pesan masuk antrian lebih dulu. Job latar belakang mengecek koneksi tiap 20 deti
 Selama offline, status pesan tetap *Menunggu Koneksi*. Status berubah jadi *Terkirim* begitu online.
 Pesan yang ditolak 3× berstatus *Gagal* dan bisa dikirim ulang dari **Log Notifikasi**.
 
-## Lisensi (Basic / Pro / Enterprise)
+## Langganan (satu paket, semua fitur)
 
-| Tier | Fitur |
+| Status | Artinya |
 |---|---|
-| Basic (tanpa kode) | Presensi & QR, data master, rekap presensi, cetak kartu — hanya akun admin yang bisa login |
-| Pro | + Perizinan, Rekap Pelanggaran, Notifikasi WA, multi-user & role |
-| Enterprise | + Modul Ibadah, Dashboard Multi-Cabang |
+| **Uji coba** | 14 hari sejak instalasi, tanpa kode lisensi |
+| **Aktif** | Kode lisensi valid (masa berlaku + batas jumlah siswa opsional) |
+| **Masa tenggang** | 7 hari setelah berakhir — semua masih berjalan, muncul peringatan |
+| **Habis** | Mode baca-saja: data tetap bisa dilihat & diekspor, tetapi absen/perubahan data ditolak |
 
-Lisensi ditandatangani digital (Ed25519) dan terikat ke **ID perangkat** + masa berlaku.
-Aplikasi hanya membawa kunci publik, sehingga lisensi tidak bisa dipalsukan walaupun `.exe` dibongkar.
+Pengingat tampil 14 dan 3 hari sebelum berakhir. Lisensi ditandatangani digital (Ed25519) dan
+terikat ke **ID perangkat** + masa berlaku, sehingga tidak bisa dipalsukan walaupun `.exe` dibongkar.
 
-- **Vendor:** jalankan `python tools/vendor_init.py` sekali (membuat kunci privat & publik), lalu
-  kelola lisensi lewat **server aktivasi** (`jalankan_server_lisensi.bat`) — panduan lengkap
-  di [`license_server/README.md`](license_server/README.md), tutorial [ngrok](license_server/TUTORIAL_NGROK.md) (tanpa domain) dan [Cloudflare Tunnel](license_server/TUTORIAL_CLOUDFLARE.md) (domain sendiri).
-  Kode offline juga bisa dibuat dengan `python tools/keygen.py --device <ID> --tier pro --hari 365`.
-- **Sekolah:** menu **Lisensi** → *Aktivasi online* (kode aktivasi + alamat server) atau
-  *Aktivasi offline* (tempel kode lisensi). Status dicek otomatis ke server saat online:
-  pencabutan, perpanjangan, dan ganti tier diterima tanpa input ulang.
+- **Server sekolah (tahap 1):** menu **Langganan & Lisensi** → *Aktivasi online* (kode aktivasi) atau
+  *Aktivasi offline*. Vendor mengelola kode lewat server aktivasi
+  ([`license_server/README.md`](license_server/README.md)) atau offline:
+  `python tools/keygen.py --device <ID> --hari 365 --maks-siswa 1000`.
+- **VPS (tahap 2):** status diatur vendor dengan `presensi-sekolah perpanjang/nonaktif ...`
+  (berkas `data/_vendor.json`, mode `PRESENSI_MODE=cloud`).
 
-## Dashboard Multi-Cabang (Enterprise)
+## Keamanan akses internet
+- Halaman login dikunci sementara setelah 5× salah (per akun) / 20× (per IP); password awal wajib diganti.
+- IP & HTTPS asli dibaca dari Cloudflare/Nginx hanya bila datang dari proxy lokal; cookie `Secure`
+  otomatis saat HTTPS; header keamanan (HSTS, nosniff, frame).
+- Portal: OTP WhatsApp sekali pakai (5 menit, maks 3 kiriman/15 menit, 5× salah), PIN siswa hash +
+  kunci sementara; orang tua/siswa hanya bisa melihat data anak/dirinya sendiri.
+
+## Dashboard Multi-Cabang
 
 Menu **Sistem → Multi-Cabang** di server pusat menampilkan ringkasan presensi hari ini dari
 beberapa sekolah/cabang (hanya angka, tanpa data pribadi siswa). Setiap cabang cukup membagikan
 URL server + token API-nya. Panduan lengkap (satu jaringan, Tailscale, ngrok, Cloudflare):
 [`TUTORIAL_MULTICABANG.md`](TUTORIAL_MULTICABANG.md).
 
-## Build `.exe` Windows
+## Build installer Windows
 
-Di Windows, jalankan `build_exe.bat` (memakai PyInstaller + waitress).
-Hasilnya ada di `dist\PresensiSiswa\PresensiSiswa.exe`, dan data tersimpan di `dist\PresensiSiswa\data\`.
+1. `build_exe.bat` → `dist\PresensiSiswa\` (PyInstaller + waitress).
+2. `powershell -ExecutionPolicy Bypass -File installer\siapkan_bundel.ps1` (sekali: MariaDB, cloudflared, WinSW).
+3. Compile `installer\presensi.iss` di Inno Setup → `installer\Output\PasangPresensi-*.exe`.
+   Installer memasang MariaDB + aplikasi sebagai Windows Service, firewall, dan pengaturan anti-sleep
+   (`installer\pasang.ps1`). Lihat [`TUTORIAL_SERVER_SEKOLAH.md`](TUTORIAL_SERVER_SEKOLAH.md).
 
 ## Struktur kode
 

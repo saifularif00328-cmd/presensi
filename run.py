@@ -38,7 +38,8 @@ def main():
     print(f"  HP / perangkat lain (WiFi sama): http://{utils.local_ip()}:{PORT}")
     print("  Tekan Ctrl+C untuk berhenti")
     print("=" * 60)
-    if getattr(sys, "frozen", False) or "--open" in sys.argv:
+    # --layanan: dijalankan sebagai Windows Service / systemd (tanpa membuka browser)
+    if (getattr(sys, "frozen", False) or "--open" in sys.argv) and "--layanan" not in sys.argv:
         threading.Timer(1.5, lambda: webbrowser.open(f"http://localhost:{PORT}")).start()
     try:
         from waitress import serve  # server produksi bila tersedia

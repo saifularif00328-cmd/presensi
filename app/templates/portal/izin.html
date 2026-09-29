@@ -1,0 +1,21 @@
+{% extends "portal/base.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}Ajukan izin{% endblock %}
+{% block content %}
+<div class="card p-login">
+  <h1>Ajukan izin / sakit</h1>
+  <p class="muted">Untuk <b>{{ s.nama }}</b> ({{ s.kelas_nama or '-' }}). Pengajuan akan diperiksa sekolah; status tampil di portal.</p>
+  <form method="post" enctype="multipart/form-data">{{ csrf() }}
+    <div class="field"><label>Jenis</label>
+      <div class="checks">{% for j in jenis %}<label class="check"><input type="radio" name="jenis" value="{{ j }}" {{ 'checked' if loop.first }}>{{ j }}</label>{% endfor %}</div></div>
+    <div class="form-grid">
+      <div class="field"><label>Dari tanggal</label><input type="date" name="tanggal_mulai" value="{{ today() }}" required></div>
+      <div class="field"><label>Sampai tanggal</label><input type="date" name="tanggal_selesai" value="{{ today() }}" required></div>
+    </div>
+    <div class="field"><label>Alasan</label><textarea name="alasan" rows="3" maxlength="500" required placeholder="Mis. demam, periksa ke dokter"></textarea></div>
+    <div class="field"><label>Foto surat izin / keterangan dokter (opsional)</label><input type="file" name="surat" accept="image/*" capture="environment"></div>
+    <div class="btn-row"><button class="btn">{{ icon('save') }}Kirim pengajuan</button>
+      <a class="btn ghost" href="{{ url_for('portal.siswa', sid=s.id) }}">Batal</a></div>
+  </form>
+</div>
+{% endblock %}

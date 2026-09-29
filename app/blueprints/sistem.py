@@ -165,6 +165,8 @@ def pengaturan():
             set_setting("zona_waktu", zona, db=db, commit=False)
         set_setting("modul_ibadah_aktif", "1" if request.form.get("modul_ibadah_aktif") else "0",
                     db=db, commit=False)
+        set_setting("portal_aktif", "1" if request.form.get("portal_aktif") else "0",
+                    db=db, commit=False)
         _simpan_gambar(db, "logo", "logo_sekolah", "logo_sekolah", (512, 512))
         _simpan_gambar(db, "ttd", "ttd_kepsek", "ttd_kepsek", (900, 400))
         r = request.form.get("monitor_refresh_detik", "3")
@@ -184,7 +186,8 @@ def pengaturan():
                            ttd_url=(url_for("uploads", filename=get_setting("ttd_kepsek"))
                                     if get_setting("ttd_kepsek") else None),
                            refresh=get_setting("monitor_refresh_detik"),
-                           ZONA=utils.ZONA, zona=get_setting("zona_waktu"))
+                           ZONA=utils.ZONA, zona=get_setting("zona_waktu"),
+                           portal_aktif=get_setting("portal_aktif") != "0")
 
 
 PROFIL_KEYS = ("nama_sekolah", "alamat_sekolah", "kota_sekolah", "telepon_sekolah", "email_sekolah",
@@ -259,6 +262,76 @@ def lisensi():
                            server=lisensi_svc.server_url(),
                            checked=get_setting("license_checked"),
                            pubkey_ok=public_key() is not None)
+
+
+# ================================================================ AKSES ONLINE (Cloudflare Tunnel)
+def _cloudflared():
+    """Lokasi cloudflared.exe di samping aplikasi (server sekolah Windows), atau None."""
+    import shutil
+    import sys
+    lokal = os.path.join(config.BASE_DIR, "cloudflared.exe" if sys.platform == "win32"
+                         else "cloudflared")
+    return lokal if os.path.exists(lokal) else shutil.which("cloudflared")
+
+
+def _status_tunnel():
+    import subprocess
+    import sys
+    if sys.platform != "win32":
+        return None
+    try:
+        out = subprocess.run(["sc", "query", "cloudflared"], capture_output=True, text=True,
+                             timeout=10).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if "RUNNING" in out:
+        return "berjalan"
+    return "berhenti" if "STATE" in out else "belum"
+
+
+@bp.route("/akses-online", methods=["GET", "POST"])
+@roles()
+def akses_online():
+    """Hubungkan server sekolah ke internet lewat Cloudflare Tunnel (token dari penyedia)."""
+    import re
+    import subprocess
+    exe = _cloudflared()
+    if request.method == "POST":
+        aksi = request.form.get("aksi")
+        if aksi == "alamat":
+            url = request.form.get("alamat_publik", "").strip().rstrip("/")
+            if url and not re.match(r"^https://[a-z0-9.-]+$", url):
+                flash("Alamat harus berbentuk https://nama.domain (tanpa garis miring di akhir).",
+                      "error")
+            else:
+                set_setting("alamat_publik", url)
+                flash("Alamat publik disimpan.", "success")
+        elif aksi == "tunnel":
+            token = re.sub(r"\s", "", request.form.get("token", ""))
+            if token.lower().startswith("cloudflared"):  # tempelan perintah lengkap
+                token = token.split("install")[-1]
+            if not re.fullmatch(r"[A-Za-z0-9_\-=+/]{40,4000}", token):
+                flash("Token tidak valid. Salin token dari penyedia (deretan huruf-angka panjang).",
+                      "error")
+            elif not exe:
+                flash("cloudflared tidak ditemukan di komputer ini.", "error")
+            else:
+                try:
+                    subprocess.run([exe, "service", "uninstall"], capture_output=True, timeout=60)
+                    r = subprocess.run([exe, "service", "install", token], capture_output=True,
+                                       text=True, timeout=120)
+                    if r.returncode == 0:
+                        flash("Terhubung ke Cloudflare. Portal bisa dibuka dari internet dalam "
+                              "±1 menit.", "success")
+                    else:
+                        flash("Gagal memasang tunnel: " + (r.stderr or r.stdout)[-300:], "error")
+                except (OSError, subprocess.SubprocessError) as e:
+                    flash(f"Gagal menjalankan cloudflared: {e}", "error")
+        return redirect(url_for("sistem.akses_online"))
+    return render_template("sistem/akses_online.html", exe=exe, status=_status_tunnel(),
+                           alamat=get_setting("alamat_publik") or "",
+                           cloud=os.environ.get("PRESENSI_MODE") == "cloud",
+                           lan=f"http://{utils.local_ip()}:{config.PORT}")
 
 
 # ================================================================ MULTI-CABANG

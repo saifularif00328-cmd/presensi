@@ -1,0 +1,89 @@
+{% extends "portal/base.html" %}
+{% block title %}{{ s.nama }}{% endblock %}
+{% block content %}
+{% if anak|length > 1 %}
+<div class="p-switch">{% for a in anak %}<a class="{{ 'active' if a.id == s.id }}" href="{{ url_for('portal.siswa', sid=a.id) }}">{{ a.nama.split()[0] }}</a>{% endfor %}</div>
+{% endif %}
+
+<div class="card p-profil">
+  {% if s.foto %}<img class="avatar lg" src="{{ url_for('portal.foto', sid=s.id) }}" alt="">{% else %}<span class="avatar lg">{{ s.nama[:1]|upper }}</span>{% endif %}
+  <div class="grow"><h2>{{ s.nama }}</h2><div class="muted">{{ s.kelas_nama or '-' }}{% if s.nis %} · NIS {{ s.nis }}{% endif %}</div></div>
+</div>
+
+{% set p = hari_ini %}
+<div class="card">
+  <h3>{{ icon('clock') }}Hari ini <small class="muted">· {{ tanggal_indo(today()) }}</small></h3>
+  <div class="p-today">
+    <div><span class="muted">Masuk</span><b>{{ p.jam_masuk[:5] if p and p.jam_masuk else '–' }}</b>
+      {% if p and p.status_masuk %}<span class="badge b-{{ 'T' if p.status_masuk == 'Telat' else 'H' }}">{{ p.status_masuk }}</span>{% endif %}</div>
+    <div><span class="muted">Pulang</span><b>{{ p.jam_pulang[:5] if p and p.jam_pulang else '–' }}</b>
+      {% if p and p.status_pulang %}<span class="badge">{{ p.status_pulang }}</span>{% endif %}</div>
+    <div><span class="muted">Keterangan</span><b>{{ KET.get(p.keterangan, '-') if p else 'Belum absen' }}</b></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-head"><h3>{{ icon('calendar') }}{{ ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'][awal.month - 1] }} {{ awal.year }}</h3>
+    <div class="btn-row"><a class="btn sm ghost" href="?bulan={{ sebelum }}">{{ icon('back') }}</a>{% if sesudah %}<a class="btn sm ghost" href="?bulan={{ sesudah }}">{{ icon('next') }}</a>{% endif %}</div></div>
+  <div class="p-cal">
+    {% for h in ['Sen','Sel','Rab','Kam','Jum','Sab','Min'] %}<div class="p-cal-h">{{ h }}</div>{% endfor %}
+    {% for _ in range(awal.weekday()) %}<div></div>{% endfor %}
+    {% for d in kalender %}
+    <div class="p-day k-{{ d.kode or 'x' }}" title="{{ d.libur or KODE.get(d.kode, '') }}{% if d.p and d.p.jam_masuk %} · masuk {{ d.p.jam_masuk[:5] }}{% endif %}">
+      <span>{{ d.tanggal.day }}</span>{% if d.kode and d.kode not in ('L', '-') %}<b>{{ d.kode }}</b>{% endif %}</div>
+    {% endfor %}
+  </div>
+  <div class="p-legend">{% for k in ['H','T','I','S','A','D','L'] %}<span><i class="p-day k-{{ k }}"></i>{{ KODE[k] }}</span>{% endfor %}</div>
+</div>
+
+{% if rekap %}
+<div class="card">
+  <h3>{{ icon('rekap') }}Semester {{ sem.semester }} {{ sem.nama }}</h3>
+  <div class="p-stats">
+    <div><b>{{ rekap.persen }}%</b><span>Kehadiran</span></div>
+    <div><b>{{ rekap.H }}</b><span>Hadir</span></div>
+    <div><b>{{ rekap.telat }}</b><span>Telat</span></div>
+    <div><b>{{ rekap.I + rekap.S }}</b><span>Izin/Sakit</span></div>
+    <div><b>{{ rekap.A }}</b><span>Alpha</span></div>
+  </div>
+  <p class="help">Dari {{ rekap.efektif }} hari sekolah efektif sampai hari ini.</p>
+</div>
+{% endif %}
+
+{% if ortu %}
+<div class="card">
+  <div class="card-head"><h3>{{ icon('izin') }}Izin &amp; sakit</h3>
+    <a class="btn sm" href="{{ url_for('portal.izin', sid=s.id) }}">{{ icon('plus') }}Ajukan</a></div>
+  <ul class="list">
+    {% for i in izin %}
+    <li><div class="grow"><div class="title">{{ i.jenis }} · {{ i.tanggal_mulai }}{% if i.tanggal_selesai != i.tanggal_mulai %} s.d. {{ i.tanggal_selesai }}{% endif %}</div>
+      <div class="sub">{{ i.alasan or '-' }}{% if i.catatan_proses %} — {{ i.catatan_proses }}{% endif %}</div></div>
+      <span class="badge b-{{ i.status }}">{{ i.status }}</span></li>
+    {% else %}<li class="empty">Belum ada pengajuan.</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-head"><h3>{{ icon('pelanggaran') }}Kedisiplinan</h3><span class="badge {{ 'b-err' if poin else 'b-ok' }}">{{ poin }} poin</span></div>
+  <ul class="list">
+    {% for x in pelanggaran %}
+    <li><div class="grow"><div class="title">{{ x.jenis or 'Pelanggaran' }}</div><div class="sub">{{ x.tanggal }}{% if x.keterangan %} · {{ x.keterangan }}{% endif %}</div></div><span class="badge b-err">{{ x.poin }}</span></li>
+    {% else %}<li class="empty">Tidak ada catatan pelanggaran. Pertahankan!</li>{% endfor %}
+  </ul>
+</div>
+
+{% if ibadah %}
+<div class="card">
+  <h3>{{ icon('ibadah') }}Ibadah terakhir</h3>
+  <ul class="list">{% for x in ibadah %}<li><div class="grow"><div class="title">{{ x.nama }}</div><div class="sub">{{ x.tanggal }}</div></div><span class="muted">{{ x.jam[:5] }}</span></li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+{% if info %}
+<div class="card">
+  <h3>{{ icon('info') }}Pengumuman sekolah</h3>
+  <ul class="list">{% for x in info %}<li><div class="grow"><div class="title">{% if x.penting %}<span class="badge b-err">Penting</span> {% endif %}{{ x.judul }}</div><div class="sub" style="white-space:pre-line">{{ x.isi }}</div></div></li>{% endfor %}</ul>
+</div>
+{% endif %}
+{% endblock %}

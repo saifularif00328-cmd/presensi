@@ -1,0 +1,24 @@
+# Satu layanan per sekolah: systemctl enable --now presensi@smpn1
+# Konfigurasi sekolah ada di /srv/presensi/<kode>/env (dibuat oleh tools/sekolah.py)
+[Unit]
+Description=Presensi Siswa Digital (%i)
+After=network-online.target mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=presensi
+Group=presensi
+EnvironmentFile=/srv/presensi/%i/env
+WorkingDirectory=/opt/presensi
+ExecStart=/opt/presensi/venv/bin/python /opt/presensi/run.py --layanan
+Restart=always
+RestartSec=5
+# pengamanan dasar
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/srv/presensi/%i
+
+[Install]
+WantedBy=multi-user.target

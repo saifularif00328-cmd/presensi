@@ -52,7 +52,9 @@
   <h3 class="mt">Modul & tampilan</h3>
   <div class="form-grid">
     <div><label class="check"><input type="checkbox" name="modul_ibadah_aktif" value="1" {{ 'checked' if ibadah_aktif() }}>Aktifkan modul Ibadah</label>
-      <div class="help">Modul ibadah butuh lisensi Enterprise.</div></div>
+      <div class="help">Jadwal & tap ibadah (sholat berjamaah, dll.).</div></div>
+    <div><label class="check"><input type="checkbox" name="portal_aktif" value="1" {{ 'checked' if portal_aktif }}>Aktifkan Portal Siswa &amp; Orang Tua</label>
+      <div class="help">Alamat: <a href="{{ url_for('portal.masuk') }}" target="_blank">{{ request.host_url.rstrip('/') }}{{ url_for('portal.masuk') }}</a> — orang tua masuk dengan nomor WA (kode OTP), siswa dengan NIS + PIN.</div></div>
     <div><label>Refresh Monitor Live (detik)</label><input type="number" name="monitor_refresh_detik" min="1" max="60" value="{{ refresh }}"></div>
   </div>
   <button class="btn mt">Simpan</button>

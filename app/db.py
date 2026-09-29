@@ -68,6 +68,9 @@ DEFAULT_SETTINGS = {
                        "Kehilangan atau kerusakan kartu wajib segera dilaporkan ke Tata Usaha.\n"
                        "Bagi yang menemukan kartu ini, mohon dikembalikan ke alamat sekolah.",
     "kartu_berlaku": "Berlaku selama pemegang kartu masih berstatus siswa aktif.",
+    "portal_aktif": "1",
+    "wa_tpl_otp": "Kode masuk Portal Presensi {sekolah}: *{kode}*. Berlaku 5 menit. "
+                  "Jangan berikan kode ini kepada siapa pun, termasuk petugas sekolah.",
 }
 
 
@@ -332,8 +335,14 @@ def migrate(conn):
     Tambahkan ALTER TABLE di sini, cek dulu dengan _columns(conn, tabel)."""
     if "wajib_ganti" not in _columns(conn, "users"):
         conn.execute("ALTER TABLE users ADD COLUMN wajib_ganti TINYINT NOT NULL DEFAULT 0")
-    if "rfid_uid" not in _columns(conn, "siswa"):
+    kolom = _columns(conn, "siswa")
+    if "rfid_uid" not in kolom:
         conn.execute("ALTER TABLE siswa ADD COLUMN rfid_uid VARCHAR(40) NULL UNIQUE AFTER qr_token")
+    if "pin_hash" not in kolom:
+        conn.execute("ALTER TABLE siswa ADD COLUMN pin_hash VARCHAR(255) NULL, "
+                     "ADD COLUMN pin_wajib_ganti TINYINT NOT NULL DEFAULT 1")
+    if "pengaju" not in _columns(conn, "izin"):
+        conn.execute("ALTER TABLE izin ADD COLUMN pengaju VARCHAR(100) NULL AFTER catatan_proses")
 
 
 def _seed(conn):

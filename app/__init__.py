@@ -39,7 +39,7 @@ def create_app(test_config=None, start_jobs=True):
 
     from . import auth
     from .blueprints import (ibadah, kedisiplinan, main, master_data, notifikasi, perangkat,
-                             perizinan, presensi, sistem)
+                             perizinan, portal, presensi, sistem)
     from .menu import build_menu
     from .license import TIER_LABEL, current_tier, has_feature, langganan
     from . import utils
@@ -54,6 +54,7 @@ def create_app(test_config=None, start_jobs=True):
     app.register_blueprint(sistem.bp)
     app.register_blueprint(notifikasi.bp)
     app.register_blueprint(perangkat.bp)
+    app.register_blueprint(portal.bp)
 
     from . import security
     app.wsgi_app = security.ProxyLokal(app.wsgi_app)

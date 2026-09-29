@@ -49,6 +49,8 @@ MENU = [
         ("Notifikasi WA", "wa", "notifikasi.pengaturan", (), "whatsapp"),
         ("Log Notifikasi", "log", "notifikasi.log", (), "whatsapp"),
         ("Perangkat RFID", "perangkat", "perangkat.daftar", (), "presensi"),
+        ("Portal & PIN Siswa", "portal", "master.pin", (), "presensi"),
+        ("Akses Online", "cloud", "sistem.akses_online", (), "presensi"),
         ("Multi-Cabang", "cabang", "sistem.cabang", (), "multicabang"),
     ]),
 ]

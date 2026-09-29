@@ -1,0 +1,21 @@
+<!-- WinSW: menjalankan aplikasi Presensi sebagai Windows Service (tanpa perlu login Windows).
+     File PresensiApp.exe di folder ini = WinSW-x64.exe yang diganti namanya. -->
+<service>
+  <id>PresensiApp</id>
+  <name>Presensi Siswa Digital</name>
+  <description>Server aplikasi Presensi Siswa Digital (port 5000)</description>
+  <executable>%BASE%\..\PresensiSiswa.exe</executable>
+  <arguments>--layanan</arguments>
+  <workingdirectory>%BASE%\..</workingdirectory>
+  <env name="PRESENSI_DATA_DIR" value="%BASE%\..\data"/>
+  <depend>PresensiDB</depend>
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <onfailure action="restart" delay="10 sec"/>
+  <onfailure action="restart" delay="30 sec"/>
+  <resetfailure>1 hour</resetfailure>
+  <log mode="roll-by-size">
+    <sizeThreshold>5120</sizeThreshold>
+    <keepFiles>5</keepFiles>
+  </log>
+</service>

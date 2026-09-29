@@ -1,0 +1,20 @@
+{% extends "portal/base.html" %}
+{% block title %}Anak saya{% endblock %}
+{% block content %}
+<h1>Pilih anak</h1>
+<div class="p-cards">
+  {% for a in anak %}
+  {% set p = a.hari_ini %}
+  <a class="card p-anak" href="{{ url_for('portal.siswa', sid=a.id) }}">
+    {% if a.foto %}<img class="avatar lg" src="{{ url_for('portal.foto', sid=a.id) }}" alt="">{% else %}<span class="avatar lg">{{ a.nama[:1]|upper }}</span>{% endif %}
+    <div class="grow"><b>{{ a.nama }}</b><div class="muted">{{ a.kelas_nama or '-' }}</div>
+      <div class="p-status">Hari ini:
+        {% if p and p.jam_masuk %}<span class="badge b-{{ 'T' if p.status_masuk == 'Telat' else 'H' }}">Masuk {{ p.jam_masuk[:5] }}</span>{% if p.jam_pulang %} <span class="badge b-H">Pulang {{ p.jam_pulang[:5] }}</span>{% endif %}
+        {% elif p %}<span class="badge b-{{ p.keterangan }}">{{ KET.get(p.keterangan) }}</span>
+        {% else %}<span class="badge">Belum absen</span>{% endif %}</div>
+    </div>{{ icon('next') }}</a>
+  {% else %}
+  <div class="card empty">Tidak ada data siswa untuk nomor ini.</div>
+  {% endfor %}
+</div>
+{% endblock %}

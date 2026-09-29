@@ -1,0 +1,14 @@
+{% extends "portal/base.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}Ganti PIN{% endblock %}
+{% block content %}
+<div class="card p-login">
+  <h1>Buat PIN baru</h1>
+  <p class="muted">Demi keamanan, ganti PIN dari sekolah dengan PIN pilihan Anda (6 angka). Jangan beritahukan ke teman.</p>
+  <form method="post">{{ csrf() }}
+    <div class="field"><label>PIN baru</label><input name="pin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" required autofocus></div>
+    <div class="field"><label>Ulangi PIN baru</label><input name="ulang" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" required></div>
+    <button class="btn block">{{ icon('save') }}Simpan PIN</button>
+  </form>
+</div>
+{% endblock %}

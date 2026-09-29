@@ -42,7 +42,8 @@ def wajib_ganti_password():
     return None
 
 
-BEBAS_LANGGANAN = {"auth.login", "auth.logout", "main.akun", "sistem.lisensi", "static"}
+BEBAS_LANGGANAN = {"auth.login", "auth.logout", "main.akun", "sistem.lisensi", "static",
+                   "portal.masuk", "portal.keluar", "portal.ganti_pin"}
 
 
 def cek_langganan():

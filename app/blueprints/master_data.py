@@ -301,6 +301,33 @@ def _read_import(file):
     return out
 
 
+# ================================================================ PIN PORTAL SISWA
+@bp.route("/pin", methods=["GET", "POST"])
+@roles()
+def pin():
+    """Buat PIN login portal siswa (6 angka) per kelas lalu cetak slipnya.
+    PIN hanya disimpan dalam bentuk hash, jadi hanya tampil sekali saat dibuat."""
+    kelas_id = arg_int("kelas_id") or form_int("kelas_id")
+    rows = []
+    if kelas_id:
+        rows = query("SELECT s.id, s.nama, s.nis, s.pin_hash, s.pin_wajib_ganti FROM siswa s "
+                     "WHERE s.kelas_id = ? AND s.aktif = 1 ORDER BY s.nama", (kelas_id,))
+    if request.method == "POST" and kelas_id:
+        pilih = {int(x) for x in request.form.getlist("siswa_id") if x.isdigit()}
+        target = [r for r in rows if r["id"] in pilih and r["nis"]]
+        if not target:
+            flash("Pilih minimal satu siswa (siswa tanpa NIS tidak bisa login portal).", "error")
+            return redirect(url_for("master.pin", kelas_id=kelas_id))
+        from ..services.portal import buat_pin
+        pins = buat_pin([r["id"] for r in target], get_db())
+        kelas = query("SELECT nama FROM kelas WHERE id = ?", (kelas_id,), one=True)
+        return render_template("master/pin_cetak.html", rows=target, pins=pins, kelas=kelas,
+                               portal_url=(get_setting("alamat_publik")
+                                           or request.host_url.rstrip("/"))
+                               + url_for("portal.masuk"))
+    return render_template("master/pin.html", kelas=kelas_options(), kelas_id=kelas_id, rows=rows)
+
+
 # ================================================================ KARTU RFID
 @bp.route("/rfid")
 @roles()

@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS siswa (
     wa_wali     VARCHAR(30),
     qr_token    VARCHAR(32) NOT NULL UNIQUE,        -- ID unik di dalam QR (diganti saat kartu dicetak ulang)
     rfid_uid    VARCHAR(40) NULL UNIQUE,            -- UID kartu RFID (hex), NULL = belum punya kartu RFID
+    pin_hash    VARCHAR(255) NULL,                  -- PIN login portal siswa (hash)
+    pin_wajib_ganti TINYINT NOT NULL DEFAULT 1,     -- 1 = PIN dari sekolah, wajib diganti saat login
     aktif       TINYINT NOT NULL DEFAULT 1,
     created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_siswa_kelas (kelas_id),
@@ -141,6 +143,7 @@ CREATE TABLE IF NOT EXISTS izin (
     diajukan_oleh    INT NULL,
     diproses_oleh    INT NULL,
     catatan_proses   TEXT,
+    pengaju          VARCHAR(100) NULL,             -- diisi bila diajukan dari portal (mis. "Orang tua 62812...")
     created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     processed_at     DATETIME NULL,
     FOREIGN KEY (siswa_id) REFERENCES siswa(id) ON DELETE CASCADE,
@@ -308,4 +311,18 @@ CREATE TABLE IF NOT EXISTS perangkat_nonce (
     waktu  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (kode, nonce),
     INDEX idx_nonce_waktu (waktu)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===================== PORTAL SISWA & ORANG TUA =====================
+-- Kode OTP login orang tua (dikirim lewat WhatsApp)
+CREATE TABLE IF NOT EXISTS portal_otp (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    nomor        VARCHAR(30) NOT NULL,
+    kode_hash    VARCHAR(255) NOT NULL,
+    dibuat       DATETIME NOT NULL,
+    kedaluwarsa  DATETIME NOT NULL,
+    percobaan    INT NOT NULL DEFAULT 0,
+    dipakai      TINYINT NOT NULL DEFAULT 0,
+    ip           VARCHAR(45),
+    INDEX idx_portal_otp_nomor (nomor, dibuat)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

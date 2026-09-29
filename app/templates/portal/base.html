@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1d4ed8">
+  <title>{% block title %}Portal{% endblock %} · Presensi {{ nama_sekolah }}</title>
+  <link rel="manifest" href="{{ url_for('portal.manifest') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('portal.ikon', ukuran=180) }}">
+  <link rel="icon" href="{{ url_for('portal.ikon', ukuran=192) }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body class="portal">
+<header class="p-top">
+  <span class="logo-mark">{{ icon('logo') }}</span>
+  <div class="grow"><div class="p-title">Portal Presensi</div><div class="p-sub">{{ nama_sekolah }}</div></div>
+  {% if session.get('portal') %}<a class="btn sm ghost p-out" href="{{ url_for('portal.keluar') }}">{{ icon('logout') }}Keluar</a>{% endif %}
+</header>
+<main class="p-main">
+  {% for cat, m in get_flashed_messages(with_categories=true) %}<div class="flash {{ cat if cat in ('success','error','info') else 'info' }}">{{ icon('ok' if cat == 'success' else ('err' if cat == 'error' else 'alert')) }}<span>{{ m }}</span></div>{% endfor %}
+  {% block content %}{% endblock %}
+</main>
+<footer class="p-foot">Presensi Siswa Digital · data hanya dapat dilihat oleh siswa &amp; orang tua yang bersangkutan</footer>
+<script>
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('{{ url_for("portal.service_worker") }}', {scope: '{{ url_for("portal.beranda") }}'}).catch(function () {});
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

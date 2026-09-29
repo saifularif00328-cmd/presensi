@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>PIN Portal — {{ kelas.nama }}</title>
+  <style>
+    body { font-family: "Inter", Arial, sans-serif; margin: 12mm; color: #101828; }
+    .bar { display: flex; gap: 8px; align-items: center; margin-bottom: 10mm; }
+    .bar button { padding: 8px 16px; font-size: 14px; cursor: pointer; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5mm; }
+    .slip { border: 1px dashed #98a2b3; border-radius: 3mm; padding: 4mm 5mm; break-inside: avoid; font-size: 11pt; }
+    .slip h3 { margin: 0 0 1mm; font-size: 12pt; }
+    .slip .pin { font-size: 20pt; font-weight: 700; letter-spacing: 3mm; margin: 2mm 0; }
+    .slip small { color: #475467; display: block; }
+    @media print { .bar { display: none; } body { margin: 8mm; } }
+  </style>
+</head>
+<body>
+  <div class="bar"><button onclick="window.print()">Cetak</button>
+    <span>Simpan/cetak sekarang — PIN tidak bisa ditampilkan lagi setelah halaman ini ditutup.</span></div>
+  <div class="grid">
+    {% for s in rows %}
+    <div class="slip">
+      <h3>{{ s.nama }}</h3>
+      <small>{{ nama_sekolah }} · Kelas {{ kelas.nama }}</small>
+      <div>NIS: <b>{{ s.nis }}</b></div>
+      <div class="pin">{{ pins[s.id] }}</div>
+      <small>Masuk di <b>{{ portal_url }}</b> (pilih tab Siswa). Ganti PIN saat pertama masuk; jangan beritahukan ke teman.</small>
+    </div>
+    {% endfor %}
+  </div>
+</body>
+</html>

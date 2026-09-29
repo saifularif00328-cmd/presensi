@@ -258,7 +258,8 @@ def test_semua_halaman_render(app, client, seed, clock):
     skip = {"/static/<path:filename>", "/uploads/<path:filename>", "/logout", "/favicon.ico"}
     urls = []
     for rule in app.url_map.iter_rules():
-        if "GET" not in rule.methods or rule.rule in skip or "/api/" in rule.rule:
+        if ("GET" not in rule.methods or rule.rule in skip or "/api/" in rule.rule
+                or rule.rule.startswith("/portal")):  # portal diuji di test_portal.py
             continue
         url = rule.rule.replace("<int:sid>", str(seed["ahmad"]["id"]))
         if "<" in url:
@@ -673,7 +674,7 @@ def test_rfid_uid_dikenali_dari_reader_usb_dan_esp32(app, client, seed, clock):
     client.post(f"/master/rfid/{seed['ahmad']['id']}/lepas", data={"blokir": "1"})
     res = client.post("/presensi/api/scan", json={"code": "A1B2C3D4"}).get_json()
     assert not res["ok"] and "diblokir" in res["pesan"] and "Ahmad" in res["pesan"]
-    page = client.get(f"/master/rfid?kelas_id=1").get_data(as_text=True)
+    page = client.get("/master/rfid?kelas_id=1").get_data(as_text=True)
     assert "Ahmad Fauzi" in page and "Tap kartu untuk" in page
 
 

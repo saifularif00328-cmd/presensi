@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, kelas_select with context %}
+{% block title %}PIN Portal Siswa{% endblock %}
+{% block content %}
+<div class="page-head"><h1>PIN Portal Siswa</h1>
+  <a class="btn outline" href="{{ url_for('portal.masuk') }}" target="_blank">{{ icon('portal') }}Buka portal</a></div>
+<div class="card">
+  <p class="help" style="margin-top:0">Siswa masuk portal dengan <b>NIS + PIN</b>. Pilih kelas, centang siswa, lalu klik
+    <b>Buat &amp; cetak PIN</b>. PIN hanya tampil sekali di halaman cetak (disimpan terenkripsi) dan siswa wajib
+    menggantinya saat pertama masuk. Lupa PIN? Buat PIN baru untuk siswa tersebut.
+    Orang tua tidak butuh PIN — cukup nomor WhatsApp yang terdaftar.</p>
+  <form class="filters" method="get" style="margin:0">{{ kelas_select(kelas, kelas_id, all_label='Pilih kelas…', autosubmit=True) }}</form>
+</div>
+{% if kelas_id %}
+<form method="post" class="card" data-confirm="PIN lama siswa terpilih akan diganti dengan PIN baru. Lanjutkan?">{{ csrf() }}<input type="hidden" name="kelas_id" value="{{ kelas_id }}">
+  <div class="table-wrap"><table>
+    <thead><tr><th><input type="checkbox" onclick="document.querySelectorAll('.cek-pin').forEach(c => c.checked = this.checked)" checked></th><th>Nama</th><th>NIS</th><th>Status PIN</th></tr></thead>
+    <tbody>
+    {% for s in rows %}
+    <tr><td><input type="checkbox" class="cek-pin" name="siswa_id" value="{{ s.id }}" {{ 'checked' if s.nis }} {{ 'disabled' if not s.nis }}></td>
+      <td><b>{{ s.nama }}</b></td><td>{{ s.nis or '— (isi NIS dulu)' }}</td>
+      <td>{% if not s.pin_hash %}<span class="badge">Belum ada</span>{% elif s.pin_wajib_ganti %}<span class="badge b-warn">Belum dipakai</span>{% else %}<span class="badge b-ok">Aktif</span>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="4" class="empty">Tidak ada siswa aktif di kelas ini.</td></tr>{% endfor %}
+    </tbody></table></div>
+  <div class="btn-row mt"><button class="btn">{{ icon('printer') }}Buat &amp; cetak PIN</button></div>
+</form>
+{% endif %}
+{% endblock %}
