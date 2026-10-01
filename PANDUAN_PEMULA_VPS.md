@@ -132,35 +132,28 @@ Skrip ini sekaligus memasang pengaman:
 - backup harian pukul 03.00.
 
 ## TAHAP 6 — Sambungkan ke Cloudflare (sekali saja)
-Lakukan di browser laptop. Nama menu Cloudflare kadang sedikit berubah; cari yang mirip.
+Tanpa dashboard Zero Trust, jadi **tidak perlu kartu kredit/PayPal**.
 
-1. **Bersihkan DNS lama**
-   - Buka **dash.cloudflare.com** → klik domain **presensiku.biz.id** → menu **DNS → Records**.
-   - Bila ada baris **Type A / AAAA / CNAME** dengan Name `presensiku.biz.id` atau `@`, klik
-     **Edit → Delete**.
-   - Baris MX/TXT biarkan.
-2. **Buat tunnel**
-   - Buka menu **Zero Trust** (kiri) → **Networks → Tunnels**.
-   - Bila diminta memilih paket, pilih **Free ($0)**.
-   - Klik **Create a tunnel** → pilih **Cloudflared** → nama: `vps` → **Save tunnel**.
-3. **Pasang tunnel di VPS**
-   - Pilih **Debian** dan **64-bit**.
-   - Salin perintah di kotak kanan, yang diawali `sudo cloudflared service install eyJ...`.
-   - Tempel di **PowerShell (VPS)**, lalu Enter.
-   - Kembali ke Cloudflare: di bawah halaman, status **Connectors** menjadi **Connected**. Klik
-     **Next**.
-4. **Isi Public hostname**
+1. Di VPS jalankan:
+   ```
+   cloudflared tunnel login
+   ```
+   Muncul tautan panjang `https://dash.cloudflare.com/argotunnel?...`.
+2. Salin tautan itu:
+   - blok dengan mouse dari `https` sampai akhir (boleh beberapa baris);
+   - tekan **Enter** (di PowerShell, Enter = salin);
+   - tempel di browser yang sudah login Cloudflare.
+3. Klik domain **presensiku.biz.id**, lalu klik **Authorize**. Di VPS muncul
+   `You have successfully logged in` dan perintah selesai sendiri.
+4. Di VPS jalankan:
+   ```
+   bash /opt/presensi/deploy/tunnel_vps.sh
+   ```
+   Selesai bila muncul `cloudflared: aktif` dan kotak **SELESAI**.
+5. Tunggu 1–2 menit, lalu buka **https://presensiku.biz.id**. ✅ Muncul halaman **"Kode sekolah"**.
 
-   | Kolom | Isi |
-   |---|---|
-   | Subdomain | *(kosongkan)* |
-   | Domain | `presensiku.biz.id` |
-   | Path | *(kosongkan)* |
-   | Type | `HTTP` |
-   | URL | `localhost:8080` |
-
-   Klik **Save** / **Complete setup**.
-5. Buka **https://presensiku.biz.id** di browser. ✅ Muncul halaman **"Kode sekolah"**.
+> File `/root/.cloudflared/cert.pem` dan `/etc/cloudflared/*.json` adalah kunci tunnel —
+> jangan dibagikan.
 
 ## TAHAP 7 — Tambah sekolah pertama
 Di VPS:

@@ -121,10 +121,9 @@ cat <<'EOF'
 
 ============================================================
  SELESAI. Langkah berikutnya:
- 1. Hubungkan VPS ke Cloudflare (sekali):
-      cloudflared service install <TOKEN-TUNNEL-VPS>
-    Di dashboard Cloudflare, tunnel VPS -> Public hostname:
-      presensiku.biz.id  ->  HTTP  localhost:8080
+ 1. Hubungkan VPS ke Cloudflare (sekali, tanpa kartu/Zero Trust):
+      cloudflared tunnel login        (buka tautannya, pilih domain, Authorize)
+      bash /opt/presensi/deploy/tunnel_vps.sh
  2. Tambah sekolah:
       presensi-sekolah tambah smpn1 --nama "SMP Negeri 1" --hari 365
     -> https://presensiku.biz.id/smpn1  (login awal admin / admin123)

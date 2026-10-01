@@ -123,18 +123,13 @@ Skrip memasang:
 - backup harian pukul 03.00.
 
 ## 4. Hubungkan ke Cloudflare (sekali saja)
-1. Buka dash.cloudflare.com → **Zero Trust → Networks → Tunnels → Create a tunnel →
-   Cloudflared**. Beri nama `vps`.
-2. Pilih **Debian** · **64-bit**, lalu salin perintah `sudo cloudflared service install eyJ...`
-   dan jalankan di VPS.
-3. Klik **Next**, lalu isi **Public hostname**:
-   - Subdomain: *(kosongkan)*
-   - Domain: `presensiku.biz.id`
-   - Type: `HTTP`
-   - URL: `localhost:8080`
-4. Klik **Save**, lalu buka `https://presensiku.biz.id`. Halaman "Kode sekolah" harus muncul.
-
-> Sekolah baru **tidak perlu** diatur lagi di Cloudflare.
+Dashboard Zero Trust meminta kartu/PayPal, jadi tunnel dibuat dari VPS:
+```bash
+cloudflared tunnel login                 # buka tautannya, pilih presensiku.biz.id, Authorize
+bash /opt/presensi/deploy/tunnel_vps.sh  # buat tunnel "vps", DNS, layanan cloudflared
+```
+Buka `https://presensiku.biz.id`; halaman "Kode sekolah" harus tampil. Sekolah baru **tidak perlu**
+diatur lagi di Cloudflare.
 
 ## 5. Tambah sekolah
 ```bash
