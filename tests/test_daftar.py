@@ -82,6 +82,13 @@ def test_pendaftaran_ditolak(web, srv):
     assert 'id="form-daftar"' not in html
 
 
+def test_halaman_privasi(web, srv):
+    _tulis(srv / "_konfigurasi.json", {"wa": "6285700001111", "nama": "Presensiku"})
+    html = web.get("/privasi").get_data(as_text=True)
+    assert "Kebijakan privasi" in html and "wa.me/6285700001111" in html
+    assert 'href="/privasi"' in web.get("/").get_data(as_text=True)
+
+
 def test_formulir_terlalu_cepat_ditolak(srv):
     from daftar import create_app
     web = create_app({"TESTING": True, "SECRET_KEY": "uji", "WAKTU_ISI_MIN": 60}).test_client()

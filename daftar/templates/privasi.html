@@ -1,0 +1,38 @@
+{% extends "_dasar.html" %}
+{% from "_ikon.html" import ikon_wa %}
+{% block judul %}Kebijakan privasi & kontak — {{ k.nama }}{% endblock %}
+{% block kepala %}<style>.isi h2{margin:26px 0 8px}.isi p,.isi li{color:#344054}.isi ul{padding-left:20px}</style>{% endblock %}
+{% block isi %}
+<div class="kartu isi" style="max-width:780px;margin:8px auto">
+  <h1 style="font-size:1.6rem">Kebijakan privasi &amp; kontak</h1>
+  <p><b>{{ k.nama }}</b> menyediakan aplikasi <b>Presensi Siswa Digital</b> untuk sekolah di Indonesia: pencatatan kehadiran siswa
+    (kartu RFID / QR), notifikasi WhatsApp ke orang tua, portal orang tua &amp; siswa, dan rekap kehadiran.
+    Situs ini <b>{{ domain }}</b> adalah layanan resmi kami. Setiap sekolah memakai alamat <b>{{ domain }}/kode-sekolah</b>.</p>
+
+  <h2>Siapa yang memakai halaman login di situs ini</h2>
+  <ul>
+    <li><b>Admin, guru piket, dan guru BK</b> sekolah pelanggan — login dengan akun dari sekolahnya.</li>
+    <li><b>Orang tua dan siswa</b> — masuk ke portal dengan nomor WhatsApp + kode OTP atau NIS + PIN dari sekolah.</li>
+    <li><b>Pengelola layanan</b> ({{ k.nama }}) — panel internal dengan verifikasi dua langkah.</li>
+  </ul>
+  <p>Kami <b>tidak pernah</b> meminta data kartu kredit, PIN bank, atau password akun lain (Google, WhatsApp, dsb.), dan tidak meminta pengguna mengunduh aplikasi.</p>
+
+  <h2>Data yang disimpan</h2>
+  <ul>
+    <li><b>Data sekolah</b> yang dimasukkan sekolah sendiri: data siswa, kelas, guru, kehadiran, izin, dan pelanggaran. Data ini <b>milik sekolah</b>, disimpan terpisah per sekolah, dan tidak dibagikan ke pihak lain.</li>
+    <li><b>Data pendaftaran demo</b>: nama sekolah, nama &amp; nomor WhatsApp kontak, email (opsional) — hanya untuk menghubungi terkait demo dan langganan.</li>
+    <li>Catatan teknis (alamat IP, waktu akses) untuk keamanan, misalnya membatasi percobaan login.</li>
+  </ul>
+
+  <h2>Penyimpanan &amp; keamanan</h2>
+  <p>Data disimpan di server di Indonesia, diakses melalui HTTPS, dengan backup harian. Password disimpan dalam bentuk hash; token WhatsApp sekolah dienkripsi.</p>
+
+  <h2>Hak pengguna</h2>
+  <p>Sekolah dapat mengekspor seluruh datanya kapan saja (Excel/PDF/backup) dan dapat meminta penghapusan data setelah berhenti berlangganan.
+    Orang tua yang ingin memperbaiki atau menghapus data anaknya dapat menghubungi sekolah, atau kami.</p>
+
+  <h2>Kontak</h2>
+  <p>{{ k.nama }}{% if k.wa %} — WhatsApp <a href="https://wa.me/{{ k.wa }}">+{{ k.wa }}</a>{% endif %}</p>
+  {% if wa_tanya %}<a class="tombol wa" href="{{ wa_tanya }}" target="_blank" rel="noopener">{{ ikon_wa() }} Hubungi kami</a>{% endif %}
+</div>
+{% endblock %}

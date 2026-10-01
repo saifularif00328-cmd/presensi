@@ -28,7 +28,7 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[a-z]{2,}$", re.I)
 CADANGAN = {"daftar", "cek-kode", "aset", "static", "api", "admin", "www", "demo", "login",
             "logout", "portal", "masuk", "beranda", "presensi", "presensiku", "app", "mail",
             "status", "bantuan", "harga", "kontak", "favicon-ico", "robots-txt", "sekolah",
-            "vendor"}
+            "vendor", "privasi", "tentang", "syarat"}
 JENJANG = ["SD / MI", "SMP / MTs", "SMA / MA", "SMK", "Pesantren", "Lainnya"]
 ZONA = {"Asia/Jakarta": "WIB", "Asia/Makassar": "WITA", "Asia/Jayapura": "WIT"}
 KONFIGURASI_AWAL = {"wa": "", "nama": "Presensiku", "hari_demo": 7, "maks_demo": 5,
@@ -232,6 +232,13 @@ def create_app(test_config=None):
     @app.get("/")
     def beranda():
         return tampil_beranda()
+
+    @app.get("/privasi")
+    def privasi():
+        k = konfigurasi()
+        return render_template("privasi.html", k=k, domain=domain(),
+                               wa_tanya=tautan_wa(k["wa"], f"Halo {k['nama']}, saya ingin bertanya "
+                                                           "tentang data di aplikasi presensi."))
 
     @app.get("/cek-kode")
     def kode_tersedia():
