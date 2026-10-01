@@ -51,7 +51,9 @@ chmod 750 /srv/presensi/_antrean /srv/presensi/_antrean/* /srv/presensi/_daftar
 
 echo "==> Kode aplikasi ($BRANCH)"
 if [ -d "$APP/.git" ]; then
-  git -C "$APP" fetch -q origin "$BRANCH" && git -C "$APP" checkout -q -B "$BRANCH" "origin/$BRANCH"
+  # -f: buang perubahan lokal (mis. izin file) agar pembaruan tidak pernah tertahan
+  git -C "$APP" config core.fileMode false
+  git -C "$APP" fetch -q origin "$BRANCH" && git -C "$APP" checkout -q -f -B "$BRANCH" "origin/$BRANCH"
 else
   git clone -q -b "$BRANCH" "$REPO_URL" "$APP"
 fi
