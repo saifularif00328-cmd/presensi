@@ -1,0 +1,14 @@
+{% extends "vendor/_v.html" %}
+{% block judul_v %}Masuk panel vendor{% endblock %}
+{% block isi_v %}
+<div class="kartu" style="max-width:400px;margin:24px auto">
+  <h2>Panel vendor</h2>
+  <p class="redup" style="margin:0 0 16px;font-size:.9rem">Khusus pemilik layanan. Kode 6 digit dari aplikasi Google Authenticator di HP Anda.</p>
+  <form method="post" autocomplete="off">
+    <div style="margin-bottom:12px"><label for="u">Username</label><input id="u" name="username" required autocapitalize="none" autocomplete="username"></div>
+    <div style="margin-bottom:12px"><label for="p">Password</label><input id="p" name="password" type="password" required autocomplete="current-password"></div>
+    <div style="margin-bottom:16px"><label for="k">Kode authenticator</label><input id="k" name="kode" inputmode="numeric" pattern="[0-9 ]*" maxlength="7" placeholder="123456" required autocomplete="one-time-code"></div>
+    <button class="utama" style="width:100%">Masuk</button>
+  </form>
+</div>
+{% endblock %}

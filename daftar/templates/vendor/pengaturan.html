@@ -1,0 +1,28 @@
+{% extends "vendor/_v.html" %}
+{% block judul_v %}Pengaturan{% endblock %}
+{% block isi_v %}
+<div class="dua-kolom">
+  <div class="kartu">
+    <h3>Pengaturan vendor</h3>
+    <form method="post">
+      <input type="hidden" name="_csrf" value="{{ csrf_vendor }}">
+      <div style="margin-bottom:12px"><label>Nomor WhatsApp Anda</label><input name="wa" value="{{ k.wa }}" placeholder="0812xxxx"><small class="redup">Tujuan tombol "Perpanjang via WhatsApp" & kontak halaman depan.</small></div>
+      <div style="margin-bottom:12px"><label>Nama merek</label><input name="nama" value="{{ k.nama }}" maxlength="40"></div>
+      <div class="baris-form">
+        <div><label>Lama demo (hari)</label><input name="hari_demo" type="number" min="1" max="90" value="{{ k.hari_demo }}"></div>
+        <div><label>Maks. demo aktif</label><input name="maks_demo" type="number" min="0" max="100" value="{{ k.maks_demo }}"></div>
+        <div><label>Hentikan demo setelah (hari)</label><input name="henti_setelah" type="number" min="1" max="365" value="{{ k.henti_setelah or 14 }}"></div>
+      </div>
+      <button class="utama" style="margin-top:14px">Simpan</button>
+    </form>
+  </div>
+  <div class="kartu">
+    <h3>Server</h3>
+    <dl class="kv">
+      <dt>RAM terpakai</dt><dd>{{ sistem.ram }}% dari {{ sistem.ram_total }} GB</dd>
+      <dt>Disk terpakai</dt><dd>{{ sistem.disk }}% dari {{ sistem.disk_total }} GB</dd>
+    </dl>
+    <p class="redup" style="font-size:.88rem">RAM di atas 80% terus-menerus → kurangi kuota demo atau naik ke Paket M.</p>
+  </div>
+</div>
+{% endblock %}

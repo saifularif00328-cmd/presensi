@@ -1,0 +1,38 @@
+{% extends "vendor/_v.html" %}
+{% block judul_v %}Sekolah{% endblock %}
+{% block isi_v %}
+<div class="kotak">
+  {% for kunci, label in (('semua', 'Semua sekolah'), ('demo', 'Demo berjalan'), ('aktif', 'Berlangganan'), ('akan_habis', 'Habis ≤ 14 hari'), ('habis', 'Habis / nonaktif')) %}
+  <a href="?f={{ kunci }}" class="{{ 'aktif' if filt == kunci }}"><b>{{ hitung[kunci] + (hitung.nonaktif + hitung.berhenti if kunci == 'habis' else 0) }}</b><span>{{ label }}</span></a>
+  {% endfor %}
+  <div><span>RAM VPS {{ sistem.ram_total }} GB</span><b style="font-size:1.2rem">{{ sistem.ram }}%</b><div class="meter"><i class="{{ 'panas' if sistem.ram and sistem.ram > 80 }}" style="width:{{ sistem.ram or 0 }}%"></i></div></div>
+</div>
+
+<div class="kartu">
+  <form method="get" style="display:flex;gap:8px;margin-bottom:12px">
+    <input type="hidden" name="f" value="{{ filt }}">
+    <input name="q" value="{{ cari }}" placeholder="Cari kode, nama sekolah, kontak, kota…">
+    <button class="kedua">Cari</button>
+  </form>
+  <div class="tabel">
+  <table>
+    <thead><tr><th>Sekolah</th><th>Status</th><th>Berakhir</th><th>Siswa</th><th>Terakhir absen</th><th>Kontak</th></tr></thead>
+    <tbody>
+    {% for b in baris %}{% set s = b.s %}{% set pd = s.pendaftar or {} %}
+      <tr>
+        <td><a href="{{ url_for('vendor.sekolah', kode=b.kode) }}"><b>{{ s.nama }}</b></a><br><small class="redup">/{{ b.kode }}{% if pd.kota %} · {{ pd.kota }}{% endif %}</small></td>
+        <td><span class="lencana l-{{ b.keadaan }}">{{ LABEL_KEADAAN[b.keadaan] }}</span>{% if s.layanan and s.layanan not in ('active', '-') %}<br><small class="redup">layanan: {{ s.layanan }}</small>{% endif %}</td>
+        <td>{{ s.sampai or '-' }}{% if b.sisa is not none %}<br><small class="redup">{% if b.sisa < 0 %}{{ -b.sisa }} hari lalu{% elif b.sisa == 0 %}hari ini{% else %}{{ b.sisa }} hari lagi{% endif %}</small>{% endif %}</td>
+        <td>{{ s.siswa if s.siswa is defined else '-' }}{% if s.maks_siswa %}<small class="redup"> / {{ s.maks_siswa }}</small>{% endif %}</td>
+        <td>{{ s.terakhir or '-' }}</td>
+        <td>{% if pd.wa %}<a href="https://wa.me/{{ pd.wa }}" target="_blank" rel="noopener">{{ pd.nama or pd.wa }}</a>{% else %}-{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="redup" style="text-align:center;padding:24px">Belum ada sekolah{% if filt != 'semua' or cari %} untuk filter ini{% endif %}.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="redup" style="font-size:.8rem;margin:12px 0 0">Data diperbarui {{ dibuat or '-' }} (otomatis tiap 5 menit &amp; setiap ada perubahan).</p>
+</div>
+{% endblock %}

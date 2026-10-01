@@ -8,5 +8,5 @@ dist/
 venv/
 
 # kunci privat vendor (JANGAN di-commit)
-vendor/
+/vendor/
 license_server/data/

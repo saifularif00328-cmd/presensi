@@ -1,0 +1,26 @@
+{% extends "vendor/_v.html" %}
+{% block judul_v %}Tambah sekolah{% endblock %}
+{% block isi_v %}
+<div class="kartu" style="max-width:760px">
+  <h2>Tambah sekolah (berlangganan / demo manual)</h2>
+  <p class="redup" style="margin:0 0 16px">Sekolah langsung dibuat di VPS. Berikan alamat &amp; password admin ke sekolah.</p>
+  <form method="post">
+    <input type="hidden" name="_csrf" value="{{ csrf_vendor }}">
+    <div class="baris-form">
+      <div style="grid-column:1/-1"><label>Nama sekolah</label><input name="nama_sekolah" value="{{ nilai.nama_sekolah }}" required maxlength="120"></div>
+      <div><label>Kode alamat</label><input name="kode" value="{{ nilai.kode }}" required maxlength="31" placeholder="smpn1malang" autocapitalize="none">{% if galat.kode %}<div class="galat">{{ galat.kode }}</div>{% endif %}</div>
+      <div><label>Jenjang</label><select name="jenjang">{% for j in JENJANG %}<option {{ 'selected' if nilai.jenjang == j }}>{{ j }}</option>{% endfor %}</select></div>
+      <div><label>Kabupaten / kota</label><input name="kota" value="{{ nilai.kota }}" maxlength="80"></div>
+      <div><label>Zona waktu</label><select name="zona">{% for z, l in ZONA.items() %}<option value="{{ z }}" {{ 'selected' if nilai.zona == z }}>{{ l }}</option>{% endfor %}</select></div>
+      <div><label>Nama kontak</label><input name="nama" value="{{ nilai.nama }}" required maxlength="80"></div>
+      <div><label>WA kontak</label><input name="wa" value="{{ nilai.wa }}" required placeholder="0812xxxx">{% if galat.wa %}<div class="galat">{{ galat.wa }}</div>{% endif %}</div>
+      <div><label>Jabatan</label><input name="jabatan" value="{{ nilai.jabatan }}" maxlength="60"></div>
+      <div><label>Lama langganan</label><select name="hari"><option value="30">1 bulan</option><option value="90">3 bulan</option><option value="180">6 bulan</option><option value="365" selected>1 tahun</option><option value="{{ k.hari_demo }}">Demo {{ k.hari_demo }} hari</option></select></div>
+      <div><label>Batas siswa (0 = tanpa batas)</label><input name="maks_siswa" type="number" min="0" value="{{ nilai.maks_siswa or 0 }}"></div>
+      <div><label>Password admin sekolah</label><input name="password" type="text" required minlength="8" autocomplete="off">{% if galat.password %}<div class="galat">{{ galat.password }}</div>{% endif %}</div>
+      <div style="grid-column:1/-1"><label class="cek" style="display:flex;gap:8px;font-weight:400"><input type="checkbox" name="demo" value="1" style="width:auto"> Tandai sebagai demo (popup perpanjang ber-label "demo")</label></div>
+    </div>
+    <button class="utama" style="margin-top:14px">Buat sekolah</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "_dasar.html" %}
+{% block judul %}{% block judul_v %}Panel vendor{% endblock %} — {{ k.nama }}{% endblock %}
+{% block kepala %}
+<meta name="robots" content="noindex, nofollow">
+<style>
+  .nav { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .nav a, .nav button { padding: 8px 12px; border-radius: 9px; text-decoration: none; color: #344054; font-weight: 600; font-size: .9rem; background: transparent; }
+  .nav a.aktif, .nav a:hover { background: #eff4ff; color: var(--p); }
+  .nav form { margin: 0; }
+  .nav button { border: 1px solid var(--b); background: #fff; padding: 7px 12px; }
+  .kotak { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 0 0 18px; }
+  .kotak > a, .kotak > div { background: #fff; border: 1px solid var(--b); border-radius: 14px; padding: 14px 16px; text-decoration: none; color: var(--t); }
+  .kotak b { display: block; font-size: 1.6rem; line-height: 1.2; }
+  .kotak span { color: var(--m); font-size: .85rem; }
+  .kotak a.aktif { border-color: var(--p); box-shadow: 0 0 0 3px #c7d7fe; }
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--b); vertical-align: middle; }
+  th { color: var(--m); font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .03em; }
+  tr:hover td { background: #f9fafb; }
+  .tabel { overflow-x: auto; }
+  .lencana { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: .78rem; font-weight: 600; white-space: nowrap; }
+  .l-demo { background: #eff8ff; color: #175cd3; } .l-aktif { background: #ecfdf3; color: #067647; }
+  .l-akan_habis { background: #fffaeb; color: #b54708; } .l-habis { background: #fef3f2; color: #b42318; }
+  .l-nonaktif, .l-berhenti { background: #f2f4f7; color: #475467; }
+  .dua-kolom { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .dua-kolom > * { min-width: 0; }
+  dl.kv { display: grid; grid-template-columns: 150px 1fr; gap: 6px 12px; margin: 0; font-size: .92rem; }
+  dl.kv dt { color: var(--m); } dl.kv dd { margin: 0; word-break: break-word; }
+  .baris-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tombol.kecil { padding: 8px 12px; font-size: .85rem; }
+  .bahaya { background: #fef3f2; color: var(--er); border: 1px solid #fecdca; }
+  h3 { margin: 0 0 12px; font-size: 1.05rem; }
+  .kartu + .kartu, .dua-kolom + .kartu, .kartu + .dua-kolom { margin-top: 16px; }
+  .dua-kolom > .kartu { margin-top: 0; }
+  .meter { height: 8px; background: #f2f4f7; border-radius: 99px; overflow: hidden; margin-top: 6px; }
+  .meter i { display: block; height: 100%; background: var(--p); }
+  .meter i.panas { background: var(--er); }
+  @media (max-width: 760px) { .dua-kolom, .baris-form { grid-template-columns: 1fr; } dl.kv { grid-template-columns: 1fr; } dl.kv dt { margin-top: 6px; } }
+</style>
+{% endblock %}
+{% block kanan %}
+{% if session.vendor %}
+<nav class="nav">
+  <a href="{{ url_for('vendor.dasbor') }}" class="{{ 'aktif' if request.endpoint in ('vendor.dasbor', 'vendor.sekolah') }}">Sekolah</a>
+  <a href="{{ url_for('vendor.tambah') }}" class="{{ 'aktif' if request.endpoint == 'vendor.tambah' }}">+ Tambah</a>
+  <a href="{{ url_for('vendor.pengaturan') }}" class="{{ 'aktif' if request.endpoint == 'vendor.pengaturan' }}">Pengaturan</a>
+  <form method="post" action="{{ url_for('vendor.keluar') }}"><input type="hidden" name="_csrf" value="{{ csrf_vendor }}"><button>Keluar</button></form>
+</nav>
+{% endif %}
+{% endblock %}
+{% block isi %}
+{% with msgs = get_flashed_messages(with_categories=true) %}{% for cat, m in msgs %}<div class="pesan {{ cat }}">{{ m }}</div>{% endfor %}{% endwith %}
+{% block isi_v %}{% endblock %}
+{% endblock %}

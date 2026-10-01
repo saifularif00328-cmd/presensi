@@ -1,0 +1,99 @@
+{% extends "vendor/_v.html" %}
+{% from "_ikon.html" import ikon_wa %}
+{% block judul_v %}{{ s.nama }}{% endblock %}
+{% block isi_v %}
+<p style="margin:0 0 12px"><a href="{{ url_for('vendor.dasbor') }}">← Semua sekolah</a></p>
+<div class="kartu">
+  <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start">
+    <div>
+      <h2 style="margin:0">{{ s.nama }} <span class="lencana l-{{ keadaan }}" style="vertical-align:middle">{{ LABEL_KEADAAN[keadaan] }}</span></h2>
+      <a href="https://{{ domain }}/{{ kode }}" target="_blank" rel="noopener">{{ domain }}/{{ kode }}</a>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      {% if wa_tagih %}<a class="tombol wa kecil" href="{{ wa_tagih }}" target="_blank" rel="noopener">{{ ikon_wa() }} Tawarkan perpanjangan</a>{% endif %}
+      {% if wa_sapa %}<a class="tombol kedua kecil" href="{{ wa_sapa }}" target="_blank" rel="noopener">Chat kontak</a>{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="dua-kolom">
+  <div class="kartu">
+    <h3>Langganan</h3>
+    <dl class="kv">
+      <dt>Status</dt><dd>{{ LABEL_KEADAAN[keadaan] }} <small class="redup">({{ s.status }})</small></dd>
+      <dt>Berlaku sampai</dt><dd>{{ s.sampai or '-' }}{% if sisa is not none %} — {% if sisa < 0 %}habis {{ -sisa }} hari lalu{% elif sisa == 0 %}habis hari ini{% else %}{{ sisa }} hari lagi{% endif %}{% endif %}</dd>
+      <dt>Batas siswa</dt><dd>{{ s.maks_siswa or 'Tanpa batas' }}</dd>
+      <dt>Siswa aktif</dt><dd>{{ s.siswa if s.siswa is defined else '-' }}</dd>
+      <dt>Terakhir absen</dt><dd>{{ s.terakhir or '-' }}</dd>
+      <dt>Layanan</dt><dd>{{ s.layanan or '-' }} · port {{ s.port }}</dd>
+      <dt>Dibuat</dt><dd>{{ s.dibuat or '-' }}</dd>
+    </dl>
+  </div>
+  <div class="kartu">
+    <h3>Kontak sekolah</h3>
+    <dl class="kv">
+      <dt>Nama</dt><dd>{{ pd.nama or '-' }}{% if pd.jabatan %} — {{ pd.jabatan }}{% endif %}</dd>
+      <dt>WhatsApp</dt><dd>{% if pd.wa %}<a href="https://wa.me/{{ pd.wa }}" target="_blank" rel="noopener">+{{ pd.wa }}</a>{% else %}-{% endif %}</dd>
+      <dt>Email</dt><dd>{{ pd.email or '-' }}</dd>
+      <dt>Jenjang / kota</dt><dd>{{ pd.jenjang or '-' }} · {{ pd.kota or '-' }}</dd>
+      <dt>Perkiraan siswa</dt><dd>{{ pd.jumlah_siswa or '-' }}</dd>
+      <dt>Daftar</dt><dd>{{ pd.waktu or '-' }}</dd>
+      {% if pd.catatan %}<dt>Catatan</dt><dd>{{ pd.catatan }}</dd>{% endif %}
+    </dl>
+    <details style="margin-top:12px"><summary>Ubah kontak / catatan</summary>
+      <form method="post" action="{{ url_for('vendor.kontak', kode=kode) }}" style="margin-top:10px">
+        <input type="hidden" name="_csrf" value="{{ csrf_vendor }}">
+        <div class="baris-form">
+          <div><label>Nama</label><input name="nama" value="{{ pd.nama }}"></div>
+          <div><label>WhatsApp</label><input name="wa" value="{{ pd.wa }}"></div>
+          <div><label>Jabatan</label><input name="jabatan" value="{{ pd.jabatan }}"></div>
+          <div><label>Catatan</label><input name="catatan" value="{{ pd.catatan }}" placeholder="mis. minta penawaran 1 tahun"></div>
+        </div>
+        <button class="kedua kecil tombol" style="margin-top:10px">Simpan kontak</button>
+      </form>
+    </details>
+  </div>
+</div>
+
+<div class="kartu" id="perpanjang">
+  <h3>Perpanjang lisensi</h3>
+  <form method="post" action="{{ url_for('vendor.perpanjang', kode=kode) }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_vendor }}">
+    <div class="baris-form">
+      <div><label for="hari">Lama</label>
+        <select id="hari" name="hari" onchange="document.getElementById('kotak-tgl').hidden = this.value !== 'tanggal'">
+          <option value="30">1 bulan</option><option value="90">3 bulan</option><option value="180">6 bulan</option>
+          <option value="365" selected>1 tahun</option><option value="tanggal">Sampai tanggal…</option>
+        </select>
+        <small class="redup">Menyambung dari tanggal berakhir (bila belum lewat).</small></div>
+      <div id="kotak-tgl" hidden><label for="sampai">Sampai tanggal</label><input id="sampai" name="sampai" type="date" min="{{ hari_ini }}"></div>
+      <div><label for="maks">Batas siswa <span class="redup" style="font-weight:400">(0 = tanpa batas)</span></label><input id="maks" name="maks_siswa" type="number" min="0" value="{{ s.maks_siswa or 0 }}"></div>
+      <div><label for="nominal">Pembayaran (Rp)</label><input id="nominal" name="nominal" inputmode="numeric" placeholder="1500000"></div>
+      <div style="grid-column:1/-1"><label for="catatan">Catatan</label><input id="catatan" name="catatan" maxlength="200" placeholder="mis. transfer BRI 12/10, paket 1 tahun"></div>
+    </div>
+    <button class="utama" style="margin-top:12px">Perpanjang sekarang</button>
+  </form>
+  {% if s.pembayaran %}
+  <h3 style="margin-top:20px">Riwayat</h3>
+  <div class="tabel"><table>
+    <thead><tr><th>Tanggal</th><th>Aktif sampai</th><th>Pembayaran</th><th>Catatan</th></tr></thead>
+    <tbody>{% for b in s.pembayaran|reverse %}<tr><td>{{ b.tanggal }}</td><td>{{ b.sampai }}</td><td>{{ b.nominal|rupiah if b.nominal else '-' }}</td><td>{{ b.catatan or '-' }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% if wa_konfirmasi %}<p style="margin:12px 0 0"><a class="tombol wa kecil" href="{{ wa_konfirmasi }}" target="_blank" rel="noopener">{{ ikon_wa() }} Kirim konfirmasi ke sekolah</a></p>{% endif %}
+  {% endif %}
+</div>
+
+<div class="kartu">
+  <h3>Status akses</h3>
+  <form method="post" action="{{ url_for('vendor.ubah_status', kode=kode) }}" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <input type="hidden" name="_csrf" value="{{ csrf_vendor }}">
+    {% if s.status in ('nonaktif', 'berhenti') %}
+      <button name="aksi" value="aktifkan" class="kedua">Aktifkan kembali</button>
+      <span class="redup" style="font-size:.88rem">Untuk demo yang dihentikan, sebaiknya gunakan Perpanjang di atas.</span>
+    {% else %}
+      <button name="aksi" value="nonaktif" class="bahaya" onclick="return confirm('Nonaktifkan {{ s.nama }}? Aplikasi menjadi baca-saja.')">Nonaktifkan (baca-saja)</button>
+      <span class="redup" style="font-size:.88rem">Data tetap ada; absen &amp; perubahan data dihentikan.</span>
+    {% endif %}
+  </form>
+</div>
+{% endblock %}
