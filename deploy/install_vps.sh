@@ -9,6 +9,7 @@
 #   - MariaDB (hanya localhost), Nginx di 127.0.0.1:8080, Python venv di /opt/presensi
 #   - user sistem "presensi", data sekolah di /srv/presensi/<kode>/
 #   - firewall: hanya SSH yang terbuka; web masuk lewat Cloudflare Tunnel
+#   - fail2ban untuk SSH, update keamanan otomatis, zona waktu Asia/Jakarta
 #   - backup harian semua sekolah (03.00) ke /srv/presensi/_backup
 #  Setelah itu: tambahkan sekolah dengan  presensi-sekolah tambah <kode> --nama "..."
 # ============================================================================
@@ -31,7 +32,8 @@ fi
 
 echo "==> Paket sistem"
 apt-get update -q
-apt-get install -y -q mariadb-server nginx python3-venv python3-pip git ufw curl
+apt-get install -y -q mariadb-server nginx python3-venv python3-pip git ufw curl \
+  fail2ban unattended-upgrades
 
 echo "==> User & folder"
 id presensi >/dev/null 2>&1 || useradd --system --home /srv/presensi --shell /usr/sbin/nologin presensi
@@ -79,6 +81,23 @@ systemctl reload nginx
 echo "==> Firewall (hanya SSH)"
 ufw allow OpenSSH >/dev/null
 ufw --force enable >/dev/null
+
+echo "==> Fail2ban (blokir IP penebak password SSH) & update keamanan otomatis"
+cat > /etc/fail2ban/jail.d/presensi.local <<'EOF'
+[sshd]
+enabled = true
+backend = systemd
+maxretry = 5
+findtime = 10m
+bantime = 1h
+EOF
+systemctl enable fail2ban >/dev/null 2>&1
+systemctl restart fail2ban
+cat > /etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+EOF
+timedatectl set-timezone Asia/Jakarta || true
 
 echo "==> Cloudflare Tunnel (cloudflared)"
 if ! command -v cloudflared >/dev/null; then

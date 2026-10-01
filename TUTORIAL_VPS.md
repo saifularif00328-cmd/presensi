@@ -43,6 +43,71 @@ Catat **IP VPS** dan **password root** dari email Rumahweb. **Jangan kirim passw
 > Tempel teks di PowerShell dengan **klik kanan**. Keluar dari VPS dengan perintah `exit`.
 > Setelah login pertama, ganti password root dengan perintah `passwd`.
 
+## 2a. Amankan VPS (lakukan sekali, sebelum memasang aplikasi)
+Gantilah login dengan password menjadi login dengan **kunci SSH**. Penebak password di internet
+tidak bisa masuk walaupun mencoba jutaan kali.
+
+> Bila terkunci: portal Rumahweb (clientzone) → layanan VPS → **Console/VNC** tetap bisa dipakai
+> untuk masuk.
+
+**1) Ganti password root & perbarui sistem** (di VPS):
+```bash
+passwd
+apt update && apt upgrade -y
+reboot
+```
+- `passwd`: buat password baru minimal 16 karakter dan simpan di password manager.
+- Setelah `reboot`, tunggu 1 menit lalu `ssh root@IP-VPS` lagi.
+
+**2) Buat kunci SSH di laptop** (PowerShell di laptop, **bukan** di VPS):
+```powershell
+ssh-keygen -t ed25519
+```
+Tekan Enter 3× (lokasi bawaan, tanpa passphrase), atau isi passphrase agar lebih aman.
+
+**3) Kirim kunci publik ke VPS** (masih di PowerShell laptop, ganti IP):
+```powershell
+type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh root@IP-VPS "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys"
+```
+Masukkan password root sekali lagi. Setelah itu, `ssh root@IP-VPS` harus langsung masuk **tanpa
+ditanya password**.
+
+**4) Matikan login dengan password** (di VPS), **hanya setelah langkah 3 berhasil**:
+```bash
+cat > /etc/ssh/sshd_config.d/00-presensi.conf <<'EOF'
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin prohibit-password
+EOF
+sshd -t && systemctl restart ssh
+```
+Jangan tutup jendela PowerShell yang sedang terhubung. Buka **jendela baru** dan coba
+`ssh root@IP-VPS`:
+- **Bisa masuk:** aman.
+- **Gagal masuk:** di jendela lama, jalankan `rm /etc/ssh/sshd_config.d/00-presensi.conf && systemctl restart ssh`, lalu ulangi langkah 3.
+
+> Simpan cadangan file `C:\Users\NAMA\.ssh\id_ed25519` (mis. di flashdisk). Tanpa file itu, masuk
+> hanya bisa lewat Console Rumahweb. **Jangan pernah membagikan file tanpa `.pub` tersebut.**
+
+**5) Sisanya otomatis oleh skrip pemasangan (langkah 3):**
+
+| Pengaman | Fungsi | Cek |
+|---|---|---|
+| Firewall UFW | Hanya port SSH terbuka; web lewat Cloudflare Tunnel, bukan port terbuka | `ufw status` |
+| Fail2ban | IP yang 5× gagal login SSH diblokir 1 jam | `fail2ban-client status sshd` |
+| Update otomatis | Patch keamanan Ubuntu dipasang tiap hari | `cat /etc/apt/apt.conf.d/20auto-upgrades` |
+| MariaDB | Hanya bisa diakses dari dalam VPS (127.0.0.1) | `ss -tlnp \| grep 3306` |
+| Aplikasi | Tiap sekolah jalan sebagai user `presensi` (bukan root), database & password sendiri | `presensi-sekolah daftar` |
+
+**6) Kebiasaan aman:**
+- Di panel Cloudflare, aktifkan **SSL/TLS → Always Use HTTPS**.
+- Aktifkan juga **Security → Bots → Bot Fight Mode**.
+- Aktifkan **2FA** di akun Cloudflare, Rumahweb, DomaiNesia, dan GitHub.
+- Login admin tiap sekolah memakai password kuat. Aplikasi sudah memaksa password awal diganti dan
+  mengunci login setelah beberapa kali salah.
+- Salin backup ke luar VPS (bagian 9).
+- Bila tersedia, aktifkan **snapshot** di Rumahweb sebelum memperbarui aplikasi.
+
 ## 3. Pasang aplikasi (±10 menit)
 Di VPS, jalankan:
 ```bash
