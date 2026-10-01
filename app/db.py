@@ -70,6 +70,7 @@ DEFAULT_SETTINGS = {
     "kartu_berlaku": "Berlaku selama pemegang kartu masih berstatus siswa aktif.",
     "portal_aktif": "1",
     "wa_tpl_otp": "Kode masuk Portal Presensi {sekolah}: *{kode}*. Berlaku 5 menit. "
+                  "Ketik hanya di halaman portal sekolah. Ini BUKAN kode verifikasi WhatsApp. "
                   "Jangan berikan kode ini kepada siapa pun, termasuk petugas sekolah.",
 }
 

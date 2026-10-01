@@ -9,8 +9,10 @@ izin/sakit** langsung dari HP.
 ## Orang tua / wali
 1. Buka **https://smpn1.presensiku.biz.id/portal/masuk** (atau pindai QR di surat edaran).
 2. Pilih tab **Orang tua / wali** → ketik **nomor WhatsApp** yang terdaftar di sekolah
-   (nomor yang menerima notifikasi presensi) → **Kirim kode lewat WhatsApp**.
-3. Masukkan **kode 6 angka** dari WhatsApp (berlaku 5 menit) → **Masuk**.
+   (nomor yang menerima notifikasi presensi) → **Kirim kode masuk portal**.
+3. Masukkan **kode masuk portal 8 angka** dari pesan WhatsApp sekolah (berlaku 5 menit) → **Masuk**.
+   Kode ini **bukan** kode verifikasi akun WhatsApp — jangan pernah memasukkan kode verifikasi
+   WhatsApp di situs mana pun.
 4. Punya lebih dari satu anak di sekolah ini? Semua anak tampil; pilih salah satu.
 
 **Mengajukan izin / sakit:** buka halaman anak → **Izin & sakit → Ajukan** → pilih jenis,

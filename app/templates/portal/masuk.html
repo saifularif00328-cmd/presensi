@@ -3,8 +3,8 @@
 {% block title %}Masuk{% endblock %}
 {% block content %}
 <div class="card p-login">
-  <h1>Masuk Portal</h1>
-  <p class="muted">Lihat kehadiran, riwayat, dan ajukan izin dari HP.</p>
+  <h1>Portal Orang Tua &amp; Siswa</h1>
+  <p class="muted"><b>{{ nama_sekolah or 'Sekolah' }}</b> — lihat kehadiran, riwayat, dan ajukan izin dari HP.</p>
   <div class="tabs p-tabs">
     <a href="?sebagai=ortu" class="{{ 'active' if tab != 'siswa' }}">Orang tua / wali</a>
     <a href="?sebagai=siswa" class="{{ 'active' if tab == 'siswa' }}">Siswa</a>
@@ -12,19 +12,22 @@
   {% if tab != 'siswa' %}
     {% if tahap == 'kode' %}
     <form method="post">{{ csrf() }}<input type="hidden" name="aksi" value="verifikasi"><input type="hidden" name="nomor" value="{{ nomor }}">
-      <div class="field"><label>Kode dari WhatsApp ({{ nomor }})</label>
-        <input name="kode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="6 angka" required autofocus class="p-kode"></div>
+      <div class="field"><label>Kode masuk portal (8 angka, dari pesan sekolah ke {{ nomor }})</label>
+        <input name="kode" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="[0-9]{8}" placeholder="8 angka" required autofocus class="p-kode"></div>
+      <p class="help">Ini kode dari sistem presensi sekolah, <b>bukan</b> kode verifikasi akun WhatsApp.
+        Jangan pernah memasukkan kode verifikasi WhatsApp Anda di situs mana pun.</p>
       <button class="btn block">{{ icon('login') }}Masuk</button>
     </form>
     <form method="post" class="mt">{{ csrf() }}<input type="hidden" name="aksi" value="otp"><input type="hidden" name="nomor" value="{{ nomor }}">
       <button class="btn ghost block">Kirim ulang kode</button></form>
     {% else %}
     <form method="post">{{ csrf() }}<input type="hidden" name="aksi" value="otp">
-      <div class="field"><label>Nomor WhatsApp orang tua / wali</label>
+      <div class="field"><label>Nomor HP orang tua / wali yang terdaftar di sekolah</label>
         <input name="nomor" type="tel" inputmode="tel" placeholder="08xx-xxxx-xxxx" value="{{ nomor }}" required autofocus></div>
-      <button class="btn block">{{ icon('wa') }}Kirim kode lewat WhatsApp</button>
+      <button class="btn block">{{ icon('login') }}Kirim kode masuk portal</button>
     </form>
-    <p class="help">Gunakan nomor yang didaftarkan di sekolah (sama dengan nomor penerima notifikasi presensi).</p>
+    <p class="help">Sekolah akan mengirim <b>kode masuk portal (8 angka)</b> ke nomor yang sama dengan penerima notifikasi presensi.
+      Portal ini tidak pernah meminta password, PIN bank, atau kode verifikasi akun WhatsApp Anda.</p>
     {% endif %}
   {% else %}
     <form method="post">{{ csrf() }}<input type="hidden" name="aksi" value="siswa">

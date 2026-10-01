@@ -40,11 +40,12 @@ def kirim_otp(nomor_mentah, ip, db):
                  (nomor, _fmt(now - timedelta(minutes=15))), one=True, db=db)["n"]
     if baru >= OTP_MAKS_KIRIM:
         return False, "Terlalu sering meminta kode. Coba lagi 15 menit lagi."
-    umum = ("Bila nomor terdaftar di sekolah, kode 6 angka sudah dikirim lewat WhatsApp. "
-            "Kode berlaku 5 menit.")
+    umum = ("Bila nomor terdaftar di sekolah, kode masuk portal (8 angka) sudah dikirim lewat "
+            "pesan WhatsApp dari sekolah. Kode berlaku 5 menit.")
     if not anak_dari_nomor(nomor, db):
         return True, umum
-    kode = f"{secrets.randbelow(1000000):06d}"
+    # 8 angka: sengaja beda dari kode verifikasi akun WhatsApp (6 angka) agar tidak tertukar
+    kode = f"{secrets.randbelow(10 ** 8):08d}"
     execute("INSERT INTO portal_otp(nomor, kode_hash, dibuat, kedaluwarsa, ip) VALUES (?,?,?,?,?)",
             (nomor, generate_password_hash(kode), _fmt(now),
              _fmt(now + timedelta(minutes=OTP_MENIT)), ip), db=db)

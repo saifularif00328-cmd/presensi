@@ -26,9 +26,9 @@ def test_portal_orang_tua_otp_dan_izin(app, client, seed, clock, monkeypatch):
     # nomor Ahmad (081234567890) ditulis dengan format lain
     r = ortu.post("/portal/masuk", data={"aksi": "otp", "nomor": "+62 812-3456-7890"})
     assert wa and wa[-1][0] == "6281234567890"
-    kode = re.search(r"\*(\d{6})\*", wa[-1][1]).group(1)
+    kode = re.search(r"\*(\d{8})\*", wa[-1][1]).group(1)
     r = ortu.post("/portal/masuk", data={"aksi": "verifikasi", "nomor": "081234567890",
-                                         "kode": "000000" if kode != "000000" else "111111"})
+                                         "kode": "00000000" if kode != "00000000" else "11111111"})
     assert "Kode salah" in r.get_data(as_text=True)
     r = ortu.post("/portal/masuk", data={"aksi": "verifikasi", "nomor": "081234567890",
                                          "kode": kode})
