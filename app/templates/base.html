@@ -69,7 +69,7 @@
 {% else %}
   {% block bare %}{% endblock %}
 {% endif %}
-<script>window.ICONS = "{{ url_for('static', filename='icons.svg') }}";</script>
+<script>window.ICONS = "{{ url_for('static', filename='icons.svg') }}"; window.UPLOADS = "{{ request.script_root }}/uploads/";</script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>

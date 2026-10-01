@@ -66,7 +66,7 @@
 
   window.avatarHtml = function (s, cls) {
     cls = cls || 'avatar';
-    if (s && s.foto) return '<img class="' + cls + '" src="/uploads/' + encodeURI(s.foto) + '" alt="">';
+    if (s && s.foto) return '<img class="' + cls + '" src="' + (window.UPLOADS || '/uploads/') + encodeURI(s.foto) + '" alt="">';
     const n = (s && s.nama ? s.nama : '?').trim().charAt(0).toUpperCase();
     return '<span class="' + cls + '">' + escapeHtml(n) + '</span>';
   };

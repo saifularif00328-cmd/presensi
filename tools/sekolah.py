@@ -12,7 +12,7 @@
     presensi-sekolah status                                 (RAM, disk, layanan)
 
 Setiap sekolah = database MySQL sendiri + folder /srv/presensi/<kode> + layanan
-presensi@<kode> + satu baris di peta Nginx (<kode>.<domain> -> port).
+presensi@<kode> + satu blok Nginx (https://<domain>/<kode>/ -> port).
 """
 import argparse
 import json
@@ -29,7 +29,7 @@ sys.path.insert(0, APP_DIR)
 
 ROOT = os.environ.get("PRESENSI_SRV", "/srv/presensi")
 DOMAIN = os.environ.get("PRESENSI_DOMAIN", "presensiku.biz.id")
-NGINX_MAP = os.environ.get("PRESENSI_NGINX_MAP", "/etc/nginx/presensi-sekolah.map")
+NGINX_CONF = os.environ.get("PRESENSI_NGINX_CONF", "/etc/nginx/presensi-sekolah.conf")
 PORT_AWAL = 7001
 TANPA_SISTEM = os.environ.get("PRESENSI_TANPA_SISTEM") == "1"  # uji: tanpa systemctl/nginx/chown
 
@@ -90,7 +90,8 @@ def _tulis_env(kode, s):
     os.makedirs(d, exist_ok=True)
     with open(os.path.join(d, "env"), "w", encoding="utf-8") as f:
         f.write(f"PRESENSI_MODE=cloud\nPRESENSI_HOST=127.0.0.1\nPRESENSI_PORT={s['port']}\n"
-                f"PRESENSI_DATA_DIR={d}/data\nPRESENSI_DB_URL={_db_url(s)}\n")
+                f"PRESENSI_DATA_DIR={d}/data\nPRESENSI_DB_URL={_db_url(s)}\n"
+                f"PRESENSI_THREADS={os.environ.get('PRESENSI_THREADS', '4')}\n")
     os.chmod(os.path.join(d, "env"), 0o600)
 
 
@@ -103,12 +104,28 @@ def _tulis_vendor(kode, s):
                    "maks_siswa": s["maks_siswa"], "sekolah": s["nama"]}, f, indent=1)
 
 
+def blok_nginx(kode, port):
+    """Blok Nginx satu sekolah: /<kode>/... diteruskan ke layanan sekolah dengan prefix jalur."""
+    return (f"location = /{kode} {{ return 301 /{kode}/; }}\n"
+            f"location /{kode}/ {{\n"
+            f"    proxy_pass http://127.0.0.1:{port}/;\n"
+            "    proxy_http_version 1.1;\n"
+            "    proxy_set_header Host $host;\n"
+            "    proxy_set_header X-Forwarded-Host $host;\n"
+            "    proxy_set_header X-Forwarded-Proto https;\n"
+            f"    proxy_set_header X-Forwarded-Prefix /{kode};\n"
+            "    proxy_set_header X-Forwarded-For $http_cf_connecting_ip;\n"
+            "    proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;\n"
+            "    proxy_read_timeout 120s;\n"
+            "}\n")
+
+
 def _tulis_map(reg):
-    if TANPA_SISTEM:
-        return
-    with open(NGINX_MAP, "w", encoding="utf-8") as f:
+    os.makedirs(os.path.dirname(NGINX_CONF) or ".", exist_ok=True)
+    with open(NGINX_CONF, "w", encoding="utf-8") as f:
+        f.write("# Dikelola otomatis oleh presensi-sekolah — jangan diedit manual\n")
         for kode, s in sorted(reg.items()):
-            f.write(f"{kode}.{DOMAIN} {s['port']};\n")
+            f.write(blok_nginx(kode, s["port"]))
     sh("nginx", "-t")
     sh("systemctl", "reload", "nginx")
 
@@ -173,17 +190,15 @@ def tambah(a, reg=None):
         "db = connect(config.database())\n"
         f"set_setting('nama_sekolah', {a.nama!r}, db=db)\n"
         f"set_setting('zona_waktu', {a.zona!r}, db=db)\n"
-        f"set_setting('alamat_publik', 'https://{a.kode}.{DOMAIN}', db=db)\n"
+        f"set_setting('alamat_publik', 'https://{DOMAIN}/{a.kode}', db=db)\n"
         "db.close()\n"))
     reg[a.kode] = s
     simpan(reg)
     _chown(a.kode)
     sh("systemctl", "enable", "--now", f"presensi@{a.kode}")
     _tulis_map(reg)
-    print(f"Sekolah {a.kode} dibuat: https://{a.kode}.{DOMAIN}  (port {port})")
+    print(f"Sekolah {a.kode} dibuat: https://{DOMAIN}/{a.kode}  (port {port})")
     print(f"Langganan: {s['status']} sampai {sampai}; login awal admin / admin123 (wajib diganti).")
-    print(f"Cloudflare: tambahkan Public hostname {a.kode}.{DOMAIN} -> http://localhost:8080 "
-          "pada tunnel VPS.")
     return s
 
 
@@ -272,14 +287,13 @@ def pindah(a):
         f"meta = restore_zip(open({a.zip!r}, 'rb').read(), config.database(), config.DATA_DIR)\n"
         "init_db(config.database())  # sesuaikan skema bila backup dari versi lama\n"
         "db = connect(config.database())\n"
-        f"set_setting('alamat_publik', 'https://{a.kode}.{DOMAIN}', db=db)\n"
+        f"set_setting('alamat_publik', 'https://{DOMAIN}/{a.kode}', db=db)\n"
         "db.close()\nprint(json.dumps(meta))\n"))
     _tulis_vendor(a.kode, s)   # langganan tetap diatur vendor (bukan dari backup)
     _chown(a.kode)
     sh("systemctl", "start", f"presensi@{a.kode}")
     print(f"{a.kode}: data dipulihkan dari {a.zip} ({meta.strip()})")
-    print("Terakhir: di Cloudflare, pindahkan Public hostname "
-          f"{a.kode}.{DOMAIN} dari tunnel sekolah ke tunnel VPS (http://localhost:8080).")
+    print(f"Alamat sekolah: https://{DOMAIN}/{a.kode}")
 
 
 def hapus(a):

@@ -43,7 +43,8 @@ def main():
         threading.Timer(1.5, lambda: webbrowser.open(f"http://localhost:{PORT}")).start()
     try:
         from waitress import serve  # server produksi bila tersedia
-        serve(app, host=HOST, port=PORT, threads=8)
+        import os
+        serve(app, host=HOST, port=PORT, threads=int(os.environ.get("PRESENSI_THREADS", "8")))
     except ImportError:
         app.run(host=HOST, port=PORT, debug=False, threaded=True, use_reloader=False)
 

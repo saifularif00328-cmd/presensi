@@ -6,6 +6,7 @@
 - Header keamanan dasar di setiap respons.
 - Pembatasan percobaan login (per akun & per IP) dengan kunci sementara.
 """
+import re
 from datetime import timedelta
 from ipaddress import ip_address
 
@@ -16,6 +17,7 @@ from . import utils
 from .db import execute, query
 
 PROXY_LOKAL = {"127.0.0.1", "::1"}
+PREFIX_VALID = re.compile(r"^/[a-z0-9][a-z0-9-]{0,40}$")
 
 MAKS_GAGAL_AKUN = 5          # salah password berturut-turut per akun
 MAKS_GAGAL_IP = 20           # per alamat IP
@@ -44,12 +46,23 @@ class ProxyLokal:
             host = environ.get("HTTP_X_FORWARDED_HOST")
             if host:
                 environ["HTTP_HOST"] = host.split(",")[0].strip()
+            # Aplikasi dibuka di bawah jalur, mis. https://presensiku.biz.id/smpn1 (Nginx VPS)
+            prefix = (environ.get("HTTP_X_FORWARDED_PREFIX") or "").rstrip("/")
+            if PREFIX_VALID.match(prefix):
+                environ["SCRIPT_NAME"] = prefix
+                path = environ.get("PATH_INFO", "")
+                if path == prefix or path.startswith(prefix + "/"):
+                    environ["PATH_INFO"] = path[len(prefix):] or "/"
         return self.app(environ, start_response)
 
 
 class SesiAman(SecureCookieSessionInterface):
     def get_cookie_secure(self, app):
         return request.is_secure or app.config.get("SESSION_COOKIE_SECURE", False)
+
+    def get_cookie_path(self, app):
+        # tiap sekolah (/smpn1, /smpn2, ...) punya cookie login sendiri di domain yang sama
+        return request.script_root or app.config.get("SESSION_COOKIE_PATH") or "/"
 
 
 def header_keamanan(resp):

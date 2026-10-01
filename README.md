@@ -7,8 +7,8 @@ ESP32 di gerbang.
 
 | Panduan | Isi |
 |---|---|
-| [`TUTORIAL_SERVER_SEKOLAH.md`](TUTORIAL_SERVER_SEKOLAH.md) | Tahap 1: installer Windows di komputer sekolah + Cloudflare Tunnel |
-| [`TUTORIAL_VPS.md`](TUTORIAL_VPS.md) | Tahap 2: semua sekolah di satu VPS (alamat tidak berubah) |
+| [`TUTORIAL_VPS.md`](TUTORIAL_VPS.md) | **Jalur utama:** semua sekolah di satu VPS, alamat `https://presensiku.biz.id/<kode>` — sekolah tidak memasang apa pun |
+| [`TUTORIAL_SERVER_SEKOLAH.md`](TUTORIAL_SERVER_SEKOLAH.md) | Alternatif: installer Windows di komputer sekolah + Cloudflare Tunnel |
 | [`TUTORIAL_RFID.md`](TUTORIAL_RFID.md) · [`firmware/README.md`](firmware/README.md) | Kartu RFID, reader USB, perakitan ESP32 |
 | [`TUTORIAL_PORTAL.md`](TUTORIAL_PORTAL.md) | Panduan portal untuk orang tua & siswa |
 | [`TUTORIAL_MULTICABANG.md`](TUTORIAL_MULTICABANG.md) | Dashboard beberapa sekolah/cabang |
@@ -107,11 +107,11 @@ Pesan yang ditolak 3× berstatus *Gagal* dan bisa dikirim ulang dari **Log Notif
 Pengingat tampil 14 dan 3 hari sebelum berakhir. Lisensi ditandatangani digital (Ed25519) dan
 terikat ke **ID perangkat** + masa berlaku, sehingga tidak bisa dipalsukan walaupun `.exe` dibongkar.
 
-- **Server sekolah (tahap 1):** menu **Langganan & Lisensi** → *Aktivasi online* (kode aktivasi) atau
+- **Server sekolah (alternatif):** menu **Langganan & Lisensi** → *Aktivasi online* (kode aktivasi) atau
   *Aktivasi offline*. Vendor mengelola kode lewat server aktivasi
   ([`license_server/README.md`](license_server/README.md)) atau offline:
   `python tools/keygen.py --device <ID> --hari 365 --maks-siswa 1000`.
-- **VPS (tahap 2):** status diatur vendor dengan `presensi-sekolah perpanjang/nonaktif ...`
+- **VPS (`presensiku.biz.id/<kode>`):** status diatur vendor dengan `presensi-sekolah perpanjang/nonaktif ...`
   (berkas `data/_vendor.json`, mode `PRESENSI_MODE=cloud`).
 
 ## Keamanan akses internet

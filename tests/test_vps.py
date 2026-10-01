@@ -17,6 +17,7 @@ def vps(tmp_path, monkeypatch):
         pytest.skip("butuh akses root MySQL lewat socket")
     monkeypatch.setenv("PRESENSI_TANPA_SISTEM", "1")
     monkeypatch.setenv("PRESENSI_SRV", str(tmp_path / "srv"))
+    monkeypatch.setenv("PRESENSI_NGINX_CONF", str(tmp_path / "nginx" / "presensi-sekolah.conf"))
     import importlib
     import tools.sekolah as sk
     importlib.reload(sk)
@@ -51,8 +52,11 @@ def test_vps_tambah_perpanjang_nonaktif(vps):
                   "password": s["db_pass"], "database": s["db"]})
     assert get_setting("nama_sekolah", db=db) == "SMP Uji A"
     assert get_setting("zona_waktu", db=db) == "Asia/Makassar"
-    assert get_setting("alamat_publik", db=db).startswith("https://uji-a.")
+    assert get_setting("alamat_publik", db=db) == f"https://{sk.DOMAIN}/uji-a"
     db.close()
+    conf = open(sk.NGINX_CONF).read()
+    assert "location /uji-a/" in conf and "proxy_pass http://127.0.0.1:7001/;" in conf
+    assert "X-Forwarded-Prefix /uji-a;" in conf
     sk.main(["perpanjang", "uji-a", "--hari", "30"])
     assert _vendor(sk, "uji-a")["berlaku_sampai"] == "2031-07-30"  # menyambung dari tanggal habis
     sk.main(["nonaktif", "uji-a"])
@@ -80,7 +84,7 @@ def test_vps_pindah_dari_server_sekolah(vps, app, client, seed, monkeypatch):
     assert db.execute("SELECT COUNT(*) AS n FROM siswa").fetchone()["n"] == 3
     assert db.execute("SELECT COUNT(*) AS n FROM presensi").fetchone()["n"] == 1
     assert db.execute("SELECT nilai FROM settings WHERE kunci = 'alamat_publik'").fetchone()[0] \
-        .startswith("https://uji-b.")
+        == f"https://{sk.DOMAIN}/uji-b"
     db.close()
     assert _vendor(sk, "uji-b")["berlaku_sampai"] == "2031-01-01"
     sk.main(["backup", "uji-b"])

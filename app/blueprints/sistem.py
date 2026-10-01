@@ -300,9 +300,9 @@ def akses_online():
         aksi = request.form.get("aksi")
         if aksi == "alamat":
             url = request.form.get("alamat_publik", "").strip().rstrip("/")
-            if url and not re.match(r"^https://[a-z0-9.-]+$", url):
-                flash("Alamat harus berbentuk https://nama.domain (tanpa garis miring di akhir).",
-                      "error")
+            if url and not re.match(r"^https://[a-z0-9.-]+(/[a-z0-9-]+)?$", url):
+                flash("Alamat harus berbentuk https://domain atau https://domain/kode-sekolah "
+                      "(tanpa garis miring di akhir).", "error")
             else:
                 set_setting("alamat_publik", url)
                 flash("Alamat publik disimpan.", "success")

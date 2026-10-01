@@ -17,7 +17,7 @@
     <dt>Rahasia</dt><dd>{{ lihat.rahasia }}</dd>
   </dl>
   <p class="help">Alamat server harus bisa dibuka perangkat. Untuk server yang dibuka lewat Cloudflare, pakai
-    alamat publik sekolah (mis. <code>https://smpn1.presensiku.biz.id</code>) agar perangkat tidak perlu disetel
+    alamat publik sekolah (mis. <code>https://presensiku.biz.id/smpn1</code>) agar perangkat tidak perlu disetel
     ulang saat server pindah.</p>
   <form method="post" data-confirm="Buat rahasia baru? Perangkat harus disetel ulang dengan rahasia baru.">{{ csrf() }}
     <input type="hidden" name="aksi" value="rahasia"><input type="hidden" name="id" value="{{ lihat.id }}">

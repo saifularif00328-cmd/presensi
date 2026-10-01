@@ -20,6 +20,15 @@ APP=/opt/presensi
 [ "$(id -u)" = 0 ] || { echo "Jalankan sebagai root (sudo -i)"; exit 1; }
 export DEBIAN_FRONTEND=noninteractive
 
+echo "==> Swap (RAM cadangan) untuk VPS kecil"
+RAM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
+if [ "$RAM_MB" -lt 1536 ] && ! swapon --show | grep -q /swapfile; then
+  fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
+  chmod 600 /swapfile && mkswap /swapfile >/dev/null && swapon /swapfile
+  grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  sysctl -q vm.swappiness=10 && echo 'vm.swappiness=10' > /etc/sysctl.d/60-presensi.conf
+fi
+
 echo "==> Paket sistem"
 apt-get update -q
 apt-get install -y -q mariadb-server nginx python3-venv python3-pip git ufw curl
@@ -42,13 +51,17 @@ ln -sf "$APP/tools/sekolah.py" /usr/local/bin/presensi-sekolah
 chmod +x "$APP/tools/sekolah.py"
 
 echo "==> MariaDB hanya untuk localhost"
-cat > /etc/mysql/mariadb.conf.d/60-presensi.cnf <<'EOF'
+if [ "$RAM_MB" -lt 1536 ]; then POOL=64M; KONEKSI=60; else POOL=256M; KONEKSI=150; fi
+cat > /etc/mysql/mariadb.conf.d/60-presensi.cnf <<EOF
 [mysqld]
 bind-address = 127.0.0.1
 character-set-server = utf8mb4
 collation-server = utf8mb4_unicode_ci
-innodb_buffer_pool_size = 256M
-max_connections = 200
+innodb_buffer_pool_size = $POOL
+innodb_log_buffer_size = 8M
+max_connections = $KONEKSI
+performance_schema = OFF
+table_open_cache = 400
 EOF
 systemctl enable --now mariadb
 systemctl restart mariadb
@@ -57,7 +70,7 @@ echo "==> systemd & Nginx"
 cp "$APP/deploy/presensi@.service" /etc/systemd/system/
 systemctl daemon-reload
 cp "$APP/deploy/nginx-presensi.conf" /etc/nginx/conf.d/presensi.conf
-touch /etc/nginx/presensi-sekolah.map
+touch /etc/nginx/presensi-sekolah.conf
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl enable --now nginx
@@ -85,11 +98,12 @@ cat <<'EOF'
  SELESAI. Langkah berikutnya:
  1. Hubungkan VPS ke Cloudflare (sekali):
       cloudflared service install <TOKEN-TUNNEL-VPS>
-    Di dashboard Cloudflare, tunnel VPS: Public hostname
-      *.presensiku.biz.id  ->  http://localhost:8080
+    Di dashboard Cloudflare, tunnel VPS -> Public hostname:
+      presensiku.biz.id  ->  HTTP  localhost:8080
  2. Tambah sekolah:
       presensi-sekolah tambah smpn1 --nama "SMP Negeri 1" --hari 365
- 3. Pindah sekolah dari server sekolah (file backup ZIP dari menu Backup):
+    -> https://presensiku.biz.id/smpn1  (login awal admin / admin123)
+ 3. Pindah sekolah dari server lain (file backup ZIP dari menu Backup):
       presensi-sekolah pindah smpn1 /root/presensi-backup-smpn1.zip
 ============================================================
 EOF

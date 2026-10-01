@@ -82,7 +82,7 @@ def daftar():
         r["online"] = t is not None and (now - t).total_seconds() < 180
     return render_template("sistem/perangkat.html", rows=rows, lihat=lihat, edit=edit, MODES=MODES,
                            ibadah=query("SELECT id, nama FROM ibadah ORDER BY jam_mulai"),
-                           server=get_setting("alamat_publik") or request.host_url.rstrip("/"))
+                           server=get_setting("alamat_publik") or request.url_root.rstrip("/"))
 
 
 def _kode():

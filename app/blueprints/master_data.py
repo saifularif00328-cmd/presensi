@@ -323,8 +323,8 @@ def pin():
         kelas = query("SELECT nama FROM kelas WHERE id = ?", (kelas_id,), one=True)
         return render_template("master/pin_cetak.html", rows=target, pins=pins, kelas=kelas,
                                portal_url=(get_setting("alamat_publik")
-                                           or request.host_url.rstrip("/"))
-                               + url_for("portal.masuk"))
+                                           or request.url_root.rstrip("/"))
+                               + url_for("portal.masuk")[len(request.script_root):])
     return render_template("master/pin.html", kelas=kelas_options(), kelas_id=kelas_id, rows=rows)
 
 

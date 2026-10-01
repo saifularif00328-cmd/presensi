@@ -760,3 +760,32 @@ def test_perangkat_mode_ibadah(app, client, seed, clock):
     clock.set(15, 0)
     j = _kirim(anon, kode, rahasia, "/api/perangkat/tap", {"uid": "11223344"}).get_json()
     assert not j["ok"] and "Tidak ada jadwal" in j["pesan"]
+
+
+def test_aplikasi_di_bawah_jalur_sekolah(app, client):
+    """Di VPS, Nginx meneruskan presensiku.biz.id/smpn1/... dengan X-Forwarded-Prefix: semua link,
+    form, aset, dan cookie login memakai /smpn1. Header palsu dari luar diabaikan."""
+    lokal = {"REMOTE_ADDR": "127.0.0.1"}
+    hdr = {"X-Forwarded-Prefix": "/smpn1", "X-Forwarded-Proto": "https"}
+    c = app.test_client()
+    r = c.get("/login", headers=hdr, environ_base=lokal)
+    h = r.get_data(as_text=True)
+    assert 'href="/smpn1/static/css/app.css' in h and 'href="/smpn1/portal/masuk"' in h
+    r = c.post("/login", data={"username": "admin", "password": "admin123"}, headers=hdr,
+               environ_base=lokal)
+    assert r.headers["Location"] in ("/smpn1/", "https://localhost/smpn1/")
+    cookie = r.headers["Set-Cookie"]
+    assert "Path=/smpn1" in cookie and "Secure" in cookie
+    h = client.get("/portal/masuk", headers=hdr, environ_base=lokal).get_data(as_text=True)
+    assert '/smpn1/portal/manifest.webmanifest' in h
+    # parameter next (tanpa prefix) diarahkan kembali ke jalur sekolah
+    r = c.post("/login?next=/presensi/scan", data={"username": "admin", "password": "admin123"},
+               headers=hdr, environ_base=lokal)
+    assert r.headers["Location"].endswith("/smpn1/presensi/scan")
+    # tanpa proxy lokal: header diabaikan
+    h = c.get("/login", headers=hdr, environ_base={"REMOTE_ADDR": "36.1.2.3"}).get_data(as_text=True)
+    assert 'href="/static/css/app.css' in h
+    # prefix tidak valid diabaikan
+    h = c.get("/login", headers={"X-Forwarded-Prefix": "/../x"}, environ_base=lokal) \
+        .get_data(as_text=True)
+    assert 'href="/static/css/app.css' in h

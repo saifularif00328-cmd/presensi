@@ -10,11 +10,11 @@
     <dl class="kv">
       <dt>Di jaringan sekolah</dt><dd><code>{{ lan }}</code></dd>
       <dt>Dari internet</dt><dd>{% if alamat %}<a href="{{ alamat }}" target="_blank">{{ alamat }}</a>{% else %}<span class="muted">belum diatur</span>{% endif %}</dd>
-      <dt>Portal orang tua</dt><dd>{% if alamat %}<code>{{ alamat }}{{ url_for('portal.masuk') }}</code>{% else %}-{% endif %}</dd>
+      <dt>Portal orang tua</dt><dd>{% if alamat %}<code>{{ alamat }}{{ url_for('portal.masuk')[request.script_root|length:] }}</code>{% else %}-{% endif %}</dd>
     </dl>
     <form method="post" class="mt">{{ csrf() }}<input type="hidden" name="aksi" value="alamat">
       <div class="field"><label>Alamat publik sekolah</label>
-        <input name="alamat_publik" value="{{ alamat }}" placeholder="https://smpn1.presensiku.biz.id"></div>
+        <input name="alamat_publik" value="{{ alamat }}" placeholder="https://presensiku.biz.id/smpn1"></div>
       <button class="btn outline">{{ icon('save') }}Simpan alamat</button>
     </form>
     <p class="help">Alamat ini dipakai di slip PIN siswa dan isian perangkat RFID, sehingga orang tua dan perangkat

@@ -14,7 +14,7 @@ self.addEventListener('activate', function (e) {
 self.addEventListener('fetch', function (e) {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
-  if (url.pathname.startsWith('/static/')) {
+  if (url.pathname.startsWith('{{ request.script_root }}/static/')) {
     e.respondWith(caches.match(e.request).then(function (r) { return r || fetch(e.request); }));
     return;
   }

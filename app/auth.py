@@ -147,6 +147,8 @@ def login():
             nxt = request.args.get("next") or ""
             if not nxt.startswith("/") or nxt.startswith("//"):
                 nxt = url_for("main.beranda")
+            elif request.script_root and not nxt.startswith(request.script_root + "/"):
+                nxt = request.script_root + nxt  # di bawah jalur sekolah, mis. /smpn1
             return redirect(nxt)
         security.catat_gagal(username, ip)
         flash("Username atau password salah.", "error")
