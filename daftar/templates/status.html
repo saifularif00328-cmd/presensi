@@ -1,0 +1,74 @@
+{% extends "_dasar.html" %}
+{% from "_ikon.html" import ikon_wa %}
+{% block judul %}Menyiapkan aplikasi — {{ k.nama }}{% endblock %}
+{% block kepala %}
+<style>
+  .tengah { max-width: 560px; margin: 24px auto; text-align: center; }
+  .putar { width: 46px; height: 46px; border: 4px solid #c7d7fe; border-top-color: var(--p); border-radius: 50%;
+    margin: 6px auto 18px; animation: putar 1s linear infinite; }
+  @keyframes putar { to { transform: rotate(360deg); } }
+  .detail { text-align: left; background: #f9fafb; border: 1px solid var(--b); border-radius: 12px; padding: 14px 16px; margin: 18px 0; }
+  .detail div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; flex-wrap: wrap; }
+  .detail b { word-break: break-all; }
+  [hidden] { display: none !important; }
+</style>
+{% endblock %}
+{% block isi %}
+<div class="kartu tengah">
+  <div id="tunggu" {{ 'hidden' if h.status != 'menunggu' }}>
+    <div class="putar"></div>
+    <h2>Menyiapkan aplikasi {{ h.nama_sekolah }}…</h2>
+    <p class="redup">Biasanya kurang dari 1 menit. Jangan tutup halaman ini.</p>
+  </div>
+
+  <div id="siap" {{ 'hidden' if h.status != 'siap' }}>
+    <h2 style="color:var(--ok)">Aplikasi sekolah Anda sudah siap 🎉</h2>
+    <p class="redup">Simpan informasi berikut — alamat ini juga dibagikan ke guru &amp; orang tua.</p>
+    <div class="detail">
+      <div><span>Alamat</span><b id="d-url">{{ domain }}/{{ h.kode }}</b></div>
+      <div><span>Username</span><b id="d-user">{{ h.username or 'admin' }}</b></div>
+      <div><span>Password</span><b>yang Anda isi di formulir</b></div>
+      <div><span>Demo berlaku sampai</span><b id="d-sampai">{{ h.sampai }}</b></div>
+    </div>
+    <a class="tombol utama" id="d-masuk" href="{{ h.url or '/' ~ h.kode ~ '/login' }}" style="width:100%">Masuk ke aplikasi</a>
+    <p class="redup" style="font-size:.88rem;margin-top:16px">Langkah awal setelah masuk: Pengaturan → isi jam sekolah &amp; logo, lalu
+      Data Master → kelas dan siswa (bisa import Excel).</p>
+  </div>
+
+  <div id="gagal" {{ 'hidden' if h.status != 'gagal' }}>
+    <h2 style="color:var(--er)">Pendaftaran belum berhasil</h2>
+    <p id="d-pesan">{{ h.pesan }}</p>
+    <a class="tombol kedua" href="/#daftar">Kembali ke formulir</a>
+  </div>
+
+  {% if wa_bantuan %}<p style="margin-top:18px"><a class="tombol wa" href="{{ wa_bantuan }}" target="_blank" rel="noopener">{{ ikon_wa() }} Butuh bantuan? WhatsApp kami</a></p>{% endif %}
+</div>
+<script>
+  (function () {
+    var status = {{ h.status|tojson }};
+    if (status !== 'menunggu') return;
+    var mulai = Date.now();
+    function tampil(id) { ['tunggu', 'siap', 'gagal'].forEach(function (x) { document.getElementById(x).hidden = x !== id; }); }
+    function cek() {
+      fetch(location.pathname + '/status', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
+        if (d.status === 'siap') {
+          document.getElementById('d-url').textContent = location.host + '/' + d.kode;
+          document.getElementById('d-user').textContent = d.username || 'admin';
+          document.getElementById('d-sampai').textContent = d.sampai || '';
+          document.getElementById('d-masuk').href = '/' + d.kode + '/login';
+          tampil('siap');
+        } else if (d.status === 'gagal') {
+          document.getElementById('d-pesan').textContent = d.pesan || 'Terjadi kesalahan.';
+          tampil('gagal');
+        } else {
+          if (Date.now() - mulai > 180000) {
+            document.querySelector('#tunggu p').textContent = 'Masih diproses… bila lebih dari 5 menit, hubungi kami lewat WhatsApp.';
+          }
+          setTimeout(cek, 2500);
+        }
+      }).catch(function () { setTimeout(cek, 4000); });
+    }
+    setTimeout(cek, 2000);
+  })();
+</script>
+{% endblock %}

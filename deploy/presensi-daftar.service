@@ -1,0 +1,23 @@
+# Halaman depan presensiku.biz.id + pendaftaran demo gratis (127.0.0.1:7000)
+[Unit]
+Description=Presensi — halaman depan & pendaftaran demo
+After=network-online.target
+
+[Service]
+Type=simple
+User=presensi
+Group=presensi
+WorkingDirectory=/opt/presensi
+Environment=PRESENSI_SRV=/srv/presensi
+# opsional (root saja, chmod 600): DAFTAR_TURNSTILE_SITE=... DAFTAR_TURNSTILE_SECRET=...
+EnvironmentFile=-/etc/presensi/daftar.env
+ExecStart=/opt/presensi/venv/bin/python -m daftar
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/srv/presensi/_antrean /srv/presensi/_daftar
+
+[Install]
+WantedBy=multi-user.target

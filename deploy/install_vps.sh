@@ -43,8 +43,11 @@ apt-get install -y -q mariadb-server nginx python3-venv python3-pip git ufw curl
 
 echo "==> User & folder"
 id presensi >/dev/null 2>&1 || useradd --system --home /srv/presensi --shell /usr/sbin/nologin presensi
-mkdir -p /srv/presensi/_backup
-chown presensi:presensi /srv/presensi /srv/presensi/_backup
+mkdir -p /srv/presensi/_backup /srv/presensi/_antrean/masuk /srv/presensi/_antrean/hasil \
+  /srv/presensi/_daftar /etc/presensi
+chown presensi:presensi /srv/presensi /srv/presensi/_backup /srv/presensi/_daftar
+chown -R presensi:presensi /srv/presensi/_antrean
+chmod 750 /srv/presensi/_antrean /srv/presensi/_antrean/masuk /srv/presensi/_antrean/hasil /srv/presensi/_daftar
 
 echo "==> Kode aplikasi ($BRANCH)"
 if [ -d "$APP/.git" ]; then
@@ -75,10 +78,16 @@ systemctl enable --now mariadb
 systemctl restart mariadb
 
 echo "==> systemd & Nginx"
-cp "$APP/deploy/presensi@.service" /etc/systemd/system/
+cp "$APP/deploy/presensi@.service" "$APP/deploy/presensi-daftar.service" \
+   "$APP/deploy/presensi-antrean.service" "$APP/deploy/presensi-antrean.path" /etc/systemd/system/
 systemctl daemon-reload
 cp "$APP/deploy/nginx-presensi.conf" /etc/nginx/conf.d/presensi.conf
+cp "$APP/deploy/nginx-presensi-proxy.conf" /etc/nginx/presensi-proxy.conf
 touch /etc/nginx/presensi-sekolah.conf
+/usr/local/bin/presensi-sekolah rapikan >/dev/null   # tulis _publik.json & blok Nginx terbaru
+systemctl enable --now presensi-antrean.path >/dev/null 2>&1
+systemctl enable presensi-daftar >/dev/null 2>&1
+systemctl restart presensi-daftar
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl enable --now nginx
@@ -115,6 +124,8 @@ fi
 echo "==> Backup harian 03.00"
 cat > /etc/cron.d/presensi-backup <<'EOF'
 0 3 * * * root /usr/local/bin/presensi-sekolah backup --semua >> /var/log/presensi-backup.log 2>&1
+30 3 * * * root /usr/local/bin/presensi-sekolah rapikan >> /var/log/presensi-backup.log 2>&1
+*/5 * * * * root /usr/local/bin/presensi-sekolah proses-antrean >> /var/log/presensi-antrean.log 2>&1
 EOF
 
 cat <<'EOF'
@@ -124,10 +135,13 @@ cat <<'EOF'
  1. Hubungkan VPS ke Cloudflare (sekali, tanpa kartu/Zero Trust):
       cloudflared tunnel login        (buka tautannya, pilih domain, Authorize)
       bash /opt/presensi/deploy/tunnel_vps.sh
- 2. Tambah sekolah:
+ 2. Nomor WhatsApp Anda (tombol perpanjang lisensi & kontak di halaman depan):
+      presensi-sekolah setel --wa 081234567890 --hari-demo 7 --maks-demo 5
+    Pendaftar demo dari https://presensiku.biz.id otomatis dibuatkan sekolah.
+ 3. Tambah sekolah manual (berbayar):
       presensi-sekolah tambah smpn1 --nama "SMP Negeri 1" --hari 365
     -> https://presensiku.biz.id/smpn1  (login awal admin / admin123)
- 3. Pindah sekolah dari server lain (file backup ZIP dari menu Backup):
+ 4. Pindah sekolah dari server lain (file backup ZIP dari menu Backup):
       presensi-sekolah pindah smpn1 /root/presensi-backup-smpn1.zip
 ============================================================
 EOF

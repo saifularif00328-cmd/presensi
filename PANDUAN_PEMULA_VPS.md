@@ -155,6 +155,20 @@ Tanpa dashboard Zero Trust, jadi **tidak perlu kartu kredit/PayPal**.
 > File `/root/.cloudflared/cert.pem` dan `/etc/cloudflared/*.json` adalah kunci tunnel —
 > jangan dibagikan.
 
+## TAHAP 6b — Nomor WhatsApp Anda & demo gratis
+Di VPS (ganti dengan nomor WA Anda):
+```
+presensi-sekolah setel --wa 081234567890 --hari-demo 7 --maks-demo 5
+```
+Setelah ini:
+- **Halaman depan:** `https://presensiku.biz.id` menampilkan formulir **Daftar demo gratis 7
+  hari** dan tombol **Tanya via WhatsApp**. Sekolah yang mendaftar langsung dibuatkan aplikasinya
+  secara otomatis.
+- **Demo berakhir:** admin sekolah melihat popup **"Perpanjang via WhatsApp"** dengan pesan siap
+  kirim ke nomor Anda.
+- **Lihat pendaftar:** `presensi-sekolah daftar` (kolom WA PENDAFTAR).
+- **Sekolah sudah membayar:** `presensi-sekolah perpanjang kodesekolah --hari 365`.
+
 ## TAHAP 7 — Tambah sekolah pertama
 Di VPS:
 ```

@@ -566,3 +566,14 @@ body.portal { background: var(--bg); min-height: 100vh; display: flex; flex-dire
   .p-stats { grid-template-columns: repeat(3, 1fr); }
   .p-today b { font-size: 1rem; }
 }
+
+/* Popup perpanjang lisensi */
+.modal-latar { position: fixed; inset: 0; background: rgba(16, 24, 40, .55); display: grid; place-items: center; padding: 16px; z-index: 1000; }
+.modal-latar[hidden] { display: none; }
+.modal { background: #fff; border-radius: 16px; max-width: 460px; width: 100%; padding: 24px; box-shadow: 0 20px 50px rgba(16, 24, 40, .25); }
+.modal h3 { margin: 0 0 10px; font-size: 1.2rem; }
+.modal p { margin: 0 0 18px; color: #475467; line-height: 1.55; }
+.modal-aksi { display: flex; gap: 10px; flex-wrap: wrap; }
+.modal-aksi .btn { flex: 1 1 auto; justify-content: center; }
+.btn.wa { background: #16a34a; border-color: #16a34a; color: #fff; }
+.btn.wa:hover { background: #15803d; border-color: #15803d; color: #fff; }

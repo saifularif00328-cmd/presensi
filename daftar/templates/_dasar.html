@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block judul %}{{ k.nama }} — Presensi Siswa Digital{% endblock %}</title>
+  <meta name="description" content="Aplikasi presensi sekolah: kartu RFID, QR, portal orang tua, dan notifikasi WhatsApp. Coba gratis {{ k.hari_demo }} hari.">
+  <style>
+    :root { --p: #1d4ed8; --ph: #1e40af; --t: #101828; --m: #667085; --b: #e4e7ec; --ok: #067647; --er: #b42318; --wa: #16a34a; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--t);
+      background: linear-gradient(160deg, #eff4ff, #f5f6f8 45%); line-height: 1.5; }
+    a { color: var(--p); }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+    header.top { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; }
+    .merek { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1rem; color: var(--t); text-decoration: none; }
+    .logo { width: 38px; height: 38px; border-radius: 10px; background: var(--p); display: grid; place-items: center; flex: none; }
+    .kartu { background: #fff; border: 1px solid var(--b); border-radius: 16px; padding: 24px; box-shadow: 0 10px 30px rgba(16,24,40,.06); }
+    h1 { font-size: clamp(1.7rem, 4vw, 2.4rem); line-height: 1.2; margin: 0 0 12px; }
+    h2 { font-size: 1.3rem; margin: 0 0 6px; }
+    .redup { color: var(--m); }
+    .tombol, button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 10px;
+      padding: 12px 18px; font-size: .95rem; font-weight: 600; cursor: pointer; text-decoration: none; font-family: inherit; }
+    .utama { background: var(--p); color: #fff; } .utama:hover { background: var(--ph); }
+    .kedua { background: #eff4ff; color: var(--p); }
+    .wa { background: var(--wa); color: #fff; } .wa:hover { background: #15803d; }
+    .wa svg { width: 18px; height: 18px; }
+    label { font-weight: 600; font-size: .88rem; display: block; margin: 0 0 6px; }
+    input, select { width: 100%; border: 1px solid #d0d5dd; border-radius: 10px; padding: 11px 12px; font-size: .95rem; font-family: inherit; background: #fff; }
+    input:focus, select:focus { outline: 0; border-color: var(--p); box-shadow: 0 0 0 3px #c7d7fe; }
+    .galat { color: var(--er); font-size: .8rem; margin-top: 4px; }
+    .pesan { border-radius: 12px; padding: 14px 16px; margin: 0 0 16px; }
+    .pesan.er { background: #fef3f2; color: var(--er); border: 1px solid #fecdca; }
+    .pesan.info { background: #eff8ff; color: #175cd3; border: 1px solid #b2ddff; }
+    .pesan.ok { background: #ecfdf3; color: var(--ok); border: 1px solid #abefc6; }
+    footer { color: var(--m); font-size: .85rem; text-align: center; padding: 32px 0 40px; }
+  </style>
+  {% block kepala %}{% endblock %}
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <a class="merek" href="/"><span class="logo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></span>{{ k.nama }}</a>
+      {% block kanan %}{% endblock %}
+    </header>
+    {% block isi %}{% endblock %}
+    <footer>{{ k.nama }} · Presensi Siswa Digital{% if k.wa %} · <a href="https://wa.me/{{ k.wa }}">WhatsApp +{{ k.wa }}</a>{% endif %}</footer>
+  </div>
+</body>
+</html>

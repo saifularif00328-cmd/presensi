@@ -131,6 +131,32 @@ bash /opt/presensi/deploy/tunnel_vps.sh  # buat tunnel "vps", DNS, layanan cloud
 Buka `https://presensiku.biz.id`; halaman "Kode sekolah" harus tampil. Sekolah baru **tidak perlu**
 diatur lagi di Cloudflare.
 
+## 4a. Demo gratis dari halaman depan
+`https://presensiku.biz.id` berisi formulir **Daftar demo gratis**. Pendaftar mengisi nama sekolah,
+WA, kode alamat, dan password admin. Sekolah lalu **dibuat otomatis** (±30 detik): layanan
+`presensi-daftar` menulis antrean, dan `presensi-antrean.path` (root) menjalankan
+`presensi-sekolah proses-antrean`.
+
+Atur sekali:
+```bash
+presensi-sekolah setel --wa 081234567890 --hari-demo 7 --maks-demo 5
+# opsional: WA pemberitahuan tiap ada pendaftar baru (token Fonnte milik Anda)
+presensi-sekolah setel --notif-token TOKEN_FONNTE
+```
+- **Demo berakhir:** aplikasi menjadi baca-saja dan admin melihat **popup "Perpanjang via
+  WhatsApp"** berisi pesan siap kirim (nama sekolah, kode, jumlah siswa). Popup juga muncul 2 hari
+  sebelum demo berakhir.
+- **Setelah membayar:** `presensi-sekolah perpanjang <kode> --hari 365`.
+- **14 hari setelah demo berakhir tanpa perpanjangan:** `rapikan` (cron harian) menghentikan
+  layanannya agar RAM VPS tidak habis. Data tetap tersimpan, dan alamat sekolah menampilkan
+  halaman "demo berakhir" + tombol WA. `perpanjang` menghidupkannya lagi.
+- **Kuota:** `--maks-demo` membatasi jumlah demo aktif bersamaan; Paket S ±5. Data pendaftar bisa
+  dilihat dengan `presensi-sekolah daftar` dan `presensi-sekolah info <kode>`.
+- **Anti-spam:** kolom jebakan bot, batas 3 pendaftaran/IP/hari, dan 1 demo per nomor WA. Bila
+  perlu, tambahkan Cloudflare Turnstile (gratis):
+  `/etc/presensi/daftar.env` berisi `DAFTAR_TURNSTILE_SITE=...` dan `DAFTAR_TURNSTILE_SECRET=...`,
+  lalu `systemctl restart presensi-daftar`.
+
 ## 5. Tambah sekolah
 ```bash
 presensi-sekolah tambah smpn1 --nama "SMP Negeri 1" --hari 365 --maks-siswa 1000 --zona Asia/Jakarta

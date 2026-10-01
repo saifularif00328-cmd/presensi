@@ -24,6 +24,8 @@
     </dl>
     {% if L.status == 'uji_coba' %}<div class="alert-libur mt" style="margin-bottom:0">{{ icon('clock') }}<span>Masa uji coba {{ L.sisa }} hari lagi. Masukkan kode aktivasi dari penyedia untuk berlangganan.</span></div>
     {% elif L.alasan %}<div class="alert-libur mt" style="margin-bottom:0">{{ icon('alert') }}<span>{{ L.alasan }}</span></div>{% endif %}
+    {% set wa_url = tautan_perpanjang(L) %}
+    {% if wa_url %}<a class="btn wa mt" href="{{ wa_url }}" target="_blank" rel="noopener">Perpanjang lisensi via WhatsApp</a>{% endif %}
     {% if info.lid and server %}
     <form method="post" class="mt">{{ csrf() }}<input type="hidden" name="aksi" value="cek"><button class="btn sm outline">{{ icon('refresh') }}Cek status ke server</button></form>
     {% endif %}

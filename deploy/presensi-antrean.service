@@ -1,0 +1,8 @@
+# Buat sekolah demo dari antrean formulir (butuh root: database, systemd, Nginx)
+[Unit]
+Description=Proses antrean pendaftaran demo
+After=mariadb.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/presensi-sekolah proses-antrean

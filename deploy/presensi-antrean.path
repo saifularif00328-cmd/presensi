@@ -1,0 +1,10 @@
+# Begitu formulir demo menulis permintaan baru, jalankan presensi-antrean.service (root)
+[Unit]
+Description=Pantau antrean pendaftaran demo
+
+[Path]
+DirectoryNotEmpty=/srv/presensi/_antrean/masuk
+MakeDirectory=true
+
+[Install]
+WantedBy=multi-user.target

@@ -275,7 +275,9 @@ def _cloud_status(today):
                 "alasan": "Berkas status vendor (_vendor.json) tidak ada atau rusak."}
     sampai = v.get("berlaku_sampai")
     out = {"status": "aktif", "sampai": sampai, "maks_siswa": int(v.get("maks_siswa") or 0),
-           "alasan": ""}
+           "alasan": "", "wa_vendor": v.get("wa_vendor") or "",
+           "nama_vendor": v.get("nama_vendor") or "", "kode": v.get("kode") or "",
+           "demo": bool(v.get("demo"))}
     if v.get("status") == "uji_coba":
         out["status"] = "uji_coba"
     if v.get("status") == "nonaktif":
@@ -321,6 +323,8 @@ def langganan(db=None):
             else:
                 out.update(status="habis", sisa=None,
                            alasan=out["alasan"] or f"Masa langganan berakhir {out['sampai']}.")
+    for kunci, bawaan in (("wa_vendor", ""), ("nama_vendor", ""), ("kode", ""), ("demo", False)):
+        out.setdefault(kunci, bawaan)
     out["label"] = {"aktif": "Aktif", "uji_coba": "Uji coba", "tenggang": "Masa tenggang",
                     "habis": "Habis"}[out["status"]]
     out["baca_saja"] = out["status"] == "habis"
@@ -335,3 +339,29 @@ def touch_last_seen(db):
     today = _today().isoformat()
     if (get_setting("license_last_seen", db=db) or "") < today:
         set_setting("license_last_seen", today, db=db)
+
+
+def tautan_perpanjang(L, nama_pengguna=""):
+    """Tautan wa.me ke vendor berisi pesan permintaan perpanjangan lisensi ('' bila nomor WA
+    vendor belum diatur dengan `presensi-sekolah setel --wa ...`)."""
+    if not L.get("wa_vendor"):
+        return ""
+    from urllib.parse import quote
+    from .db import get_setting, query
+    from .utils import tanggal_indo
+    n = query("SELECT COUNT(*) AS n FROM siswa WHERE aktif = 1", one=True)["n"]
+    masa = "demo" if L.get("demo") else "langganan"
+    if L["status"] == "habis":
+        kapan = f"sudah berakhir{(' pada ' + tanggal_indo(L['sampai'])) if L.get('sampai') else ''}"
+    elif L.get("sampai"):
+        kapan = f"akan berakhir pada {tanggal_indo(L['sampai'])}"
+    else:
+        kapan = "akan berakhir"
+    pesan = (f"Halo {L.get('nama_vendor') or 'Admin'}, saya {nama_pengguna or 'admin'} dari "
+             f"{get_setting('nama_sekolah') or 'sekolah kami'}"
+             f"{(' (kode: ' + L['kode'] + ')') if L.get('kode') else ''}.\n"
+             f"Masa {masa} aplikasi Presensi Siswa Digital kami {kapan}.\n"
+             f"Kami ingin memperpanjang lisensi.\n"
+             f"Jumlah siswa aktif: {n}\n"
+             f"Mohon info paket dan cara pembayarannya. Terima kasih.")
+    return f"https://wa.me/{L['wa_vendor']}?text={quote(pesan)}"

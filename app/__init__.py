@@ -41,7 +41,7 @@ def create_app(test_config=None, start_jobs=True):
     from .blueprints import (ibadah, kedisiplinan, main, master_data, notifikasi, perangkat,
                              perizinan, portal, presensi, sistem)
     from .menu import build_menu
-    from .license import TIER_LABEL, current_tier, has_feature, langganan
+    from .license import TIER_LABEL, current_tier, has_feature, langganan, tautan_perpanjang
     from . import utils
 
     app.register_blueprint(auth.bp)
@@ -78,6 +78,8 @@ def create_app(test_config=None, start_jobs=True):
             "tier_label": TIER_LABEL[tier],
             "has_feature": has_feature,
             "langganan": langganan,
+            "tautan_perpanjang": lambda L: tautan_perpanjang(
+                L, g.user["nama"] if g.get("user") else ""),
             "can": auth.can,
             "csrf_token": auth.csrf_token,
             "ROLES": auth.ROLES,

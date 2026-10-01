@@ -10,6 +10,10 @@
     presensi-sekolah backup smpn1 | --semua
     presensi-sekolah hapus smpn1 --ya
     presensi-sekolah status                                 (RAM, disk, layanan)
+    presensi-sekolah setel --wa 62812xxxx [--hari-demo 7] [--maks-demo 5]  (WA vendor & demo)
+    presensi-sekolah proses-antrean                         (pendaftaran demo dari web)
+    presensi-sekolah rapikan                                (harian: hentikan demo kedaluwarsa)
+    presensi-sekolah info smpn1                             (data pendaftar & langganan)
 
 Setiap sekolah = database MySQL sendiri + folder /srv/presensi/<kode> + layanan
 presensi@<kode> + satu blok Nginx (https://<domain>/<kode>/ -> port).
@@ -32,6 +36,40 @@ DOMAIN = os.environ.get("PRESENSI_DOMAIN", "presensiku.biz.id")
 NGINX_CONF = os.environ.get("PRESENSI_NGINX_CONF", "/etc/nginx/presensi-sekolah.conf")
 PORT_AWAL = 7001
 TANPA_SISTEM = os.environ.get("PRESENSI_TANPA_SISTEM") == "1"  # uji: tanpa systemctl/nginx/chown
+KONFIGURASI_AWAL = {"wa": "", "nama": "Presensiku", "hari_demo": 7, "maks_demo": 5,
+                    "henti_setelah": 14}   # hari setelah demo berakhir sebelum layanan dihentikan
+
+
+def konfigurasi():
+    try:
+        with open(os.path.join(ROOT, "_konfigurasi.json"), encoding="utf-8") as f:
+            return {**KONFIGURASI_AWAL, **json.load(f)}
+    except (OSError, ValueError):
+        return dict(KONFIGURASI_AWAL)
+
+
+def _rahasia():
+    try:
+        with open(os.path.join(ROOT, "_rahasia.json"), encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def _tulis_json(path, data, mode=0o644, milik_presensi=False):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=1, ensure_ascii=False)
+    os.chmod(tmp, mode)
+    if milik_presensi and not TANPA_SISTEM:
+        shutil.chown(tmp, "presensi", "presensi")
+    os.replace(tmp, path)
+
+
+def _demo_aktif(s, today=None):
+    today = (today or date.today()).isoformat()
+    return s.get("status") == "uji_coba" and (s.get("sampai") or "") >= today
 
 
 def _registry_path():
@@ -100,8 +138,11 @@ def _tulis_vendor(kode, s):
     d = os.path.join(_dir(kode), "data")
     os.makedirs(d, exist_ok=True)
     with open(os.path.join(d, "_vendor.json"), "w", encoding="utf-8") as f:
-        json.dump({"status": s["status"], "berlaku_sampai": s["sampai"],
-                   "maks_siswa": s["maks_siswa"], "sekolah": s["nama"]}, f, indent=1)
+        k = konfigurasi()
+        json.dump({"status": "nonaktif" if s["status"] == "berhenti" else s["status"],
+                   "berlaku_sampai": s["sampai"], "maks_siswa": s["maks_siswa"],
+                   "sekolah": s["nama"], "kode": kode, "demo": bool(s.get("pendaftar")),
+                   "wa_vendor": k["wa"], "nama_vendor": k["nama"]}, f, indent=1)
 
 
 def blok_nginx(kode, port):
@@ -120,12 +161,26 @@ def blok_nginx(kode, port):
             "}\n")
 
 
+def blok_nginx_berhenti(kode):
+    """Demo yang sudah dihentikan: arahkan ke halaman depan (pesan + tombol WhatsApp)."""
+    return (f"location = /{kode} {{ return 302 /?berakhir={kode}; }}\n"
+            f"location /{kode}/ {{ return 302 /?berakhir={kode}; }}\n")
+
+
+def _tulis_publik(reg):
+    """Info tanpa rahasia untuk halaman pendaftaran: kode terpakai & jumlah demo aktif."""
+    _tulis_json(os.path.join(ROOT, "_publik.json"),
+                {"kode": sorted(reg), "demo_aktif": sum(1 for s in reg.values() if _demo_aktif(s))})
+
+
 def _tulis_map(reg):
     os.makedirs(os.path.dirname(NGINX_CONF) or ".", exist_ok=True)
     with open(NGINX_CONF, "w", encoding="utf-8") as f:
         f.write("# Dikelola otomatis oleh presensi-sekolah — jangan diedit manual\n")
         for kode, s in sorted(reg.items()):
-            f.write(blok_nginx(kode, s["port"]))
+            f.write(blok_nginx_berhenti(kode) if s.get("status") == "berhenti"
+                    else blok_nginx(kode, s["port"]))
+    _tulis_publik(reg)
     sh("nginx", "-t")
     sh("systemctl", "reload", "nginx")
 
@@ -207,21 +262,27 @@ def daftar(_a):
     if not reg:
         print("Belum ada sekolah.")
         return
-    print(f"{'KODE':<14}{'NAMA':<30}{'PORT':<6}{'STATUS':<10}{'SAMPAI':<12}LAYANAN")
+    print(f"{'KODE':<14}{'NAMA':<30}{'PORT':<6}{'STATUS':<10}{'SAMPAI':<12}{'LAYANAN':<10}WA PENDAFTAR")
     for kode, s in sorted(reg.items()):
         aktif = sh("systemctl", "is-active", f"presensi@{kode}", cek=False).strip() or "-"
         print(f"{kode:<14}{s['nama'][:28]:<30}{s['port']:<6}{s['status']:<10}{s['sampai'] or '-':<12}"
-              f"{aktif}")
+              f"{aktif:<10}{(s.get('pendaftar') or {}).get('wa', '')}")
 
 
 def _ubah(kode, **perubahan):
     reg = muat()
     if kode not in reg:
         raise SystemExit(f"Sekolah {kode} tidak ada.")
+    berhenti = reg[kode].get("status") == "berhenti"
     reg[kode].update(perubahan)
     simpan(reg)
     _tulis_vendor(kode, reg[kode])
     _chown(kode)
+    if berhenti and reg[kode]["status"] != "berhenti":
+        sh("systemctl", "enable", "--now", f"presensi@{kode}")
+        _tulis_map(reg)
+    elif "status" in perubahan:
+        _tulis_publik(reg)
     return reg[kode]
 
 
@@ -318,6 +379,182 @@ def hapus(a):
     print(f"{a.kode} dihapus (backup terakhir di {ROOT}/_backup).")
 
 
+def setel(a):
+    """Nomor WA vendor (tombol perpanjang di aplikasi & halaman depan) dan aturan demo."""
+    k = konfigurasi()
+    if a.wa is not None:
+        from daftar import normal_wa
+        wa = normal_wa(a.wa)
+        if not wa:
+            raise SystemExit("Nomor WA tidak valid, contoh: 081234567890")
+        k["wa"] = wa
+    for kunci in ("nama", "hari_demo", "maks_demo", "henti_setelah"):
+        if getattr(a, kunci) is not None:
+            k[kunci] = getattr(a, kunci)
+    _tulis_json(os.path.join(ROOT, "_konfigurasi.json"), k)
+    if a.notif_token is not None:
+        r = _rahasia()
+        r["fonnte_token"] = a.notif_token
+        _tulis_json(os.path.join(ROOT, "_rahasia.json"), r, mode=0o600)
+    reg = muat()
+    for kode, s in reg.items():           # perbarui nomor WA di semua sekolah
+        _tulis_vendor(kode, s)
+        _chown(kode)
+    for kunci, nilai in k.items():
+        print(f"{kunci:<14}{nilai}")
+    print(f"{'notif WA':<14}{'aktif' if _rahasia().get('fonnte_token') else '-'}")
+
+
+def _antrean():
+    base = os.path.join(ROOT, "_antrean")
+    return os.path.join(base, "masuk"), os.path.join(base, "hasil")
+
+
+def _tunggu_siap(port, detik=40):
+    if TANPA_SISTEM:
+        return True
+    import time
+    import urllib.request
+    for _ in range(detik * 2):
+        try:
+            urllib.request.urlopen(f"http://127.0.0.1:{port}/login", timeout=2)
+            return True
+        except Exception:  # noqa: BLE001 — layanan masih menyala
+            time.sleep(0.5)
+    return False
+
+
+def _beritahu_vendor(pesan):
+    """Kirim WA ke nomor vendor lewat Fonnte (bila token diatur dengan `setel --notif-token`)."""
+    token, wa = _rahasia().get("fonnte_token"), konfigurasi()["wa"]
+    if not (token and wa) or TANPA_SISTEM:
+        return
+    try:
+        import requests
+        requests.post("https://api.fonnte.com/send", headers={"Authorization": token},
+                      data={"target": wa, "message": pesan}, timeout=15)
+    except Exception as e:  # noqa: BLE001 — notifikasi tidak boleh menggagalkan pendaftaran
+        print(f"Notifikasi WA gagal: {e}", file=sys.stderr)
+
+
+def _proses_satu(p, reg):
+    """Buat sekolah demo dari satu permintaan formulir web. Kembalikan dict hasil."""
+    from daftar import CADANGAN, JENJANG, TOKEN_RE, ZONA, normal_wa
+    k = konfigurasi()
+    kode = str(p.get("kode") or "")
+    nama = str(p.get("nama_sekolah") or "").strip()
+    wa = normal_wa(str(p.get("wa") or ""))
+    h = str(p.get("password_hash") or "")
+    if (not TOKEN_RE.match(str(p.get("token") or "")) or not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,30}", kode)
+            or kode in CADANGAN or not 3 <= len(nama) <= 120 or not wa
+            or p.get("zona") not in ZONA or p.get("jenjang") not in JENJANG
+            or not re.fullmatch(r"(scrypt|pbkdf2):[A-Za-z0-9:$+/=._-]{20,250}", h)):
+        return {"status": "gagal", "pesan": "Data pendaftaran tidak valid. Silakan isi ulang."}
+    if kode in reg:
+        return {"status": "gagal", "pesan": f"Kode “{kode}” sudah dipakai. Pilih kode lain."}
+    if sum(1 for s in reg.values() if _demo_aktif(s)) >= int(k["maks_demo"]):
+        return {"status": "gagal", "pesan": "Kuota demo sedang penuh. Hubungi kami lewat WhatsApp."}
+    a = argparse.Namespace(kode=kode, nama=nama, hari=int(k["hari_demo"]), sampai=None,
+                           maks_siswa=0, zona=p["zona"], uji_coba=True)
+    try:
+        s = tambah(a, reg)
+    except SystemExit as e:
+        print(f"[{kode}] gagal dibuat: {e}", file=sys.stderr)
+        return {"status": "gagal", "pesan": "Server gagal membuat aplikasi. Kami akan menghubungi Anda."}
+    nama_admin = str(p.get("nama") or "Administrator")[:80]
+    _jalankan_di_sekolah(kode, s, (
+        "from app.db import connect\nfrom app import config\n"
+        "db = connect(config.database())\n"
+        "db.execute('UPDATE users SET password_hash = ?, nama = ?, wajib_ganti = 0 "
+        f"WHERE username = ?', ({h!r}, {nama_admin!r}, 'admin'))\n"
+        "db.commit()\ndb.close()\n"))
+    reg = muat()
+    reg[kode]["pendaftar"] = {
+        "nama": nama_admin, "jabatan": str(p.get("jabatan") or "")[:60], "wa": wa,
+        "email": str(p.get("email") or "")[:120], "kota": str(p.get("kota") or "")[:80],
+        "jenjang": p["jenjang"], "jumlah_siswa": int(p.get("jumlah_siswa") or 0),
+        "ip": str(p.get("ip") or ""), "waktu": str(p.get("dibuat") or "")}
+    simpan(reg)
+    _tulis_vendor(kode, reg[kode])
+    _chown(kode)
+    if not _tunggu_siap(s["port"]):
+        print(f"[{kode}] layanan belum menjawab setelah 40 detik", file=sys.stderr)
+    pd = reg[kode]["pendaftar"]
+    _beritahu_vendor(
+        f"Pendaftar demo baru\nSekolah: {nama} ({pd['jenjang']}, {pd['kota']})\n"
+        f"Alamat: https://{DOMAIN}/{kode}\nNama: {pd['nama']} {('— ' + pd['jabatan']) if pd['jabatan'] else ''}\n"
+        f"WA: https://wa.me/{wa}\nPerkiraan siswa: {pd['jumlah_siswa']}\nDemo sampai: {s['sampai']}")
+    return {"status": "siap", "kode": kode, "url": f"https://{DOMAIN}/{kode}/login",
+            "username": "admin", "sampai": s["sampai"]}
+
+
+def proses_antrean(_a=None):
+    """Proses permintaan demo dari halaman depan (dipicu systemd presensi-antrean.path)."""
+    import fcntl
+    masuk, hasil = _antrean()
+    os.makedirs(masuk, exist_ok=True)
+    os.makedirs(hasil, exist_ok=True)
+    with open(os.path.join(ROOT, "_antrean", ".kunci"), "w") as kunci:
+        fcntl.flock(kunci, fcntl.LOCK_EX)          # satu proses dalam satu waktu
+        for nama_file in sorted(os.listdir(masuk)):
+            if not nama_file.endswith(".json") or nama_file.startswith("."):
+                continue
+            path = os.path.join(masuk, nama_file)
+            try:
+                with open(path, encoding="utf-8") as f:
+                    p = json.load(f)
+                if not isinstance(p, dict):
+                    raise ValueError
+            except (OSError, ValueError):
+                os.remove(path)
+                continue
+            token = os.path.splitext(nama_file)[0]
+            r = _proses_satu({**p, "token": token}, muat())
+            r.update(token=token, nama_sekolah=str(p.get("nama_sekolah") or "")[:120],
+                     kode=r.get("kode") or str(p.get("kode") or "")[:31],
+                     wa=str(p.get("wa") or "")[:20], ip=str(p.get("ip") or "")[:64],
+                     dibuat=str(p.get("dibuat") or "")[:25],
+                     selesai=datetime.now().isoformat(timespec="seconds"))
+            _tulis_json(os.path.join(hasil, f"{token}.json"), r, mode=0o640, milik_presensi=True)
+            os.remove(path)
+            print(f"{token}: {r['status']} {r.get('kode', '')} {r.get('pesan', '')}")
+
+
+def rapikan(_a=None):
+    """Harian: hentikan layanan demo yang sudah lama berakhir (data tetap disimpan) agar RAM
+    VPS tidak habis, dan hapus berkas hasil pendaftaran lama."""
+    k = konfigurasi()
+    reg = muat()
+    batas = (date.today() - timedelta(days=int(k["henti_setelah"]))).isoformat()
+    berubah = False
+    for kode, s in reg.items():
+        if s.get("status") == "uji_coba" and s.get("sampai") and s["sampai"] < batas:
+            sh("systemctl", "disable", "--now", f"presensi@{kode}", cek=False)
+            s["status"] = "berhenti"
+            _tulis_vendor(kode, s)
+            berubah = True
+            print(f"{kode}: demo berakhir {s['sampai']} — layanan dihentikan (data disimpan)")
+    if berubah:
+        simpan(reg)
+        _tulis_map(reg)
+    else:
+        _tulis_publik(reg)
+    _, hasil = _antrean()
+    lama = (datetime.now() - timedelta(days=90)).timestamp()
+    if os.path.isdir(hasil):
+        for f in os.listdir(hasil):
+            if os.path.getmtime(os.path.join(hasil, f)) < lama:
+                os.remove(os.path.join(hasil, f))
+
+
+def info(a):
+    reg = muat()
+    if a.kode not in reg:
+        raise SystemExit(f"Sekolah {a.kode} tidak ada.")
+    s = {k: v for k, v in reg[a.kode].items() if k != "db_pass"}
+    print(json.dumps(s, indent=1, ensure_ascii=False))
+
+
 def status(_a):
     print(sh("free", "-h", cek=False))
     print(sh("df", "-h", ROOT, cek=False))
@@ -367,6 +604,19 @@ def main(argv=None):
     p.add_argument("--ya", action="store_true")
     p.set_defaults(fn=hapus)
     sub.add_parser("status").set_defaults(fn=status)
+    p = sub.add_parser("setel")
+    p.add_argument("--wa", help="nomor WhatsApp vendor, mis. 081234567890")
+    p.add_argument("--nama", help="nama merek, mis. Presensiku")
+    p.add_argument("--hari-demo", type=int)
+    p.add_argument("--maks-demo", type=int, help="batas demo aktif bersamaan (RAM VPS)")
+    p.add_argument("--henti-setelah", type=int, help="hari setelah demo habis sebelum dihentikan")
+    p.add_argument("--notif-token", help="token Fonnte untuk WA pemberitahuan pendaftar baru")
+    p.set_defaults(fn=setel)
+    sub.add_parser("proses-antrean").set_defaults(fn=proses_antrean)
+    sub.add_parser("rapikan").set_defaults(fn=rapikan)
+    p = sub.add_parser("info")
+    p.add_argument("kode")
+    p.set_defaults(fn=info)
     a = ap.parse_args(argv)
     if a.cmd == "backup" and not a.semua and not a.kode:
         ap.error("sebutkan kode sekolah atau --semua")

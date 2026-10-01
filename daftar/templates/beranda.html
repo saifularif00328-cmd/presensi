@@ -1,0 +1,205 @@
+{% extends "_dasar.html" %}
+{% from "_ikon.html" import ikon_wa %}
+{% block kepala %}
+<style>
+  .hero { display: grid; grid-template-columns: 1.15fr .85fr; gap: 28px; align-items: start; padding: 20px 0 8px; }
+  .hero p.lead { font-size: 1.08rem; color: #475467; margin: 0 0 20px; }
+  .aksi { display: flex; flex-wrap: wrap; gap: 10px; }
+  .fitur { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 34px 0; }
+  .fitur div { background: #fff; border: 1px solid var(--b); border-radius: 14px; padding: 16px; }
+  .fitur b { display: block; margin-bottom: 4px; }
+  .fitur span { color: var(--m); font-size: .9rem; }
+  .baris-kode { display: flex; align-items: center; border: 1px solid #d0d5dd; border-radius: 10px; overflow: hidden; background: #fff; }
+  .baris-kode span { padding: 11px 0 11px 12px; color: var(--m); white-space: nowrap; font-size: .92rem; }
+  .baris-kode input { border: 0; box-shadow: none !important; padding-left: 2px; min-width: 0; }
+  .baris-kode:focus-within { border-color: var(--p); box-shadow: 0 0 0 3px #c7d7fe; }
+  .dua { display: flex; gap: 8px; margin-top: 12px; } .dua button { flex: 1; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+  .penuh { grid-column: 1 / -1; }
+  .cek { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; font-size: .88rem; }
+  .cek input { width: auto; margin-top: 3px; }
+  .info-kode { font-size: .8rem; margin-top: 4px; color: var(--m); }
+  .info-kode.ok { color: var(--ok); } .info-kode.er { color: var(--er); }
+  .jebakan { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  section#daftar { scroll-margin-top: 16px; margin-bottom: 8px; }
+  @media (max-width: 820px) { .hero { grid-template-columns: 1fr; } .fitur { grid-template-columns: 1fr; } .grid { grid-template-columns: 1fr; } }
+</style>
+{% if turnstile %}<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>{% endif %}
+{% endblock %}
+{% block kanan %}<a class="tombol kedua" href="#daftar">Coba gratis</a>{% endblock %}
+{% block isi %}
+{% if berakhir %}
+<div class="pesan info" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between">
+  <span><b>Masa demo sekolah “{{ berakhir }}” telah berakhir.</b> Data sekolah Anda tetap tersimpan — hubungi kami untuk memperpanjang lisensi.</span>
+  {% if wa_berakhir %}<a class="tombol wa" href="{{ wa_berakhir }}" target="_blank" rel="noopener">{{ ikon_wa() }} Perpanjang via WhatsApp</a>{% endif %}
+</div>
+{% endif %}
+
+<div class="hero">
+  <div>
+    <h1>Presensi siswa digital, langsung jalan dari browser</h1>
+    <p class="lead">Absen dengan kartu RFID atau QR, notifikasi WhatsApp ke orang tua, portal orang tua &amp; siswa,
+      rekap otomatis siap cetak. Tanpa instalasi di sekolah — cukup buka <b>{{ domain }}/kode-sekolah</b>.</p>
+    <div class="aksi">
+      <a class="tombol utama" href="#daftar">Coba gratis {{ k.hari_demo }} hari</a>
+      {% if wa_tanya %}<a class="tombol wa" href="{{ wa_tanya }}" target="_blank" rel="noopener">{{ ikon_wa() }} Tanya via WhatsApp</a>{% endif %}
+    </div>
+  </div>
+  <div class="kartu">
+    <h2>Sudah terdaftar?</h2>
+    <p class="redup" style="margin:0 0 14px;font-size:.92rem">Masukkan kode sekolah Anda (tertulis di surat edaran / slip PIN dari sekolah).</p>
+    <form id="masuk">
+      <label for="kode-masuk">Kode sekolah</label>
+      <div class="baris-kode"><span>{{ domain }}/</span><input id="kode-masuk" placeholder="smpn1" autocomplete="off" autocapitalize="none" required></div>
+      <div class="dua">
+        <button type="submit" class="utama" data-tujuan="portal/masuk">Orang tua / siswa</button>
+        <button type="submit" class="kedua" data-tujuan="login">Guru / admin</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="fitur">
+  <div><b>Kartu RFID &amp; QR</b><span>Tap kartu di gerbang (reader USB / ESP32) atau scan QR dari HP piket.</span></div>
+  <div><b>WhatsApp orang tua</b><span>Pesan otomatis saat siswa datang, pulang, atau tidak hadir.</span></div>
+  <div><b>Portal orang tua</b><span>Kehadiran harian, rekap semester, dan pengajuan izin online.</span></div>
+  <div><b>Rekap otomatis</b><span>Harian, bulanan, semester — ekspor Excel &amp; PDF.</span></div>
+  <div><b>Kartu pelajar</b><span>Desain &amp; cetak kartu siswa langsung dari aplikasi.</span></div>
+  <div><b>Aman</b><span>Data tiap sekolah terpisah, HTTPS, backup harian otomatis.</span></div>
+</div>
+
+<section id="daftar" class="kartu">
+  <h2>Daftar demo gratis {{ k.hari_demo }} hari</h2>
+  <p class="redup" style="margin:0 0 18px">Aplikasi sekolah Anda langsung dibuat otomatis — semua fitur bisa dicoba. Setelah {{ k.hari_demo }} hari,
+    data tetap tersimpan dan bisa dilanjutkan dengan berlangganan.</p>
+  {% if galat.umum %}<div class="pesan er">{{ galat.umum }}</div>{% endif %}
+  {% if penuh %}
+    <div class="pesan info">Kuota demo sedang penuh. Hubungi kami lewat WhatsApp agar dijadwalkan.</div>
+    {% if wa_tanya %}<a class="tombol wa" href="{{ wa_tanya }}" target="_blank" rel="noopener">{{ ikon_wa() }} Hubungi via WhatsApp</a>{% endif %}
+  {% else %}
+  <form method="post" action="/daftar" id="form-daftar" novalidate>
+    <input type="hidden" name="t" value="{{ token_waktu }}">
+    <div class="jebakan" aria-hidden="true"><label>Situs web <input name="situs" tabindex="-1" autocomplete="off"></label></div>
+    <div class="grid">
+      <div class="penuh">
+        <label for="nama_sekolah">Nama sekolah</label>
+        <input id="nama_sekolah" name="nama_sekolah" value="{{ nilai.nama_sekolah }}" placeholder="SMP Negeri 1 Malang" maxlength="120" required>
+        {% if galat.nama_sekolah %}<div class="galat">{{ galat.nama_sekolah }}</div>{% endif %}
+      </div>
+      <div>
+        <label for="jenjang">Jenjang</label>
+        <select id="jenjang" name="jenjang" required>
+          <option value="">— pilih —</option>
+          {% for j in JENJANG %}<option {{ 'selected' if nilai.jenjang == j }}>{{ j }}</option>{% endfor %}
+        </select>
+        {% if galat.jenjang %}<div class="galat">{{ galat.jenjang }}</div>{% endif %}
+      </div>
+      <div>
+        <label for="jumlah_siswa">Perkiraan jumlah siswa</label>
+        <input id="jumlah_siswa" name="jumlah_siswa" type="number" min="1" max="20000" inputmode="numeric" value="{{ nilai.jumlah_siswa }}" placeholder="500" required>
+        {% if galat.jumlah_siswa %}<div class="galat">{{ galat.jumlah_siswa }}</div>{% endif %}
+      </div>
+      <div>
+        <label for="kota">Kabupaten / kota</label>
+        <input id="kota" name="kota" value="{{ nilai.kota }}" placeholder="Kota Malang" maxlength="80" required>
+        {% if galat.kota %}<div class="galat">{{ galat.kota }}</div>{% endif %}
+      </div>
+      <div>
+        <label for="zona">Zona waktu</label>
+        <select id="zona" name="zona">
+          {% for z, label in ZONA.items() %}<option value="{{ z }}" {{ 'selected' if nilai.zona == z }}>{{ label }}</option>{% endfor %}
+        </select>
+        {% if galat.zona %}<div class="galat">{{ galat.zona }}</div>{% endif %}
+      </div>
+      <div>
+        <label for="nama">Nama Anda</label>
+        <input id="nama" name="nama" value="{{ nilai.nama }}" placeholder="Budi Santoso" maxlength="80" autocomplete="name" required>
+        {% if galat.nama %}<div class="galat">{{ galat.nama }}</div>{% endif %}
+      </div>
+      <div>
+        <label for="jabatan">Jabatan <span class="redup" style="font-weight:400">(opsional)</span></label>
+        <input id="jabatan" name="jabatan" value="{{ nilai.jabatan }}" placeholder="Operator / TU / Kepala Sekolah" maxlength="60">
+      </div>
+      <div>
+        <label for="wa">Nomor WhatsApp</label>
+        <input id="wa" name="wa" type="tel" inputmode="tel" value="{{ nilai.wa }}" placeholder="0812xxxxxxxx" maxlength="20" autocomplete="tel" required>
+        {% if galat.wa %}<div class="galat">{{ galat.wa }}</div>{% endif %}
+      </div>
+      <div>
+        <label for="email">Email <span class="redup" style="font-weight:400">(opsional)</span></label>
+        <input id="email" name="email" type="email" value="{{ nilai.email }}" placeholder="operator@sekolah.sch.id" maxlength="120" autocomplete="email">
+        {% if galat.email %}<div class="galat">{{ galat.email }}</div>{% endif %}
+      </div>
+      <div class="penuh">
+        <label for="kode">Alamat aplikasi sekolah</label>
+        <div class="baris-kode"><span>{{ domain }}/</span><input id="kode" name="kode" value="{{ nilai.kode }}" placeholder="smpn1malang" maxlength="31" autocomplete="off" autocapitalize="none" required></div>
+        <div class="info-kode {{ 'er' if galat.kode }}" id="info-kode">{{ galat.kode or 'Huruf kecil, angka, atau tanda minus. Alamat ini dibagikan ke guru & orang tua.' }}</div>
+      </div>
+      <div>
+        <label for="password">Password admin</label>
+        <input id="password" name="password" type="password" minlength="8" autocomplete="new-password" required>
+        {% if galat.password %}<div class="galat">{{ galat.password }}</div>{% else %}<div class="info-kode">Minimal 8 karakter. Username: <b>admin</b></div>{% endif %}
+      </div>
+      <div>
+        <label for="password2">Ulangi password</label>
+        <input id="password2" name="password2" type="password" minlength="8" autocomplete="new-password" required>
+        {% if galat.password2 %}<div class="galat">{{ galat.password2 }}</div>{% endif %}
+      </div>
+      <div class="penuh">
+        <label class="cek"><input type="checkbox" name="setuju" value="1" {{ 'checked' if nilai.setuju }}>
+          <span>Saya mewakili sekolah ini dan setuju data pendaftaran dipakai untuk menghubungi saya terkait demo &amp; langganan.
+          Data siswa yang saya masukkan tetap milik sekolah dan tidak dibagikan ke pihak lain.</span></label>
+        {% if galat.setuju %}<div class="galat">{{ galat.setuju }}</div>{% endif %}
+      </div>
+      {% if turnstile %}<div class="penuh"><div class="cf-turnstile" data-sitekey="{{ turnstile }}"></div></div>{% endif %}
+      <div class="penuh"><button type="submit" class="utama" style="width:100%">Buat aplikasi sekolah saya</button></div>
+    </div>
+  </form>
+  {% endif %}
+</section>
+
+<script>
+  (function () {
+    var tujuan = 'portal/masuk';
+    document.querySelectorAll('#masuk button').forEach(function (b) {
+      b.addEventListener('click', function () { tujuan = b.dataset.tujuan; });
+    });
+    document.getElementById('masuk').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var kode = document.getElementById('kode-masuk').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+      if (kode) location.href = '/' + kode + '/' + tujuan;
+    });
+
+    var form = document.getElementById('form-daftar');
+    if (!form) return;
+    var nama = document.getElementById('nama_sekolah'), kode = document.getElementById('kode'),
+        info = document.getElementById('info-kode'), diubah = !!kode.value, timer;
+    function saran(teks) {
+      return teks.toLowerCase()
+        .replace(/\bnegeri\b/g, 'n').replace(/\bswasta\b/g, 's').replace(/\bmadrasah\b/g, 'm')
+        .replace(/[^a-z0-9]/g, '').slice(0, 24);
+    }
+    function cek() {
+      clearTimeout(timer);
+      var v = kode.value.trim().toLowerCase();
+      if (!v) { info.className = 'info-kode'; info.textContent = 'Huruf kecil, angka, atau tanda minus.'; return; }
+      timer = setTimeout(function () {
+        fetch('/cek-kode?kode=' + encodeURIComponent(v)).then(function (r) { return r.json(); }).then(function (d) {
+          info.className = 'info-kode ' + (d.ok ? 'ok' : 'er');
+          info.textContent = (d.ok ? '✓ ' : '') + d.pesan;
+        }).catch(function () {});
+      }, 350);
+    }
+    nama.addEventListener('input', function () { if (!diubah) { kode.value = saran(nama.value); cek(); } });
+    kode.addEventListener('input', function () {
+      diubah = true;
+      kode.value = kode.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+      cek();
+    });
+    form.addEventListener('submit', function () {
+      var b = form.querySelector('button[type=submit]');
+      b.disabled = true; b.textContent = 'Mengirim…';
+    });
+  })();
+</script>
+{% endblock %}
