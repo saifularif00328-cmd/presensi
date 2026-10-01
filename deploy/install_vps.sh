@@ -43,11 +43,11 @@ apt-get install -y -q mariadb-server nginx python3-venv python3-pip git ufw curl
 
 echo "==> User & folder"
 id presensi >/dev/null 2>&1 || useradd --system --home /srv/presensi --shell /usr/sbin/nologin presensi
-mkdir -p /srv/presensi/_backup /srv/presensi/_antrean/masuk /srv/presensi/_antrean/hasil \
+mkdir -p /srv/presensi/_backup /srv/presensi/_antrean/masuk /srv/presensi/_antrean/hasil /srv/presensi/_antrean/perintah \
   /srv/presensi/_daftar /etc/presensi
 chown presensi:presensi /srv/presensi /srv/presensi/_backup /srv/presensi/_daftar
 chown -R presensi:presensi /srv/presensi/_antrean
-chmod 750 /srv/presensi/_antrean /srv/presensi/_antrean/masuk /srv/presensi/_antrean/hasil /srv/presensi/_daftar
+chmod 750 /srv/presensi/_antrean /srv/presensi/_antrean/* /srv/presensi/_daftar
 
 echo "==> Kode aplikasi ($BRANCH)"
 if [ -d "$APP/.git" ]; then
@@ -138,10 +138,12 @@ cat <<'EOF'
  2. Nomor WhatsApp Anda (tombol perpanjang lisensi & kontak di halaman depan):
       presensi-sekolah setel --wa 081234567890 --hari-demo 7 --maks-demo 5
     Pendaftar demo dari https://presensiku.biz.id otomatis dibuatkan sekolah.
- 3. Tambah sekolah manual (berbayar):
+ 3. Panel pribadi vendor https://presensiku.biz.id/vendor (password + Google Authenticator):
+      presensi-sekolah akun-vendor
+ 4. Tambah sekolah manual (berbayar) — atau lewat panel vendor:
       presensi-sekolah tambah smpn1 --nama "SMP Negeri 1" --hari 365
     -> https://presensiku.biz.id/smpn1  (login awal admin / admin123)
- 4. Pindah sekolah dari server lain (file backup ZIP dari menu Backup):
+ 5. Pindah sekolah dari server lain (file backup ZIP dari menu Backup):
       presensi-sekolah pindah smpn1 /root/presensi-backup-smpn1.zip
 ============================================================
 EOF

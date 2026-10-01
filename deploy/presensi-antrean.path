@@ -1,9 +1,10 @@
-# Begitu formulir demo menulis permintaan baru, jalankan presensi-antrean.service (root)
+# Begitu formulir demo / panel vendor menulis permintaan baru, jalankan presensi-antrean.service (root)
 [Unit]
 Description=Pantau antrean pendaftaran demo
 
 [Path]
 DirectoryNotEmpty=/srv/presensi/_antrean/masuk
+DirectoryNotEmpty=/srv/presensi/_antrean/perintah
 MakeDirectory=true
 
 [Install]

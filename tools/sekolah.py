@@ -14,6 +14,7 @@
     presensi-sekolah proses-antrean                         (pendaftaran demo dari web)
     presensi-sekolah rapikan                                (harian: hentikan demo kedaluwarsa)
     presensi-sekolah info smpn1                             (data pendaftar & langganan)
+    presensi-sekolah akun-vendor                            (akun panel https://<domain>/vendor)
 
 Setiap sekolah = database MySQL sendiri + folder /srv/presensi/<kode> + layanan
 presensi@<kode> + satu blok Nginx (https://<domain>/<kode>/ -> port).
@@ -36,8 +37,7 @@ DOMAIN = os.environ.get("PRESENSI_DOMAIN", "presensiku.biz.id")
 NGINX_CONF = os.environ.get("PRESENSI_NGINX_CONF", "/etc/nginx/presensi-sekolah.conf")
 PORT_AWAL = 7001
 TANPA_SISTEM = os.environ.get("PRESENSI_TANPA_SISTEM") == "1"  # uji: tanpa systemctl/nginx/chown
-KONFIGURASI_AWAL = {"wa": "", "nama": "Presensiku", "hari_demo": 7, "maks_demo": 5,
-                    "henti_setelah": 14}   # hari setelah demo berakhir sebelum layanan dihentikan
+from daftar import KONFIGURASI_AWAL  # noqa: E402  (wa, nama, hari_demo, maks_demo, henti_setelah)
 
 
 def konfigurasi():
@@ -171,6 +171,43 @@ def _tulis_publik(reg):
     """Info tanpa rahasia untuk halaman pendaftaran: kode terpakai & jumlah demo aktif."""
     _tulis_json(os.path.join(ROOT, "_publik.json"),
                 {"kode": sorted(reg), "demo_aktif": sum(1 for s in reg.values() if _demo_aktif(s))})
+    _tulis_ringkasan(reg)
+
+
+def _statistik(reg):
+    """Jumlah siswa aktif & tanggal presensi terakhir per sekolah (lewat akun root MySQL)."""
+    out = {}
+    try:
+        conn = _admin_db()
+    except Exception:  # noqa: BLE001
+        return out
+    with conn.cursor() as c:
+        for kode, s in reg.items():
+            try:
+                c.execute(f"SELECT COUNT(*) FROM `{s['db']}`.siswa WHERE aktif = 1")
+                siswa = c.fetchone()[0]
+                c.execute(f"SELECT MAX(tanggal) FROM `{s['db']}`.presensi")
+                akhir = c.fetchone()[0]
+                out[kode] = {"siswa": siswa, "terakhir": akhir.isoformat() if akhir else ""}
+            except Exception:  # noqa: BLE001 — database sekolah belum lengkap
+                pass
+    conn.close()
+    return out
+
+
+def _tulis_ringkasan(reg=None):
+    """Data untuk panel vendor (/vendor) — tanpa password database. Hanya root & presensi."""
+    reg = muat() if reg is None else reg
+    stat = _statistik(reg)
+    data = {}
+    for kode, s in reg.items():
+        d = {k: v for k, v in s.items() if k not in ("db_pass", "db_user", "db")}
+        d.update(stat.get(kode, {}))
+        d["layanan"] = sh("systemctl", "is-active", f"presensi@{kode}", cek=False).strip() or "-"
+        data[kode] = d
+    _tulis_json(os.path.join(ROOT, "_ringkasan.json"),
+                {"dibuat": datetime.now().isoformat(timespec="seconds"), "sekolah": data},
+                mode=0o640, milik_presensi=True)
 
 
 def _tulis_map(reg):
@@ -410,6 +447,112 @@ def _antrean():
     return os.path.join(base, "masuk"), os.path.join(base, "hasil")
 
 
+def _dir_perintah():
+    return os.path.join(ROOT, "_antrean", "perintah")
+
+
+def _angka(nilai, bawah, atas, bawaan=None):
+    try:
+        n = int(nilai)
+    except (TypeError, ValueError):
+        return bawaan
+    return n if bawah <= n <= atas else bawaan
+
+
+def _jalankan_perintah(c):
+    """Perintah dari panel vendor (/vendor). Hanya aksi yang terdaftar di sini yang dijalankan."""
+    aksi, d = c.get("aksi"), c.get("data") or {}
+    if not isinstance(d, dict):
+        return {"status": "gagal", "pesan": "Perintah rusak."}
+    reg = muat()
+    kode = str(d.get("kode") or "")
+    if aksi in ("perpanjang", "nonaktif", "aktifkan", "ubah_kontak") and kode not in reg:
+        return {"status": "gagal", "pesan": f"Sekolah {kode} tidak ada."}
+    if aksi == "perpanjang":
+        sampai = str(d.get("sampai") or "")
+        if sampai and not re.fullmatch(r"20\d\d-[01]\d-[0-3]\d", sampai):
+            return {"status": "gagal", "pesan": "Tanggal tidak valid."}
+        hari = _angka(d.get("hari"), 1, 3660)
+        if not sampai and not hari:
+            return {"status": "gagal", "pesan": "Pilih lama perpanjangan."}
+        perpanjang(argparse.Namespace(kode=kode, hari=hari or 0, sampai=sampai or None,
+                                      maks_siswa=_angka(d.get("maks_siswa"), 0, 100000)))
+        reg = muat()
+        reg[kode].setdefault("pembayaran", []).append({
+            "tanggal": date.today().isoformat(), "sampai": reg[kode]["sampai"],
+            "hari": hari or 0, "nominal": _angka(d.get("nominal"), 0, 10 ** 10, 0),
+            "catatan": str(d.get("catatan") or "")[:200]})
+        simpan(reg)
+        _tulis_ringkasan(reg)
+        return {"status": "siap", "kode": kode, "sampai": reg[kode]["sampai"],
+                "pesan": f"{reg[kode]['nama']} aktif sampai {reg[kode]['sampai']}."}
+    if aksi == "nonaktif":
+        nonaktif(argparse.Namespace(kode=kode))
+        return {"status": "siap", "kode": kode, "pesan": f"{kode} dinonaktifkan (baca-saja)."}
+    if aksi == "aktifkan":
+        aktifkan(argparse.Namespace(kode=kode))
+        return {"status": "siap", "kode": kode, "pesan": f"{kode} aktif kembali."}
+    if aksi == "ubah_kontak":
+        from daftar import normal_wa
+        pd = reg[kode].setdefault("pendaftar", {})
+        if d.get("wa"):
+            wa = normal_wa(str(d["wa"]))
+            if not wa:
+                return {"status": "gagal", "pesan": "Nomor WA tidak valid."}
+            pd["wa"] = wa
+        for kunci, maks in (("nama", 80), ("jabatan", 60), ("catatan", 500)):
+            if kunci in d:
+                pd[kunci] = str(d[kunci] or "")[:maks]
+        simpan(reg)
+        _tulis_ringkasan(reg)
+        return {"status": "siap", "kode": kode, "pesan": "Kontak disimpan."}
+    if aksi == "setel":
+        a = argparse.Namespace(wa=d.get("wa") or None, nama=(str(d.get("nama") or "")[:40] or None),
+                               hari_demo=_angka(d.get("hari_demo"), 1, 90),
+                               maks_demo=_angka(d.get("maks_demo"), 0, 100),
+                               henti_setelah=_angka(d.get("henti_setelah"), 1, 365), notif_token=None)
+        try:
+            setel(a)
+        except SystemExit as e:
+            return {"status": "gagal", "pesan": str(e)}
+        return {"status": "siap", "pesan": "Pengaturan disimpan."}
+    if aksi == "tambah":
+        hari = _angka(d.get("hari"), 1, 3660)
+        if not hari:
+            return {"status": "gagal", "pesan": "Isi lama langganan (hari)."}
+        r = _proses_satu({**d, "token": c.get("id")}, reg, demo=bool(d.get("demo")), hari=hari,
+                         maks_siswa=_angka(d.get("maks_siswa"), 0, 100000, 0))
+        if r["status"] == "siap":
+            r["pesan"] = f"Sekolah {r['kode']} dibuat, aktif sampai {r['sampai']}."
+        return r
+    return {"status": "gagal", "pesan": "Aksi tidak dikenal."}
+
+
+def _proses_perintah():
+    folder = _dir_perintah()
+    _, hasil = _antrean()
+    if not os.path.isdir(folder):
+        return
+    for nama_file in sorted(os.listdir(folder)):
+        if not nama_file.endswith(".json") or nama_file.startswith("."):
+            continue
+        path = os.path.join(folder, nama_file)
+        pid = os.path.splitext(nama_file)[0]
+        try:
+            with open(path, encoding="utf-8") as f:
+                c = json.load(f)
+            r = _jalankan_perintah({**c, "id": pid}) if isinstance(c, dict) else \
+                {"status": "gagal", "pesan": "Perintah rusak."}
+        except (OSError, ValueError):
+            r = {"status": "gagal", "pesan": "Perintah rusak."}
+        except SystemExit as e:
+            r = {"status": "gagal", "pesan": str(e)[:300]}
+        r.update(id=pid, selesai=datetime.now().isoformat(timespec="seconds"))
+        _tulis_json(os.path.join(hasil, f"{pid}.json"), r, mode=0o640, milik_presensi=True)
+        os.remove(path)
+        print(f"perintah {pid}: {r['status']} {r.get('pesan', '')}")
+
+
 def _tunggu_siap(port, detik=40):
     if TANPA_SISTEM:
         return True
@@ -437,8 +580,8 @@ def _beritahu_vendor(pesan):
         print(f"Notifikasi WA gagal: {e}", file=sys.stderr)
 
 
-def _proses_satu(p, reg):
-    """Buat sekolah demo dari satu permintaan formulir web. Kembalikan dict hasil."""
+def _proses_satu(p, reg, demo=True, hari=None, maks_siswa=0):
+    """Buat sekolah dari permintaan formulir web (demo) atau panel vendor (demo=False)."""
     from daftar import CADANGAN, JENJANG, TOKEN_RE, ZONA, normal_wa
     k = konfigurasi()
     kode = str(p.get("kode") or "")
@@ -452,10 +595,10 @@ def _proses_satu(p, reg):
         return {"status": "gagal", "pesan": "Data pendaftaran tidak valid. Silakan isi ulang."}
     if kode in reg:
         return {"status": "gagal", "pesan": f"Kode “{kode}” sudah dipakai. Pilih kode lain."}
-    if sum(1 for s in reg.values() if _demo_aktif(s)) >= int(k["maks_demo"]):
+    if demo and sum(1 for s in reg.values() if _demo_aktif(s)) >= int(k["maks_demo"]):
         return {"status": "gagal", "pesan": "Kuota demo sedang penuh. Hubungi kami lewat WhatsApp."}
-    a = argparse.Namespace(kode=kode, nama=nama, hari=int(k["hari_demo"]), sampai=None,
-                           maks_siswa=0, zona=p["zona"], uji_coba=True)
+    a = argparse.Namespace(kode=kode, nama=nama, hari=int(hari or k["hari_demo"]), sampai=None,
+                           maks_siswa=int(maks_siswa or 0), zona=p["zona"], uji_coba=demo)
     try:
         s = tambah(a, reg)
     except SystemExit as e:
@@ -480,10 +623,11 @@ def _proses_satu(p, reg):
     if not _tunggu_siap(s["port"]):
         print(f"[{kode}] layanan belum menjawab setelah 40 detik", file=sys.stderr)
     pd = reg[kode]["pendaftar"]
-    _beritahu_vendor(
-        f"Pendaftar demo baru\nSekolah: {nama} ({pd['jenjang']}, {pd['kota']})\n"
-        f"Alamat: https://{DOMAIN}/{kode}\nNama: {pd['nama']} {('— ' + pd['jabatan']) if pd['jabatan'] else ''}\n"
-        f"WA: https://wa.me/{wa}\nPerkiraan siswa: {pd['jumlah_siswa']}\nDemo sampai: {s['sampai']}")
+    if demo:
+        _beritahu_vendor(
+            f"Pendaftar demo baru\nSekolah: {nama} ({pd['jenjang']}, {pd['kota']})\n"
+            f"Alamat: https://{DOMAIN}/{kode}\nNama: {pd['nama']} {('— ' + pd['jabatan']) if pd['jabatan'] else ''}\n"
+            f"WA: https://wa.me/{wa}\nPerkiraan siswa: {pd['jumlah_siswa']}\nDemo sampai: {s['sampai']}")
     return {"status": "siap", "kode": kode, "url": f"https://{DOMAIN}/{kode}/login",
             "username": "admin", "sampai": s["sampai"]}
 
@@ -518,6 +662,8 @@ def proses_antrean(_a=None):
             _tulis_json(os.path.join(hasil, f"{token}.json"), r, mode=0o640, milik_presensi=True)
             os.remove(path)
             print(f"{token}: {r['status']} {r.get('kode', '')} {r.get('pesan', '')}")
+        _proses_perintah()
+        _tulis_ringkasan()
 
 
 def rapikan(_a=None):
@@ -545,6 +691,39 @@ def rapikan(_a=None):
         for f in os.listdir(hasil):
             if os.path.getmtime(os.path.join(hasil, f)) < lama:
                 os.remove(os.path.join(hasil, f))
+
+
+def akun_vendor(a):
+    """Buat/ganti akun panel vendor https://<domain>/vendor (password + kode Google Authenticator)."""
+    import base64
+    import getpass
+
+    from werkzeug.security import generate_password_hash
+    pw = a.password if a.password is not None else getpass.getpass("Password panel vendor (min. 10): ")
+    if a.password is None and pw != getpass.getpass("Ulangi password: "):
+        raise SystemExit("Password tidak sama.")
+    if len(pw) < 10:
+        raise SystemExit("Password minimal 10 karakter.")
+    rahasia = base64.b32encode(secrets.token_bytes(20)).decode()
+    path = os.path.join(ROOT, "_daftar", "vendor_akun.json")
+    _tulis_json(path, {"username": a.username, "password_hash": generate_password_hash(pw),
+                       "totp": rahasia, "versi": secrets.token_hex(8),   # ganti akun = sesi lama keluar
+                       "dibuat": datetime.now().isoformat(timespec="seconds")},
+                mode=0o600, milik_presensi=True)
+    uri = f"otpauth://totp/{DOMAIN}:{a.username}?secret={rahasia}&issuer={DOMAIN}"
+    print(f"\nAkun panel vendor dibuat: https://{DOMAIN}/vendor  (username: {a.username})")
+    print("Buka Google Authenticator -> + -> Scan kode QR (atau 'Masukkan kunci penyiapan'):")
+    if not a.tanpa_qr:
+        try:
+            import qrcode
+            q = qrcode.QRCode(border=1)
+            q.add_data(uri)
+            q.print_ascii(invert=True)
+        except Exception:  # noqa: BLE001
+            pass
+    print(f"Kunci penyiapan: {rahasia}")
+    print("Simpan kunci ini di tempat aman (untuk memasang ulang di HP baru).")
+    return rahasia
 
 
 def info(a):
@@ -617,6 +796,11 @@ def main(argv=None):
     p = sub.add_parser("info")
     p.add_argument("kode")
     p.set_defaults(fn=info)
+    p = sub.add_parser("akun-vendor")
+    p.add_argument("--username", default="vendor")
+    p.add_argument("--password", help=argparse.SUPPRESS)       # untuk pengujian
+    p.add_argument("--tanpa-qr", action="store_true")
+    p.set_defaults(fn=akun_vendor)
     a = ap.parse_args(argv)
     if a.cmd == "backup" and not a.semua and not a.kode:
         ap.error("sebutkan kode sekolah atau --semua")

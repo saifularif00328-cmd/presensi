@@ -27,10 +27,12 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[a-z]{2,}$", re.I)
 # kode yang tidak boleh dipakai sekolah (bertabrakan dengan halaman depan / istilah umum)
 CADANGAN = {"daftar", "cek-kode", "aset", "static", "api", "admin", "www", "demo", "login",
             "logout", "portal", "masuk", "beranda", "presensi", "presensiku", "app", "mail",
-            "status", "bantuan", "harga", "kontak", "favicon-ico", "robots-txt", "sekolah"}
+            "status", "bantuan", "harga", "kontak", "favicon-ico", "robots-txt", "sekolah",
+            "vendor"}
 JENJANG = ["SD / MI", "SMP / MTs", "SMA / MA", "SMK", "Pesantren", "Lainnya"]
 ZONA = {"Asia/Jakarta": "WIB", "Asia/Makassar": "WITA", "Asia/Jayapura": "WIT"}
-KONFIGURASI_AWAL = {"wa": "", "nama": "Presensiku", "hari_demo": 7, "maks_demo": 5}
+KONFIGURASI_AWAL = {"wa": "", "nama": "Presensiku", "hari_demo": 7, "maks_demo": 5,
+                    "henti_setelah": 14}
 MAKS_PER_IP = 3          # pendaftaran per alamat IP per 24 jam
 
 
@@ -303,8 +305,14 @@ def create_app(test_config=None):
     def status_json(token):
         return jsonify(_publik_status(_cari(token)))
 
+    from .vendor import pasang
+    pasang(app)
+
     @app.after_request
     def keamanan(resp):
+        if request.path.startswith("/vendor"):
+            resp.headers["Cache-Control"] = "no-store"
+            resp.headers["X-Robots-Tag"] = "noindex, nofollow"
         resp.headers.setdefault("X-Content-Type-Options", "nosniff")
         resp.headers.setdefault("X-Frame-Options", "DENY")
         resp.headers.setdefault("Referrer-Policy", "same-origin")

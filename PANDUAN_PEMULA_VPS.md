@@ -169,6 +169,36 @@ Setelah ini:
 - **Lihat pendaftar:** `presensi-sekolah daftar` (kolom WA PENDAFTAR).
 - **Sekolah sudah membayar:** `presensi-sekolah perpanjang kodesekolah --hari 365`.
 
+## TAHAP 6c — Panel pribadi vendor (https://presensiku.biz.id/vendor)
+Halaman khusus Anda untuk melihat semua sekolah, memperpanjang lisensi, mencatat pembayaran, dan
+menambah sekolah — tanpa perintah SSH.
+
+1. Pasang **Google Authenticator** di HP (Play Store / App Store).
+2. Di VPS jalankan:
+   ```
+   presensi-sekolah akun-vendor
+   ```
+   Buat password panel, **minimal 10 karakter**, lalu ketik ulang.
+3. Muncul kode QR di PowerShell:
+   - Di Google Authenticator: **+** → **Pindai kode QR** → arahkan ke layar.
+   - Kalau QR sulit dipindai: **+** → **Masukkan kunci penyiapan**, lalu ketik *Kunci penyiapan*
+     yang tertulis di bawah QR.
+   - **Simpan kunci penyiapan itu** (kertas / password manager) untuk memasang di HP baru.
+4. Buka **https://presensiku.biz.id/vendor**, lalu isi:
+   - username `vendor`;
+   - password Anda;
+   - kode 6 digit dari Google Authenticator.
+
+**Memperpanjang lisensi sekolah:**
+1. Di panel, klik nama sekolah.
+2. Di kotak **Perpanjang lisensi**, pilih lama (1 bulan–1 tahun atau sampai tanggal tertentu), isi
+   nominal & catatan pembayaran.
+3. Klik **Perpanjang sekarang**. Popup di aplikasi sekolah otomatis hilang.
+4. Klik **Kirim konfirmasi ke sekolah** untuk mengirim WA bahwa lisensi sudah aktif.
+
+> **HP hilang:** jalankan lagi `presensi-sekolah akun-vendor` lewat SSH. Akun lama dan semua sesi
+> login lama langsung tidak berlaku.
+
 ## TAHAP 7 — Tambah sekolah pertama
 Di VPS:
 ```

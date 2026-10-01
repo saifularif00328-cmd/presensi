@@ -157,6 +157,26 @@ presensi-sekolah setel --notif-token TOKEN_FONNTE
   `/etc/presensi/daftar.env` berisi `DAFTAR_TURNSTILE_SITE=...` dan `DAFTAR_TURNSTILE_SECRET=...`,
   lalu `systemctl restart presensi-daftar`.
 
+## 4b. Panel pribadi vendor — https://presensiku.biz.id/vendor
+Buat akun dengan `presensi-sekolah akun-vendor` (password + Google Authenticator; jalankan ulang
+untuk mengganti akun / HP hilang).
+
+Isi panel:
+
+| Halaman | Isi |
+|---|---|
+| **Sekolah** | Semua sekolah dengan filter demo / berlangganan / habis ≤14 hari / habis; jumlah siswa, absen terakhir, kontak WA, RAM VPS |
+| **Detail sekolah** | Perpanjang (1/3/6/12 bulan atau tanggal) + catat pembayaran, batas siswa, nonaktif/aktifkan, ubah kontak, tombol WA "tawarkan perpanjangan" & "kirim konfirmasi" |
+| **+ Tambah** | Sekolah berlangganan baru (tanpa SSH) |
+| **Pengaturan** | Nomor WA, nama merek, lama & kuota demo |
+
+Keamanan:
+- Login gagal 5× per IP (atau 20× total per jam) dikunci 15 menit.
+- Cookie sesi hanya untuk `/vendor`, HttpOnly, Secure, SameSite=Strict, berlaku 8 jam; ada token
+  CSRF.
+- Panel tidak berjalan sebagai root: perubahan dikirim ke antrean yang dijalankan
+  `presensi-sekolah proses-antrean`, hanya untuk aksi yang terdaftar.
+
 ## 5. Tambah sekolah
 ```bash
 presensi-sekolah tambah smpn1 --nama "SMP Negeri 1" --hari 365 --maks-siswa 1000 --zona Asia/Jakarta
