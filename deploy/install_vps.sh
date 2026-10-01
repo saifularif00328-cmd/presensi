@@ -23,10 +23,16 @@ export DEBIAN_FRONTEND=noninteractive
 
 echo "==> Swap (RAM cadangan) untuk VPS kecil"
 RAM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
-if [ "$RAM_MB" -lt 1536 ] && ! swapon --show | grep -q /swapfile; then
+SWAP_MB=$(awk '/SwapTotal/ {print int($2/1024)}' /proc/meminfo)
+if [ "$RAM_MB" -lt 1536 ] && [ "$SWAP_MB" -lt 1536 ]; then
+  # sebagian VPS sudah membawa swap kecil (mis. 256 MB) — perbesar /swapfile menjadi 2 GB
+  swapoff /swapfile 2>/dev/null || true
+  rm -f /swapfile
   fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
   chmod 600 /swapfile && mkswap /swapfile >/dev/null && swapon /swapfile
   grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+if [ "$RAM_MB" -lt 1536 ]; then
   sysctl -q vm.swappiness=10 && echo 'vm.swappiness=10' > /etc/sysctl.d/60-presensi.conf
 fi
 
