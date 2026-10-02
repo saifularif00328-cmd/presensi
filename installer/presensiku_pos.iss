@@ -27,7 +27,7 @@ UninstallDisplayName={#AppName}
 CloseApplications=force
 
 [Languages]
-Name: "id"; MessagesFile: "compiler:Languages\Indonesian.isl"
+Name: "id"; MessagesFile: "Indonesian.isl"
 
 [Files]
 Source: "..\dist\PresensikuPos\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion

@@ -31,7 +31,7 @@ WizardStyle=modern
 UninstallDisplayName={#AppName}
 
 [Languages]
-Name: "id"; MessagesFile: "compiler:Languages\Indonesian.isl"
+Name: "id"; MessagesFile: "Indonesian.isl"
 
 [Files]
 Source: "..\dist\PresensiSiswa\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion

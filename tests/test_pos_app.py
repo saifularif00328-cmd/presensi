@@ -111,6 +111,8 @@ def test_kunci_alat_windows_stabil():
     k1, label = masukan_windows.kunci_dan_label(j)
     k2, _ = masukan_windows.kunci_dan_label(j.lower())
     assert k1 == k2 and k1.startswith("KB-") and label == "USB VID 1EAB PID 1D06"
+    _, label = masukan_windows.kunci_dan_label(r"\\?\ROOT#RDP_KBD#0000#{884b96c3-56ef-11d1-bc8c-00a0c91405dd}")
+    assert label == "Keyboard RDP_KBD"
 
 
 def test_serial_banyak_port():

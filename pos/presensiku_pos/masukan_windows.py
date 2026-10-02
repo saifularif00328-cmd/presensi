@@ -99,7 +99,12 @@ def kunci_dan_label(jalur):
     bersih = re.sub(r"#\{[0-9a-fA-F-]+\}$", "", jalur or "").upper()
     kunci = "KB-" + hashlib.sha1(bersih.encode()).hexdigest()[:16]
     m = re.search(r"VID_([0-9A-F]{4}).*?PID_([0-9A-F]{4})", bersih)
-    label = f"USB VID {m.group(1)} PID {m.group(2)}" if m else (bersih[-40:] or "alat tanpa nama")
+    if m:
+        label = f"USB VID {m.group(1)} PID {m.group(2)}"
+    else:   # mis. \\?\ROOT#RDP_KBD#0000#{...} (keyboard virtual / bawaan)
+        tanpa_awalan = re.sub(r"^\\\\\?\\", "", re.sub(r"\{[^}]*\}", "", bersih))
+        bagian = [b for b in tanpa_awalan.split("#") if b]
+        label = f"Keyboard {bagian[1] if len(bagian) > 1 else (bagian[0] if bagian else 'tanpa nama')}"
     return kunci, label
 
 
