@@ -230,10 +230,16 @@ Berjalan otomatis setelah `install_vps.sh`:
 | Tiap 10 menit | **Cek kesehatan**: disk, RAM, layanan, tiap sekolah, backup, Drive, uji pulih → `_kesehatan.json`, panel vendor, `/sehat`, WA ke Anda |
 
 ### Pasang Google Drive (sekali)
-1. Di VPS: `rclone config` → `n` (new) → nama `gdrive` → Storage `drive` → client_id/secret Enter → scope `1`
-   → service account Enter → advanced `n` → **Use web browser? `n`**. Muncul perintah `rclone authorize "drive" "eyJ..."`.
+0. **Client ID Google sendiri** (client bersama rclone dihentikan selama 2026): di console.cloud.google.com buat project →
+   aktifkan *Google Drive API* → *OAuth consent screen* (External; cukup App name + email, kolom homepage/domain kosongkan)
+   → *Audience* → **Publish app** (agar izin tidak kedaluwarsa tiap 7 hari) → *Clients* → Create client → **Desktop app**.
+   Simpan Client ID & secret bersama sandi backup. Pesan "Your app requires verification" boleh diabaikan — tidak perlu verifikasi.
+1. Di VPS: `rclone config` → `n` (new) → nama `gdrive` → Storage `drive` → tempel client_id & client_secret → scope **`3`**
+   (`drive.file`: hanya file buatan rclone — tidak butuh verifikasi Google) → service account Enter → advanced `n`
+   → **Use web browser? `n`**. Muncul perintah `rclone authorize "drive" "eyJ..."`.
 2. Di laptop Windows: unduh rclone (rclone.org/downloads → Windows AMD64), ekstrak, buka PowerShell di folder itu,
-   jalankan `.\rclone.exe authorize "drive" "eyJ..."` (salin persis dari VPS) → pilih akun Google → **Allow**.
+   jalankan `.\rclone.exe authorize "drive" "eyJ..."` (salin persis dari VPS) → pilih akun Google → bila muncul
+   "Google belum memverifikasi aplikasi ini": **Lanjutan → Buka (tidak aman)** → **Allow**.
    Salin token yang muncul (antara `--->` dan `<---`) → tempel di VPS → team drive `n` → `y` → `q`.
 3. `presensi-sekolah backup-drive --pasang` → **simpan sandi 1 & sandi 2** yang tampil (kertas / password manager).
    Tanpa kedua sandi ini backup di Drive tidak bisa dibuka.
