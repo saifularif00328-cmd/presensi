@@ -69,7 +69,7 @@ def header_keamanan(resp):
     resp.headers.setdefault("X-Content-Type-Options", "nosniff")
     resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
     resp.headers.setdefault("Referrer-Policy", "same-origin")
-    resp.headers.setdefault("Permissions-Policy", "camera=(self), geolocation=(), microphone=()")
+    resp.headers.setdefault("Permissions-Policy", "camera=(self), geolocation=(self), microphone=()")
     if request.is_secure:
         resp.headers.setdefault("Strict-Transport-Security", "max-age=15552000")
     return resp

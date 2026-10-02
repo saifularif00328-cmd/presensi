@@ -57,7 +57,8 @@ def cek_langganan():
         return None
     pesan = ("Masa langganan telah berakhir — aplikasi dalam mode baca-saja. "
              "Hubungi penyedia untuk memperpanjang.")
-    if request.is_json or "/api/" in request.path:
+    if request.is_json or "/api/" in request.path or \
+            request.headers.get("Accept", "").startswith("application/json"):
         from flask import jsonify
         return jsonify({"ok": False, "level": "error", "pesan": pesan}), 402
     flash(pesan, "error")

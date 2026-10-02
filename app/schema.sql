@@ -381,3 +381,63 @@ CREATE TABLE IF NOT EXISTS pos_scan (
     waktu   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_pos_scan_waktu (waktu)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===================== ABSEN HP (lokasi + foto bukti) =====================
+-- Titik lokasi absen: sekolah (selalu berlaku) atau kegiatan (PKL/lomba: rentang tanggal + sasaran)
+CREATE TABLE IF NOT EXISTS lokasi_absen (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    nama       VARCHAR(100) NOT NULL,
+    jenis      VARCHAR(10) NOT NULL DEFAULT 'sekolah',   -- sekolah / kegiatan
+    lat        DOUBLE NOT NULL,
+    lng        DOUBLE NOT NULL,
+    radius     INT NOT NULL DEFAULT 100,                 -- meter
+    mulai      DATE NULL,
+    selesai    DATE NULL,
+    kelas_ids  VARCHAR(500) NULL,                        -- kegiatan: "3,5" (kosong = semua)
+    siswa_ids  TEXT NULL,                                -- kegiatan: "12,40"
+    aktif      TINYINT NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Token sekali pakai (berlaku 2 menit) untuk satu kali absen dari HP
+CREATE TABLE IF NOT EXISTS absen_hp_token (
+    token     VARCHAR(64) PRIMARY KEY,
+    siswa_id  INT NOT NULL,
+    dibuat    DATETIME NOT NULL,
+    dipakai   TINYINT NOT NULL DEFAULT 0,
+    INDEX idx_absen_hp_token_dibuat (dibuat)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Satu siswa terikat ke satu HP (hash token acak di HP); admin bisa mereset
+CREATE TABLE IF NOT EXISTS hp_siswa (
+    siswa_id    INT PRIMARY KEY,
+    token_hash  VARCHAR(64) NOT NULL,
+    info        VARCHAR(200),
+    dibuat      DATETIME NOT NULL,
+    terakhir    DATETIME NULL,
+    INDEX idx_hp_siswa_token (token_hash),
+    FOREIGN KEY (siswa_id) REFERENCES siswa(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Log setiap absen HP (diterima / ditolak) + foto bukti
+CREATE TABLE IF NOT EXISTS absen_hp (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    siswa_id        INT NOT NULL,
+    waktu           DATETIME NOT NULL,
+    lat             DOUBLE NULL,
+    lng             DOUBLE NULL,
+    akurasi         INT NULL,
+    jarak           INT NULL,
+    lokasi_id       INT NULL,
+    lokasi_nama     VARCHAR(100),
+    foto            VARCHAR(255),
+    jenis           VARCHAR(12),                        -- masuk / pulang / ulang / ganda / -
+    status          VARCHAR(10) NOT NULL,               -- ok / ditolak / batal
+    pesan           VARCHAR(255),
+    periksa         TINYINT NOT NULL DEFAULT 0,
+    alasan_periksa  VARCHAR(255),
+    diperiksa       TINYINT NOT NULL DEFAULT 0,
+    ip              VARCHAR(45),
+    ua              VARCHAR(200),
+    INDEX idx_absen_hp_waktu (waktu),
+    FOREIGN KEY (siswa_id) REFERENCES siswa(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

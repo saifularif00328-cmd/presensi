@@ -4,6 +4,7 @@
 {% block content %}
 <div class="page-head"><h1>Scan Presensi</h1><div class="clock" id="clock"></div></div>
 {% if libur %}<div class="alert-libur">{{ icon('libur') }}<span>Hari ini libur: {{ libur }}. Scan tidak akan dicatat.</span></div>{% endif %}
+{% if mati %}<div class="flash info">{{ icon('alert') }}<span>Dinonaktifkan sekolah: {{ mati|join(' & ') }}. Kartu jenis ini akan ditolak{% if g.user.role == 'admin' %} — ubah di <a href="{{ url_for('absen_hp.metode') }}">Metode Absen</a>{% endif %}.</span></div>{% endif %}
 <div class="scan-layout">
   <div>
     <div class="card">

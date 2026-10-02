@@ -185,7 +185,9 @@ def siswa(sid):
     awal = data["awal"]
     sebelum = (awal - timedelta(days=1)).strftime("%Y-%m")
     sesudah = (awal + timedelta(days=32)).strftime("%Y-%m")
+    from ..services.attendance import metode_aktif
     return render_template("portal/siswa.html", anak=anak, KODE=KODE_LABEL, sebelum=sebelum,
+                           absen_hp=session["portal"]["jenis"] == "siswa" and metode_aktif("hp"),
                            sesudah=sesudah if sesudah <= utils.today().strftime("%Y-%m") else None,
                            ortu=session["portal"]["jenis"] == "ortu", **data)
 
@@ -229,6 +231,53 @@ def _simpan_surat(f, sid):
     name = f"surat/izin_{sid}_{secrets.token_hex(4)}.jpg"
     img.save(os.path.join(config.UPLOAD_DIR, name), "JPEG", quality=82)
     return name
+
+
+# ================================================================ ABSEN DARI HP (siswa)
+def _siswa_portal():
+    p = session.get("portal") or {}
+    if p.get("jenis") != "siswa":
+        abort(403)            # absen HP hanya oleh siswa sendiri (bukan orang tua)
+    return p["siswa_id"]
+
+
+@bp.route("/absen")
+@portal_login
+def absen():
+    from ..services import absen_hp
+    sid = _siswa_portal()
+    s = absen_hp.siswa_lengkap(sid)
+    ok, alasan, lokasi = absen_hp.boleh(s)
+    hari_ini = query("SELECT * FROM presensi WHERE siswa_id = ? AND tanggal = ?",
+                     (sid, utils.today_str()), one=True)
+    return render_template("portal/absen.html", s=s, boleh=ok, alasan=alasan, lokasi=lokasi,
+                           hari_ini=hari_ini, libur=not utils.is_school_day(utils.today()))
+
+
+@bp.route("/absen/token", methods=["POST"])
+@portal_login
+def absen_token():
+    from flask import jsonify
+
+    from ..services import absen_hp
+    sid = _siswa_portal()
+    ok, alasan, _ = absen_hp.boleh(absen_hp.siswa_lengkap(sid))
+    if not ok:
+        return jsonify({"ok": False, "pesan": alasan}), 403
+    return jsonify({"ok": True, "token": absen_hp.buat_token(sid), "berlaku": absen_hp.TOKEN_DETIK})
+
+
+@bp.route("/absen/kirim", methods=["POST"])
+@portal_login
+def absen_kirim():
+    from flask import jsonify
+
+    from ..services import absen_hp
+    sid = _siswa_portal()
+    res = absen_hp.proses(sid, request.form, request.files.get("foto"), ip=request.remote_addr or "",
+                          ua=request.headers.get("User-Agent", ""))
+    return jsonify({k: v for k, v in res.items() if k in ("ok", "level", "pesan", "jenis", "status",
+                                                          "jam", "lokasi", "jarak")})
 
 
 @bp.route("/foto/<int:sid>")

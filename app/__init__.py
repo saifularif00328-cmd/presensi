@@ -38,7 +38,7 @@ def create_app(test_config=None, start_jobs=True):
     app.teardown_appcontext(close_db)
 
     from . import auth
-    from .blueprints import (ibadah, kedisiplinan, main, master_data, notifikasi, perangkat, pos,
+    from .blueprints import (absen_hp, ibadah, kedisiplinan, main, master_data, notifikasi, perangkat, pos,
                              perizinan, portal, presensi, sistem)
     from .menu import build_menu
     from .license import TIER_LABEL, current_tier, has_feature, langganan, tautan_perpanjang
@@ -55,6 +55,7 @@ def create_app(test_config=None, start_jobs=True):
     app.register_blueprint(notifikasi.bp)
     app.register_blueprint(perangkat.bp)
     app.register_blueprint(pos.bp)
+    app.register_blueprint(absen_hp.bp)
     app.register_blueprint(portal.bp)
 
     from . import security

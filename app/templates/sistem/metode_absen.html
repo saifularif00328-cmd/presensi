@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}Metode Absen{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<style>
+  #peta { height: 320px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 12px; background: var(--surface-2, #f2f4f7); }
+  .metode-pilih { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .metode-pilih label { border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+  .metode-pilih small { display: block; color: var(--muted, #667085); }
+  .kelas-pilih { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Metode Absen</h1>
+  <a class="btn outline" href="{{ url_for('absen_hp.log') }}">{{ icon('camera') }}Log Absen HP</a></div>
+
+<div class="card">
+  <h3>{{ icon('pengaturan') }}Metode yang diizinkan</h3>
+  <form method="post">{{ csrf() }}<input type="hidden" name="aksi" value="metode">
+    <div class="metode-pilih">
+      <label><input type="checkbox" name="metode_rfid" value="1" {{ 'checked' if s.metode_rfid != '0' }}>
+        <span><b>Kartu RFID</b><small>Reader USB, ESP32, Presensiku Pos</small></span></label>
+      <label><input type="checkbox" name="metode_qr" value="1" {{ 'checked' if s.metode_qr != '0' }}>
+        <span><b>Scan QR</b><small>Kamera, scanner QR USB/COM, ESP32 + modul QR</small></span></label>
+      <label><input type="checkbox" name="metode_hp" value="1" {{ 'checked' if s.metode_hp == '1' }}>
+        <span><b>Absen dari HP siswa</b><small>Portal siswa: lokasi GPS + foto selfie</small></span></label>
+    </div>
+    <div class="grid grid-2">
+      <div class="field"><label>Absen HP berlaku untuk</label>
+        <select name="hp_cakupan" id="cakupan">
+          <option value="semua" {{ 'selected' if s.hp_cakupan != 'kelas' }}>Semua siswa</option>
+          <option value="kelas" {{ 'selected' if s.hp_cakupan == 'kelas' }}>Kelas tertentu saja</option>
+        </select>
+        <small class="help">Siswa sasaran <b>lokasi kegiatan</b> (mis. PKL) selalu boleh absen HP di lokasi itu.</small></div>
+      <div class="field"><label>Batas akurasi GPS (meter)</label>
+        <input name="hp_akurasi_maks" type="number" min="10" max="1000" value="{{ s.hp_akurasi_maks or 100 }}">
+        <small class="help">GPS lebih buruk dari ini ditolak. Separuhnya ditandai "perlu diperiksa".</small></div>
+    </div>
+    <div class="field" id="pilih-kelas"><label>Kelas yang boleh absen HP</label>
+      <div class="kelas-pilih">{% for k in kelas %}<label class="check"><input type="checkbox" name="hp_kelas" value="{{ k.id }}" {{ 'checked' if k.id in hp_kelas }}>{{ k.nama }}</label>{% endfor %}</div></div>
+    <div class="field"><label>Simpan foto bukti selama (hari)</label>
+      <input name="hp_foto_hari" type="number" min="1" max="365" value="{{ s.hp_foto_hari or 30 }}" style="max-width:160px">
+      <small class="help">Setelah itu foto dihapus otomatis; catatan absennya tetap ada.</small></div>
+    <button class="btn">{{ icon('save') }}Simpan</button>
+  </form>
+</div>
+
+<div class="card" id="lokasi">
+  <h3>{{ icon('keluar') }}Lokasi absen HP</h3>
+  <ul class="list">
+    {% for r in lokasi %}
+    <li><div class="grow"><div class="title">{{ r.nama }}
+        <span class="badge {{ 'b-info' if r.jenis == 'kegiatan' else 'b-ok' }}">{{ 'Kegiatan' if r.jenis == 'kegiatan' else 'Sekolah' }}</span>
+        {% if not r.aktif %}<span class="badge b-err">nonaktif</span>{% endif %}</div>
+        <div class="sub">radius {{ r.radius }} m · <a href="https://www.google.com/maps?q={{ r.lat }},{{ r.lng }}" target="_blank" rel="noopener">{{ '%.6f'|format(r.lat) }}, {{ '%.6f'|format(r.lng) }}</a>
+          {% if r.jenis == 'kegiatan' %} · {{ r.mulai or '…' }} s.d. {{ r.selesai or '…' }}
+          {% if r.kelas_set %} · kelas {{ kelas|selectattr('id', 'in', r.kelas_set)|map(attribute='nama')|join(', ') }}{% endif %}
+          {% if r.siswa_nis %} · NIS {{ r.siswa_nis }}{% endif %}{% endif %}</div></div>
+      <a class="btn sm ghost" href="{{ url_for('absen_hp.metode', edit=r.id) }}#lokasi">Edit</a>
+      <form class="inline" method="post" data-confirm="Hapus lokasi {{ r.nama }}?">{{ csrf() }}
+        <input type="hidden" name="aksi" value="lokasi_hapus"><input type="hidden" name="id" value="{{ r.id }}">
+        <button class="btn sm danger">{{ icon('trash') }}</button></form></li>
+    {% else %}<li class="empty">Belum ada lokasi. Tambahkan titik sekolah di bawah — tanpa lokasi, absen HP tidak bisa dipakai.</li>{% endfor %}
+  </ul>
+
+  <h3 class="mt">{{ 'Edit' if edit else 'Tambah' }} lokasi</h3>
+  <div id="peta"></div>
+  <form method="post" id="form-lokasi">{{ csrf() }}<input type="hidden" name="aksi" value="lokasi">
+    {% if edit %}<input type="hidden" name="id" value="{{ edit.id }}">{% endif %}
+    <div class="grid grid-2">
+      <div class="field"><label>Nama</label><input name="nama" value="{{ edit.nama if edit }}" placeholder="Gerbang utama sekolah" required maxlength="100"></div>
+      <div class="field"><label>Jenis</label><select name="jenis" id="jenis">
+        <option value="sekolah" {{ 'selected' if not edit or edit.jenis == 'sekolah' }}>Sekolah (selalu berlaku)</option>
+        <option value="kegiatan" {{ 'selected' if edit and edit.jenis == 'kegiatan' }}>Kegiatan (PKL, lomba, kunjungan)</option></select></div>
+      <div class="field"><label>Lintang (latitude)</label><input name="lat" id="lat" value="{{ edit.lat if edit }}" inputmode="decimal" required></div>
+      <div class="field"><label>Bujur (longitude)</label><input name="lng" id="lng" value="{{ edit.lng if edit }}" inputmode="decimal" required></div>
+      <div class="field"><label>Radius (meter)</label><input name="radius" id="radius" type="number" min="20" max="5000" value="{{ edit.radius if edit else 100 }}"></div>
+      <div class="field"><label>&nbsp;</label><button type="button" class="btn outline" id="lokasi-saya">{{ icon('keluar') }}Pakai lokasi saya</button></div>
+    </div>
+    <div id="f-kegiatan">
+      <div class="grid grid-2">
+        <div class="field"><label>Mulai</label><input type="date" name="mulai" value="{{ edit.mulai if edit and edit.mulai }}"></div>
+        <div class="field"><label>Selesai</label><input type="date" name="selesai" value="{{ edit.selesai if edit and edit.selesai }}"></div>
+      </div>
+      <div class="field"><label>Untuk kelas <small class="muted">(kosong = semua)</small></label>
+        <div class="kelas-pilih">{% for k in kelas %}<label class="check"><input type="checkbox" name="kelas_ids" value="{{ k.id }}" {{ 'checked' if edit and k.id in edit.kelas_set }}>{{ k.nama }}</label>{% endfor %}</div></div>
+      <div class="field"><label>Untuk siswa tertentu (NIS, pisahkan koma)</label>
+        <input name="siswa_nis" value="{{ edit.siswa_nis if edit }}" placeholder="1001, 1002, 1003"></div>
+    </div>
+    {% if edit %}<label class="check"><input type="checkbox" name="aktif" value="1" {{ 'checked' if edit.aktif }}>Aktif</label>{% endif %}
+    <div class="btn-row mt"><button class="btn">{{ icon('save') }}Simpan lokasi</button>
+      {% if edit %}<a class="btn outline" href="{{ url_for('absen_hp.metode') }}#lokasi">Batal</a>{% endif %}</div>
+  </form>
+  <p class="help">Klik peta untuk memindah titik. Radius 50–150 m biasanya cukup untuk satu sekolah; GPS HP di dalam gedung bisa meleset 20–50 m.</p>
+</div>
+
+<div class="card">
+  <h3>{{ icon('user-check') }}HP terdaftar ({{ hp|length }})</h3>
+  <p class="help">Setiap siswa terikat ke satu HP saat pertama kali absen, dan satu HP tidak bisa dipakai siswa lain. Bila siswa ganti HP, reset di sini.</p>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Siswa</th><th>Kelas</th><th class="hide-sm">HP</th><th>Terakhir</th><th></th></tr></thead>
+    <tbody>{% for h in hp %}<tr><td>{{ h.nama }}{% if h.nis %} <small class="muted">· {{ h.nis }}</small>{% endif %}</td><td>{{ h.kelas or '-' }}</td>
+      <td class="hide-sm"><small>{{ (h.info or '')[:60] }}</small></td><td><small>{{ (h.terakhir or '')[:16] }}</small></td>
+      <td><form class="inline" method="post" data-confirm="Reset HP {{ h.nama }}?">{{ csrf() }}<input type="hidden" name="aksi" value="reset_hp"><input type="hidden" name="siswa_id" value="{{ h.siswa_id }}"><button class="btn sm outline">Reset</button></form></td></tr>
+    {% else %}<tr><td colspan="5" class="empty">Belum ada.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+  (function () {
+    var cak = document.getElementById('cakupan'), pk = document.getElementById('pilih-kelas');
+    function uc() { pk.hidden = cak.value !== 'kelas'; } cak.addEventListener('change', uc); uc();
+    var jen = document.getElementById('jenis'), fk = document.getElementById('f-kegiatan');
+    function uj() { fk.hidden = jen.value !== 'kegiatan'; } jen.addEventListener('change', uj); uj();
+    var lat = document.getElementById('lat'), lng = document.getElementById('lng'), rad = document.getElementById('radius');
+    var lokasi = {{ lokasi|map(attribute='lat')|list|tojson }}.map(function (v, i) {
+      return [v, {{ lokasi|map(attribute='lng')|list|tojson }}[i], {{ lokasi|map(attribute='radius')|list|tojson }}[i], {{ lokasi|map(attribute='nama')|list|tojson }}[i]]; });
+    var peta = null, titik = null, lingkar = null;
+    if (window.L) {
+      var awal = lat.value && lng.value ? [parseFloat(lat.value), parseFloat(lng.value)]
+        : (lokasi.length ? [lokasi[0][0], lokasi[0][1]] : [-2.5, 118]);
+      peta = L.map('peta').setView(awal, lat.value || lokasi.length ? 17 : 5);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(peta);
+      lokasi.forEach(function (l) { L.circle([l[0], l[1]], { radius: l[2], color: '#667085', weight: 1, fillOpacity: .08 }).addTo(peta).bindTooltip(l[3]); });
+      peta.on('click', function (e) { setel(e.latlng.lat, e.latlng.lng, false); });
+      if (lat.value && lng.value) setel(parseFloat(lat.value), parseFloat(lng.value), false);
+    } else {
+      document.getElementById('peta').innerHTML = '<p class="help" style="padding:12px">Peta tidak termuat (tanpa internet). Isi koordinat manual atau pakai tombol "Pakai lokasi saya".</p>';
+    }
+    function setel(a, b, pusat) {
+      lat.value = a.toFixed(7); lng.value = b.toFixed(7);
+      if (!peta) return;
+      if (!titik) { titik = L.marker([a, b], { draggable: true }).addTo(peta); titik.on('dragend', function () { var p = titik.getLatLng(); setel(p.lat, p.lng, false); }); }
+      else titik.setLatLng([a, b]);
+      if (!lingkar) lingkar = L.circle([a, b], { radius: +rad.value || 100, color: '#1d4ed8' }).addTo(peta);
+      else lingkar.setLatLng([a, b]).setRadius(+rad.value || 100);
+      if (pusat) peta.setView([a, b], 18);
+    }
+    rad.addEventListener('input', function () { if (lingkar) lingkar.setRadius(+rad.value || 100); });
+    [lat, lng].forEach(function (i) { i.addEventListener('change', function () { if (lat.value && lng.value) setel(parseFloat(lat.value), parseFloat(lng.value), true); }); });
+    document.getElementById('lokasi-saya').addEventListener('click', function () {
+      if (!navigator.geolocation) { alert('Browser tidak mendukung lokasi.'); return; }
+      navigator.geolocation.getCurrentPosition(function (p) { setel(p.coords.latitude, p.coords.longitude, true); },
+        function (e) { alert('Lokasi tidak bisa dibaca: ' + e.message); }, { enableHighAccuracy: true, timeout: 15000 });
+    });
+  })();
+</script>
+{% endblock %}

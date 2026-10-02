@@ -69,6 +69,13 @@ DEFAULT_SETTINGS = {
                        "Bagi yang menemukan kartu ini, mohon dikembalikan ke alamat sekolah.",
     "kartu_berlaku": "Berlaku selama pemegang kartu masih berstatus siswa aktif.",
     "portal_aktif": "1",
+    "metode_rfid": "1",           # metode absen yang diizinkan sekolah
+    "metode_qr": "1",
+    "metode_hp": "0",
+    "hp_cakupan": "semua",        # semua / kelas (siswa sasaran lokasi kegiatan selalu boleh)
+    "hp_kelas": "",
+    "hp_akurasi_maks": "100",     # meter
+    "hp_foto_hari": "30",         # lama simpan foto bukti
     "scan_jeda_ganda": "60",      # detik: scan ulang siswa yang sama diabaikan (lintas gerbang)
     "wa_tpl_otp": "Kode masuk Portal Presensi {sekolah}: *{kode}*. Berlaku 5 menit. "
                   "Ketik hanya di halaman portal sekolah. Ini BUKAN kode verifikasi WhatsApp. "

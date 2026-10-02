@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}Log Absen HP{% endblock %}
+{% block head %}
+<style>
+  .ahp { display: grid; grid-template-columns: 96px 1fr auto; gap: 14px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .ahp img, .ahp .tanpa { width: 96px; height: 120px; object-fit: cover; border-radius: 10px; background: var(--surface-2, #f2f4f7); display: grid; place-items: center; color: var(--muted, #667085); font-size: .75rem; text-align: center; }
+  .ahp .tandai { color: #b54708; font-weight: 600; font-size: .85rem; }
+  .ahp .aksi { display: flex; flex-direction: column; gap: 6px; }
+  @media (max-width: 640px) { .ahp { grid-template-columns: 72px 1fr; } .ahp img, .ahp .tanpa { width: 72px; height: 90px; } .ahp .aksi { grid-column: 1 / -1; flex-direction: row; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Log Absen HP</h1>
+  {% if g.user.role == 'admin' %}<a class="btn outline" href="{{ url_for('absen_hp.metode') }}">{{ icon('pengaturan') }}Metode & lokasi</a>{% endif %}</div>
+<form class="filters" method="get">
+  <div><label>Tanggal</label><input type="date" name="tanggal" value="{{ tanggal }}"></div>
+  <div><label>Tampilkan</label><select name="saring">
+    <option value="">Semua</option>
+    <option value="periksa" {{ 'selected' if saring == 'periksa' }}>Perlu diperiksa</option>
+    <option value="ditolak" {{ 'selected' if saring == 'ditolak' }}>Ditolak</option></select></div>
+  <button class="btn">Tampilkan</button>
+</form>
+<div class="stats card">
+  <div class="stat h"><b>{{ hitung.ok }}</b><span>Diterima</span></div>
+  <div class="stat t"><b>{{ hitung.periksa }}</b><span>Perlu diperiksa</span></div>
+  <div class="stat a"><b>{{ hitung.ditolak }}</b><span>Ditolak</span></div>
+</div>
+<div class="card">
+  {% for r in rows %}
+  <div class="ahp">
+    {% if r.foto %}<a href="{{ url_for('uploads', filename=r.foto) }}" target="_blank"><img src="{{ url_for('uploads', filename=r.foto) }}" alt="foto bukti {{ r.nama }}" loading="lazy"></a>
+    {% else %}<div class="tanpa">{{ 'tanpa foto' if r.status == 'ditolak' else 'foto sudah dihapus' }}</div>{% endif %}
+    <div>
+      <div><b>{{ r.nama }}</b> <small class="muted">{{ r.kelas or '' }}{% if r.nis %} · {{ r.nis }}{% endif %}</small></div>
+      <div>{{ r.waktu[11:16] }} ·
+        {% if r.status == 'ok' %}<span class="badge b-ok">{{ r.jenis }}</span>{% elif r.status == 'batal' %}<span class="badge">dibatalkan</span>{% else %}<span class="badge b-err">ditolak</span>{% endif %}
+        <small>{{ r.pesan }}</small></div>
+      <div class="sub">{% if r.lokasi_nama %}{{ r.lokasi_nama }} · {% endif %}{% if r.jarak is not none %}±{{ r.jarak }} m{% endif %}{% if r.akurasi is not none %} · akurasi ±{{ r.akurasi }} m{% endif %}
+        {% if r.lat is not none %} · <a href="https://www.google.com/maps?q={{ r.lat }},{{ r.lng }}" target="_blank" rel="noopener">peta</a>{% endif %}</div>
+      {% if r.periksa and not r.diperiksa and r.status == 'ok' %}<div class="tandai">⚠ Perlu diperiksa: {{ r.alasan_periksa }}</div>{% endif %}
+    </div>
+    <div class="aksi">
+      {% if r.periksa and not r.diperiksa and r.status == 'ok' %}
+      <form method="post">{{ csrf() }}<input type="hidden" name="aksi" value="periksa"><input type="hidden" name="id" value="{{ r.id }}"><button class="btn sm outline">{{ icon('check') }}Sudah dicek</button></form>{% endif %}
+      {% if r.status == 'ok' and r.jenis in ('masuk', 'pulang') %}
+      <form method="post" data-confirm="Batalkan absen {{ r.jenis }} {{ r.nama }}?">{{ csrf() }}<input type="hidden" name="aksi" value="batal"><input type="hidden" name="id" value="{{ r.id }}"><button class="btn sm danger">Batalkan</button></form>{% endif %}
+    </div>
+  </div>
+  {% else %}<p class="empty">Belum ada absen HP pada tanggal ini.</p>{% endfor %}
+</div>
+{% endblock %}

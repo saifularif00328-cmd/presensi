@@ -70,7 +70,18 @@ def _scan_ganda(db, siswa_id, now):
                   now.strftime("%Y-%m-%d %H:%M:%S")), one=True, db=db)
 
 
-def process_scan(text, mode="auto", metode="scanner", db=None, waktu=None, gerbang=None):
+LABEL_METODE = {"rfid": "kartu RFID", "qr": "scan QR"}
+
+
+def metode_aktif(nama, db=None):
+    """Metode absen yang diizinkan sekolah: rfid / qr / hp (Sistem -> Metode Absen)."""
+    from ..db import get_setting
+    bawaan = "0" if nama == "hp" else "1"
+    return (get_setting(f"metode_{nama}", db=db) or bawaan) == "1"
+
+
+def process_scan(text, mode="auto", metode="scanner", db=None, waktu=None, gerbang=None,
+                 siswa_row=None):
     """Proses satu scan QR / tap kartu RFID. Selalu mengembalikan dict hasil untuk UI.
 
     `waktu`: jam tap sebenarnya untuk tap yang tertunda (antrian offline perangkat/browser);
@@ -81,10 +92,19 @@ def process_scan(text, mode="auto", metode="scanner", db=None, waktu=None, gerba
     db = db or get_db()
     gerbang = (gerbang or "").strip()[:60] or None
     mode = mode if mode in MODES else "auto"
-    if metode in ("scanner", "kamera") and jenis_kartu(text) == "rfid":
-        metode = "rfid"
     now = waktu or utils.now()
-    siswa, err = find_siswa(text, db=db)
+    if siswa_row is not None:                       # absen HP: siswa sudah diverifikasi
+        siswa, err = siswa_row, None
+    else:
+        jenis = jenis_kartu(text)
+        if metode in ("scanner", "kamera") and jenis == "rfid":
+            metode = "rfid"
+        if jenis in LABEL_METODE and not metode_aktif(jenis, db=db):
+            pesan = f"Absen dengan {LABEL_METODE[jenis]} dinonaktifkan sekolah"
+            _log(db, None, "gagal", None, pesan, metode, now, gerbang)
+            db.commit()
+            return {"ok": False, "level": "error", "pesan": pesan}
+        siswa, err = find_siswa(text, db=db)
     if siswa is None:
         _log(db, None, "gagal", None, err, metode, now, gerbang)
         db.commit()

@@ -10,6 +10,10 @@
   <div class="grow"><h2>{{ s.nama }}</h2><div class="muted">{{ s.kelas_nama or '-' }}{% if s.nis %} · NIS {{ s.nis }}{% endif %}</div></div>
 </div>
 
+{% if absen_hp %}
+<a class="btn block p-absen-btn" href="{{ url_for('portal.absen') }}">{{ icon('camera') }}Absen dari HP</a>
+{% endif %}
+
 {% set p = hari_ini %}
 <div class="card">
   <h3>{{ icon('clock') }}Hari ini <small class="muted">· {{ tanggal_indo(today()) }}</small></h3>

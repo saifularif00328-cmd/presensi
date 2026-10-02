@@ -56,6 +56,12 @@ def job_backup(db):
     backup_harian(db)
 
 
+def job_absen_hp(db):
+    """Hapus foto bukti absen HP yang melewati masa simpan."""
+    from .services.absen_hp import bersihkan_foto
+    bersihkan_foto(db)
+
+
 def start(app):
     global _scheduler
     if _scheduler is not None:
@@ -73,6 +79,7 @@ def start(app):
               coalesce=True)
     s.add_job(_job(app, job_kuota), "interval", hours=1, id="kuota", max_instances=1)
     s.add_job(_job(app, job_backup), "cron", hour=12, minute=30, id="backup")
+    s.add_job(_job(app, job_absen_hp), "cron", hour=2, minute=15, id="absen_hp")
     s.add_job(_job(app, job_lisensi), "interval", hours=6, id="lisensi", max_instances=1,
               next_run_time=utils.now() + timedelta(seconds=30))
     s.start()

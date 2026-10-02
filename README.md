@@ -11,6 +11,7 @@ ESP32 di gerbang.
 | [`TUTORIAL_VPS.md`](TUTORIAL_VPS.md) | **Jalur utama:** semua sekolah di satu VPS, alamat `https://presensiku.biz.id/<kode>` — sekolah tidak memasang apa pun |
 | [`TUTORIAL_SERVER_SEKOLAH.md`](TUTORIAL_SERVER_SEKOLAH.md) | Alternatif: installer Windows di komputer sekolah + Cloudflare Tunnel |
 | [`TUTORIAL_MULTI_SCANNER.md`](TUTORIAL_MULTI_SCANNER.md) | Banyak scanner (USB/COM/nirkabel) di satu PC dengan **Presensiku Pos** + Layar Gerbang |
+| [`TUTORIAL_ABSEN_HP.md`](TUTORIAL_ABSEN_HP.md) | Pilih metode absen (RFID / QR / HP) dan **absen dari HP siswa** berbasis lokasi + foto bukti |
 | [`TUTORIAL_RFID.md`](TUTORIAL_RFID.md) · [`firmware/README.md`](firmware/README.md) | Kartu RFID, reader USB, perakitan ESP32 |
 | [`TUTORIAL_PORTAL.md`](TUTORIAL_PORTAL.md) | Panduan portal untuk orang tua & siswa |
 | [`TUTORIAL_MULTICABANG.md`](TUTORIAL_MULTICABANG.md) | Dashboard beberapa sekolah/cabang |

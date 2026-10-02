@@ -21,8 +21,10 @@ bp = Blueprint("presensi", __name__, url_prefix="/presensi")
 def scan():
     tgl = utils.today()
     libur = None if utils.is_school_day(tgl) else (utils.libur_on(tgl) or "Bukan hari sekolah")
+    from ..services.attendance import LABEL_METODE, metode_aktif
+    mati = [label for m, label in LABEL_METODE.items() if not metode_aktif(m)]
     return render_template("presensi/scan.html", aturan=aturan_for(None), libur=libur,
-                           webcam=webcam.status())
+                           webcam=webcam.status(), mati=mati)
 
 
 @bp.route("/api/scan", methods=["POST"])
