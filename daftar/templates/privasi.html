@@ -26,12 +26,29 @@
     <li>Catatan teknis (alamat IP, waktu akses) untuk keamanan, misalnya membatasi percobaan login.</li>
   </ul>
 
+  <h2>Peran: sekolah sebagai pengendali data</h2>
+  <p>Untuk data siswa, orang tua, dan guru, <b>sekolah adalah Pengendali Data Pribadi</b> yang menentukan data apa yang dimasukkan dan untuk apa.
+    {{ k.nama }} bertindak sebagai <b>Prosesor Data Pribadi</b> yang memproses data tersebut hanya untuk menjalankan aplikasi atas nama sekolah
+    (UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi). Data anak diproses dengan dasar pelaksanaan tugas sekolah; untuk data wajah,
+    sekolah wajib memperoleh persetujuan orang tua/wali terlebih dahulu.</p>
+
   <h2>Penyimpanan &amp; keamanan</h2>
-  <p>Data disimpan di server di Indonesia, diakses melalui HTTPS, dengan backup harian. Password disimpan dalam bentuk hash; token WhatsApp sekolah dienkripsi.</p>
+  <ul>
+    <li>Database dan aplikasi berjalan di <b>server di Indonesia</b>, diakses melalui HTTPS. Password disimpan dalam bentuk hash; token WhatsApp sekolah dan data wajah dienkripsi.</li>
+    <li>Backup harian disimpan di server, dan salinannya <b>dienkripsi terlebih dahulu</b> sebelum dikirim ke penyimpanan cloud (Google Drive) yang servernya dapat berada di luar Indonesia. Kunci enkripsinya hanya dipegang {{ k.nama }}.</li>
+    <li>Lalu lintas situs melewati jaringan Cloudflare untuk HTTPS dan perlindungan dari serangan.</li>
+    <li>Pesan WhatsApp ke orang tua dikirim melalui layanan gateway WhatsApp yang dipilih dan didaftarkan oleh sekolah.</li>
+    <li>Bila terjadi kebocoran data, kami memberi tahu sekolah tanpa penundaan, paling lambat 3 × 24 jam setelah diketahui, beserta langkah penanganannya.</li>
+  </ul>
+
+  <h2>Masa simpan</h2>
+  <p>Data disimpan selama sekolah berlangganan. Setelah berhenti, data disimpan paling lama 90 hari agar sekolah sempat mengekspornya, lalu dihapus,
+    termasuk dari backup ketika backup tersebut kedaluwarsa. Foto bukti absen HP dihapus otomatis sesuai pengaturan sekolah.</p>
 
   <h2>Hak pengguna</h2>
   <p>Sekolah dapat mengekspor seluruh datanya kapan saja (Excel/PDF/backup) dan dapat meminta penghapusan data setelah berhenti berlangganan.
-    Orang tua yang ingin memperbaiki atau menghapus data anaknya dapat menghubungi sekolah, atau kami.</p>
+    Orang tua/siswa dapat meminta akses, perbaikan, atau penghapusan data, serta mencabut persetujuan data wajah (langsung lewat Portal) — permintaan
+    disampaikan ke sekolah sebagai pengendali data, atau ke kami dan akan kami teruskan ke sekolah.</p>
 
   <h2>Kontak</h2>
   <p>{{ k.nama }}{% if k.wa %} — WhatsApp <a href="https://wa.me/{{ k.wa }}">+{{ k.wa }}</a>{% endif %}</p>

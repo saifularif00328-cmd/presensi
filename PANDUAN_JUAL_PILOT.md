@@ -41,17 +41,107 @@ Halaman publik yang sudah tersedia:
   - Biarkan harga 0 bila ingin halaman Harga menampilkan "Minta penawaran".
 - [ ] Buka `/harga`, `/panduan`, `/syarat` dari HP dan pastikan tampil benar.
 
-### Menentukan harga
-Tulis biaya bulanan Anda: VPS, domain, waktu dukungan, dan cadangan bila naik ke VPS lebih
-besar. Lalu tentukan berapa sekolah yang realistis Anda layani di tahun pertama.
+### Menentukan harga (hasil riset Oktober 2026)
 
-**Harga tahunan per sekolah sebaiknya ≥ (biaya setahun ÷ jumlah sekolah) + nilai waktu dukungan
-Anda.**
+**Harga pasar** (dari halaman harga publik, dikumpulkan lewat pencarian web; bisa sudah berubah):
 
-- Paket **semester** membantu sekolah yang anggarannya per semester.
-- Harga **per 100 siswa** membuat sekolah kecil tetap terjangkau.
-- Biaya **WhatsApp gateway** dibayar sekolah langsung ke penyedianya, jadi jangan dimasukkan ke
-  harga Anda.
+| Model | Kisaran | Setara sekolah 250 siswa / tahun |
+|---|---|---|
+| Per siswa per bulan (web + WA) | Rp3.000–5.000 / siswa / bulan | Rp9–15 juta |
+| Paket bulanan per sekolah | Rp150.000–750.000 / bulan (makin mahal makin banyak siswa) | Rp1,8–9 juta |
+| Paket tahunan per sekolah | ±Rp1,26–2,5 juta / tahun (paket terkecil, ±100 siswa) | Rp2,5 juta ke atas |
+| Gratis | Ada yang gratis untuk ≤100 siswa | Rp0 (fitur terbatas) |
+| Beli putus (skrip, pasang sendiri) | Rp350.000–1,2 juta sekali | Tanpa server, tanpa bantuan |
+
+**Biaya Anda:**
+- VPS S ±Rp60.000/bulan (±Rp720.000/tahun), cukup untuk ±5 sekolah.
+- Naik ke paket yang lebih besar bila sekolah bertambah.
+
+**Biaya WhatsApp ditanggung sekolah** langsung ke penyedia gateway.
+- Contoh Fonnte: gratis 1.000 pesan/bulan (ada watermark), ±Rp66.000 untuk 10.000 pesan/bulan.
+- Sekolah 150 siswa × 2 pesan × 22 hari ≈ 6.600 pesan/bulan.
+- Sampaikan biaya ini sejak awal agar tidak mengejutkan.
+
+**Rekomendasi harga perintis (launching, sekolah desa)**:
+
+| Isian di Panel Vendor → Pengaturan | Nilai |
+|---|---|
+| Per tahun | **Rp900.000** |
+| Termasuk s.d. siswa | **150** |
+| Tambahan per 100 siswa / tahun | **Rp150.000** |
+| Per semester | **Rp500.000** |
+| Pemasangan | **0** (gratis, online) |
+
+Hasilnya:
+
+| Jumlah siswa | Per tahun | Setara per bulan |
+|---|---|---|
+| 100–150 | Rp900.000 | Rp75.000 |
+| 250 | Rp1.050.000 | Rp87.500 |
+| 400 | Rp1.350.000 | Rp112.500 |
+| 600 | Rp1.650.000 | Rp137.500 |
+
+Alasannya:
+- **Mudah di-ACC kepala sekolah.** Setara **Rp75–140 ribu per bulan**, kira-kira seharga paket
+  internet bulanan, dan dibayar sekali setahun.
+- **Tidak memicu perang harga.** Anda tidak melawan yang gratis atau beli putus. Anda menjual
+  layanan lengkap (server, backup, bantuan WA) dengan **satu harga transparan**, dan harga ini
+  tidak perlu diturunkan lagi. Yang membedakan Anda adalah pelayanan untuk sekolah desa:
+  - tetap jalan saat internet putus;
+  - alat scan murah;
+  - bantuan pemasangan.
+- **Tetap untung.** 5 sekolah × ±Rp1 juta ≈ Rp5 juta/tahun, sementara biaya server ±Rp720 ribu.
+  Biaya terbesar Anda adalah waktu membantu sekolah, jadi jangan menggratiskan kunjungan ke
+  lokasi. Transport ke sekolah dihitung terpisah sesuai jarak.
+
+Strategi:
+- Sebut ini **"harga perintis"** untuk ±20 sekolah pertama, **dikunci 2 tahun** bagi sekolah
+  tersebut.
+- Sekolah berikutnya bisa dikenakan harga normal, mis. Rp1.200.000 per tahun termasuk 150
+  siswa.
+- Lebih baik **memberi bonus** daripada memotong harga, misalnya:
+  - 2 bulan gratis untuk pembayaran tahunan;
+  - kartu QR siap cetak;
+  - pelatihan operator.
+- Jangan menyebut atau menjelekkan merek pesaing di materi promosi.
+
+Isi lewat panel vendor, atau lewat VPS:
+```bash
+presensi-sekolah setel --harga-tahun 900000 --siswa-termasuk 150 --harga-per-100 150000 \
+  --harga-semester 500000 --harga-pasang 0
+```
+
+### ⚠️ Sumber dana sekolah (Dana BOS) — wajib dicek
+- Juknis BOSP **melarang sekolah menyewa aplikasi pendataan dan aplikasi PPDB daring**.
+- Beberapa situs penjelas menafsirkannya lebih luas: aplikasi berbayar apa pun dari pihak luar
+  Kementerian/Dinas tidak boleh dibayar dari BOS.
+- Saya belum bisa membuka teks resmi Permendikdasmen terbaru untuk memastikan.
+- Aturan juga bisa ditafsirkan berbeda oleh tiap Dinas atau inspektorat.
+
+Karena itu:
+- **Jangan pernah menjanjikan "bisa dibayar pakai dana BOS".**
+- Sasaran awal paling aman adalah sekolah yang dananya dari **yayasan / dana sendiri**:
+  - madrasah swasta,
+  - pesantren,
+  - SD/SMP/SMK swasta.
+- Untuk sekolah negeri, minta kepala sekolah **mengonfirmasi ke Dinas Pendidikan / pengawas**
+  sebelum membayar. Sumber dana sepenuhnya keputusan sekolah.
+
+### ⚠️ Legalitas usaha Anda
+- Layanan aplikasi yang dipakai pengguna di Indonesia **wajib terdaftar sebagai PSE Lingkup Privat**
+  di Komdigi melalui OSS. Untuk itu Anda perlu **NIB** dulu.
+- PSE wajib yang tidak terdaftar bisa langsung **diblokir** tanpa peringatan bertahap.
+- Daftarkan sebelum menjual luas. Proses OSS bisa dilakukan sendiri.
+- Bila ragu dengan klasifikasi usahanya, tanyakan ke petugas OSS / Mal Pelayanan Publik
+  setempat.
+
+### Privasi (UU PDP) — sudah disesuaikan di /privasi dan /syarat
+- Sekolah = **Pengendali** data, Anda = **Prosesor** data.
+- Data anak dan data biometrik (wajah) termasuk data yang dilindungi khusus. Data wajah butuh
+  persetujuan orang tua; aplikasi sudah mencatatnya.
+- Backup di Google Drive dan jaringan Cloudflare bisa berada di luar Indonesia. Keduanya
+  disebutkan terbuka, dan backup dienkripsi sebelum dikirim.
+- Janji pemberitahuan kebocoran data ke sekolah: paling lambat 3 × 24 jam.
 
 ---
 
