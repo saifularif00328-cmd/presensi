@@ -1,0 +1,24 @@
+# Mesin wajah bersama untuk semua sekolah (127.0.0.1:7100, model dimuat sekali ±200 MB RAM)
+[Unit]
+Description=Presensi — layanan pencocokan wajah bersama
+After=network-online.target
+
+[Service]
+Type=simple
+User=presensi
+Group=presensi
+WorkingDirectory=/opt/presensi
+Environment=PRESENSI_MODEL_DIR=/opt/presensi/models
+# PRESENSI_WAJAH_KUNCI dibuat install_vps.sh (root:presensi, chmod 640)
+EnvironmentFile=/etc/presensi/wajah.env
+ExecStart=/opt/presensi/venv/bin/python -m app.wajah_worker
+Restart=always
+RestartSec=5
+MemoryMax=450M
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

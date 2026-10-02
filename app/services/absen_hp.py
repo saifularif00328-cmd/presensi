@@ -8,10 +8,13 @@ Pengaman:
 - akurasi GPS dibatasi, jarak dihitung di server (haversine), foto selfie wajib;
 - kejanggalan (GPS kurang akurat, di tepi radius, HP baru, posisi GPS lama) ditandai
   "perlu diperiksa" untuk admin, yang bisa membatalkan absen.
-Aplikasi GPS palsu tidak bisa dicegah 100% dari browser; foto bukti + tinjauan admin (dan
-pencocokan wajah di tahap berikutnya) menjadi pengaman tambahan.
+- pencocokan wajah (opsional, setting `hp_wajah`): selfie dicocokkan dengan data acuan siswa
+  di server + tantangan tengok kiri/kanan; mode "tandai" hanya menandai, "wajib" menolak.
+Aplikasi GPS palsu tidak bisa dicegah 100% dari browser; foto bukti, pencocokan wajah, dan
+tinjauan admin menjadi pengaman tambahan.
 """
 import hashlib
+import io
 import os
 import secrets
 from datetime import timedelta
@@ -20,6 +23,7 @@ from PIL import Image, ImageOps
 
 from .. import config, utils
 from ..db import execute, get_setting, query
+from . import wajah
 from .attendance import metode_aktif, process_scan
 
 TOKEN_DETIK = 120
@@ -67,26 +71,41 @@ def boleh(siswa, tanggal=None, db=None):
                        for r in lokasi)
         if siswa["kelas_id"] not in _ids(get_setting("hp_kelas", db=db)) and not kegiatan:
             return False, "Kelas Anda belum diizinkan absen dari HP.", []
+    if mode_wajah(db) == "wajib" and not wajah.siap(siswa["id"], db):
+        return False, ("Data wajah Anda belum terdaftar (perlu persetujuan orang tua & foto wajah). "
+                       "Hubungi wali kelas / admin."), []
     return True, "", lokasi
 
 
+def mode_wajah(db=None):
+    m = get_setting("hp_wajah", db=db) or "mati"
+    return m if m in ("tandai", "wajib") else "mati"
+
+
+def pakai_tantangan(db=None):
+    return mode_wajah(db) != "mati" and (get_setting("wajah_tantangan", db=db) or "1") == "1"
+
+
 def buat_token(siswa_id, db=None):
+    """Token sekali pakai + tantangan tengok (bila pencocokan wajah aktif)."""
     t = secrets.token_urlsafe(32)
-    execute("INSERT INTO absen_hp_token(token, siswa_id, dibuat) VALUES (?,?,?)",
-            (t, siswa_id, _fmt(utils.now())), db=db)
+    tantangan = wajah.buat_tantangan() if pakai_tantangan(db) else None
+    execute("INSERT INTO absen_hp_token(token, siswa_id, dibuat, tantangan) VALUES (?,?,?,?)",
+            (t, siswa_id, _fmt(utils.now()), tantangan), db=db)
     execute("DELETE FROM absen_hp_token WHERE dibuat < ?",
             (_fmt(utils.now() - timedelta(days=1)),), db=db)
-    return t
+    return {"token": t, "tantangan": tantangan}
 
 
 def _pakai_token(token, siswa_id, db=None):
+    """Baris token bila sah (lalu ditandai terpakai), None bila tidak."""
     r = query("SELECT * FROM absen_hp_token WHERE token = ?", (token or "",), one=True, db=db)
     if r is None or r["siswa_id"] != siswa_id or r["dipakai"]:
-        return False
+        return None
     if utils.parse_datetime(r["dibuat"]) < utils.now() - timedelta(seconds=TOKEN_DETIK):
-        return False
+        return None
     execute("UPDATE absen_hp_token SET dipakai = 1 WHERE token = ?", (token,), db=db)
-    return True
+    return r
 
 
 def _hash(t):
@@ -115,11 +134,17 @@ def cek_hp(siswa_id, token_hp, info, db=None):
     return True, str(r["dibuat"])[:10] == now[:10], ""     # didaftarkan hari ini = tetap "baru"
 
 
-def _simpan_foto(berkas, siswa_id):
+def _baca(berkas):
     if not berkas or not berkas.filename:
+        return b""
+    return berkas.read(8 * 1024 * 1024 + 1)[:8 * 1024 * 1024]
+
+
+def _simpan_foto(data, siswa_id):
+    if not data:
         return None
     try:
-        img = ImageOps.exif_transpose(Image.open(berkas.stream)).convert("RGB")
+        img = ImageOps.exif_transpose(Image.open(io.BytesIO(data))).convert("RGB")
     except Exception:  # noqa: BLE001 — bukan gambar
         return None
     if min(img.size) < 120:
@@ -140,7 +165,7 @@ def _angka(nilai, jenis=float):
         return None
 
 
-def proses(siswa_id, form, berkas_foto, ip="", ua="", db=None):
+def proses(siswa_id, form, berkas_foto, ip="", ua="", db=None, berkas_foto2=None):
     """Proses satu absen HP. Mengembalikan dict {ok, level, pesan, ...} untuk tampilan."""
     siswa = siswa_lengkap(siswa_id, db)
     if siswa is None:
@@ -158,7 +183,8 @@ def proses(siswa_id, form, berkas_foto, ip="", ua="", db=None):
     ok, alasan, lokasi = boleh(siswa, db=db)
     if not ok:
         return {"ok": False, "level": "error", "pesan": alasan}
-    if not _pakai_token(form.get("token"), siswa_id, db):
+    tok = _pakai_token(form.get("token"), siswa_id, db)
+    if tok is None:
         return {"ok": False, "level": "error",
                 "pesan": "Sesi absen kedaluwarsa (lebih dari 2 menit). Ulangi dari awal."}
     ok_hp, hp_baru, pesan = cek_hp(siswa_id, form.get("perangkat"), ua, db)
@@ -176,10 +202,25 @@ def proses(siswa_id, form, berkas_foto, ip="", ua="", db=None):
     if jarak > terdekat["radius"]:
         return tolak(f"Anda di luar area absen: ±{int(jarak)} m dari {terdekat['nama']} "
                      f"(batas {terdekat['radius']} m).")
-    foto = _simpan_foto(berkas_foto, siswa_id)
+    data_foto = _baca(berkas_foto)
+    foto = _simpan_foto(data_foto, siswa_id)
     if not foto:
         return tolak("Foto selfie wajib diambil sebagai bukti.")
     periksa = []
+    mode = mode_wajah(db)
+    if mode != "mati":
+        try:
+            v = wajah.verifikasi(siswa_id, data_foto, _baca(berkas_foto2), tok["tantangan"],
+                                 "berkas" if form.get("sumber") == "berkas" else "kamera", db)
+        except wajah.TidakTersedia:
+            v = {"ok": False, "skor": None, "alasan": "pencocokan wajah sedang tidak tersedia"}
+        catat["skor_wajah"] = v.get("skor")
+        if not v["ok"]:
+            if mode == "wajib":
+                return tolak(f"{v['alasan']}. Ulangi dengan wajah terlihat jelas.", foto=foto)
+            periksa.append(f"wajah: {v['alasan']}")
+        elif v.get("tipis"):
+            periksa.append(f"kemiripan wajah tipis ({v['skor']:.2f})")
     if akurasi > maks / 2:
         periksa.append(f"GPS kurang akurat (±{int(akurasi)} m)")
     if jarak > terdekat["radius"] * 0.8:
@@ -198,7 +239,7 @@ def proses(siswa_id, form, berkas_foto, ip="", ua="", db=None):
 
 def _catat(db, d):
     kolom = ["siswa_id", "waktu", "lat", "lng", "akurasi", "jarak", "lokasi_id", "lokasi_nama", "foto",
-             "jenis", "status", "pesan", "periksa", "alasan_periksa", "ip", "ua"]
+             "jenis", "status", "pesan", "periksa", "alasan_periksa", "skor_wajah", "ip", "ua"]
     d = {**d, "waktu": _fmt(utils.now())}
     execute(f"INSERT INTO absen_hp({', '.join(kolom)}) VALUES ({', '.join('?' for _ in kolom)})",
             tuple(d.get(k) if k not in ("periksa",) else (d.get(k) or 0) for k in kolom), db=db)

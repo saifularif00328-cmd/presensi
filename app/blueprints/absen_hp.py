@@ -57,6 +57,11 @@ def metode():
             set_setting("hp_kelas", _ids_form("hp_kelas") or "")
             set_setting("hp_akurasi_maks", str(max(10, min(form_int("hp_akurasi_maks", 100), 1000))))
             set_setting("hp_foto_hari", str(max(1, min(form_int("hp_foto_hari", 30), 365))))
+            mode = request.form.get("hp_wajah")
+            set_setting("hp_wajah", mode if mode in ("mati", "tandai", "wajib") else "mati")
+            ambang = _float("wajah_ambang")
+            set_setting("wajah_ambang", f"{max(0.30, min(ambang if ambang is not None else 0.42, 0.70)):.2f}")
+            set_setting("wajah_tantangan", "1" if request.form.get("wajah_tantangan") else "0")
             flash("Metode absen disimpan.", "success")
         elif aksi == "lokasi":
             lid = form_int("id")
@@ -99,7 +104,8 @@ def metode():
                            kelas=kelas_options(),
                            hp_kelas={int(x) for x in (get_setting("hp_kelas") or "").split(",") if x.isdigit()},
                            s={k: get_setting(k) for k in ("metode_rfid", "metode_qr", "metode_hp", "hp_cakupan",
-                                                          "hp_akurasi_maks", "hp_foto_hari")})
+                                                          "hp_akurasi_maks", "hp_foto_hari", "hp_wajah",
+                                                          "wajah_ambang", "wajah_tantangan")})
 
 
 @bp.route("/presensi/absen-hp", methods=["GET", "POST"])

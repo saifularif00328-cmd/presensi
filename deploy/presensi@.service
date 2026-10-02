@@ -10,6 +10,8 @@ Type=simple
 User=presensi
 Group=presensi
 EnvironmentFile=/srv/presensi/%i/env
+# alamat & kunci layanan wajah bersama (presensi-wajah.service)
+EnvironmentFile=-/etc/presensi/wajah.env
 WorkingDirectory=/opt/presensi
 ExecStart=/opt/presensi/venv/bin/python /opt/presensi/run.py --layanan
 Restart=always

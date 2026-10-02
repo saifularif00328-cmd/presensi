@@ -89,12 +89,65 @@ Tombol yang tersedia:
   - Absen *pulang* dibatalkan lebih dulu sebelum absen *masuk*.
   - Pembatalan tercatat di log scan.
 
-## 5. Keamanan & privasi
+## 5. Pencocokan wajah (opsional)
+
+Pencocokan wajah memastikan yang absen benar-benar siswa itu sendiri, bukan teman yang meminjam
+akun. Wajah dicocokkan **di server** dengan mesin OpenCV (YuNet + SFace) yang dipasang
+otomatis oleh `install_vps.sh`. Mesin ini dipakai bersama oleh semua sekolah (±200 MB RAM).
+
+### a. Persetujuan orang tua (wajib, UU PDP)
+Data wajah termasuk data pribadi yang bersifat spesifik, jadi **hanya boleh dibuat setelah
+orang tua setuju**. Ada dua cara:
+- **Lewat Portal**: orang tua masuk dengan nomor WA, buka halaman anak, lalu tekan
+  **Saya setuju** pada kartu *Persetujuan data wajah*. Kartu ini muncul bila pencocokan wajah
+  aktif. Bila siswa sudah punya foto, data wajah langsung dibuat.
+- **Formulir kertas**: buka **Sistem → Data Wajah → formulir kertas** untuk mencetak satu
+  lembar per siswa. Setelah formulir kembali bertanda tangan, centang siswanya lalu tekan
+  **Catat persetujuan**.
+
+Mencabut persetujuan (oleh orang tua di Portal atau admin) **langsung menghapus** data wajah.
+
+### b. Membuat data wajah
+Buka **Sistem → Data Wajah** dan pilih kelas. Ada dua cara membuat data wajah:
+- **Buat data wajah dari foto siswa**: memakai foto yang sudah ada di Data Siswa. Proses ini
+  berjalan untuk semua siswa yang sudah disetujui.
+- **Rekam**: ambil foto langsung dengan kamera laptop atau HP petugas.
+
+Agar hasilnya baik, wajah harus menghadap lurus, terang, tanpa masker atau kacamata hitam, dan
+cukup besar di foto. Foto yang buram, gelap, miring, atau berisi lebih dari satu wajah ditandai
+**perlu foto ulang**.
+
+Yang disimpan hanya **kode angka wajah (embedding) terenkripsi**. Tidak ada foto baru yang
+disimpan.
+
+### c. Mengaktifkan
+Buka **Sistem → Metode Absen**, lalu atur bagian *Pencocokan wajah*:
+
+| Mode | Perilaku |
+|---|---|
+| **Mati** | Hanya foto bukti (seperti sebelumnya) |
+| **Tandai** | Wajah tidak cocok atau belum ada data wajah → absen **tetap diterima**, tetapi ditandai "perlu diperiksa" |
+| **Wajib** | Wajah tidak cocok atau belum ada data wajah → absen **ditolak**. Foto percobaannya tetap disimpan sebagai bukti |
+
+Saran: pakai **Tandai** selama 1–2 minggu, cek skor di *Log Absen HP*, lalu naikkan ke
+**Wajib**.
+
+- **Ambang kemiripan**: bawaan 0,42. Bila banyak siswa asli ditolak, turunkan sedikit (mis.
+  0,38). Bila ingin lebih ketat, naikkan.
+- **Tantangan menengok**: aktif secara bawaan.
+  - Setelah foto pertama, HP meminta siswa *"Tengok pelan ke KIRI/KANAN"* (arahnya acak), lalu
+    otomatis mengambil foto kedua.
+  - Tantangan ini mencegah absen memakai foto teman yang ditampilkan di layar HP lain.
+
+Di *Log Absen HP*, setiap absen menampilkan **skor wajah**, misalnya "wajah 0.78". Skor yang
+tipis (dekat ambang) ditandai untuk diperiksa.
+
+## 6. Keamanan & privasi
 
 - Jarak dihitung **di server**, bukan di HP.
 - Setiap absen memakai token sekali pakai yang berlaku 2 menit.
-- Aplikasi "GPS palsu" tidak bisa dicegah 100% dari browser. Karena itu ada **foto bukti**, tanda
-  periksa, dan tinjauan petugas. Pencocokan wajah otomatis menyusul di tahap berikutnya.
+- Aplikasi "GPS palsu" tidak bisa dicegah 100% dari browser. Karena itu ada **foto bukti**,
+  **pencocokan wajah**, tanda periksa, dan tinjauan petugas.
 - Foto hanya bisa dilihat petugas sekolah dan dihapus otomatis sesuai pengaturan.
 - Sampaikan ke orang tua/siswa bahwa lokasi & foto dipakai **hanya** sebagai bukti kehadiran
   (lihat halaman `/privasi`).
@@ -110,4 +163,7 @@ Tombol yang tersedia:
 | "Anda di luar area absen" padahal di sekolah | Perbesar radius atau tambah titik lokasi di gedung tersebut |
 | "Akun Anda terdaftar di HP lain" | Admin menekan **Reset** HP siswa di Sistem → Metode Absen |
 | Kamera tidak muncul | Tombol berganti menjadi "Ambil foto dengan kamera HP", lalu pakai kamera bawaan |
+| "Wajah tidak cocok" padahal siswa asli | Rekam ulang data wajah (Sistem → Data Wajah → Rekam) dengan cahaya bagus, atau turunkan ambang sedikit |
+| "Tidak menengok ke kiri/kanan" | Ulangi; tengok pelan sampai foto kedua diambil (±2 detik) |
+| Data Wajah: "Mesin wajah belum siap" | Di VPS jalankan ulang `install_vps.sh`, lalu `systemctl status presensi-wajah` |
 | Peta admin tidak tampil | Butuh internet. Koordinat tetap bisa diisi manual (dari Google Maps: tekan lama → salin angka) |

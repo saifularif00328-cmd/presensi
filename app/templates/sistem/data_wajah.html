@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}Data Wajah{% endblock %}
+{% block head %}
+<style>
+  .dw-status { font-size: .85rem; }
+  .dw-aksi { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .dw-aksi form { margin: 0; }
+  dialog.dw-kamera { border: 0; border-radius: 16px; padding: 16px; width: min(420px, 94vw); }
+  dialog.dw-kamera::backdrop { background: #101828aa; }
+  .dw-video { position: relative; aspect-ratio: 3/4; background: #101828; border-radius: 12px; overflow: hidden; margin: 10px 0; }
+  .dw-video video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+  .dw-video .bingkai { position: absolute; inset: 12% 18%; border: 3px dashed #ffffffaa; border-radius: 50%; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Data Wajah</h1>
+  <a class="btn outline" href="{{ url_for('absen_hp.metode') }}">{{ icon('pengaturan') }}Metode Absen</a></div>
+
+{% if not mesin_ok %}<div class="flash error">{{ icon('err') }}<span>Mesin wajah belum siap: {{ mesin_ket }}. Jalankan ulang <code>install_vps.sh</code> di server.</span></div>{% endif %}
+{% if mode == 'mati' %}<div class="flash info">{{ icon('alert') }}<span>Pencocokan wajah saat ini <b>mati</b>. Siapkan data wajah dulu, lalu aktifkan di <a href="{{ url_for('absen_hp.metode') }}">Metode Absen</a>.</span></div>{% endif %}
+
+<div class="stats card">
+  <div class="stat h"><b>{{ hitung.setuju }}</b><span>Orang tua setuju</span></div>
+  <div class="stat i"><b>{{ hitung.siap }}</b><span>Data wajah siap</span></div>
+  <div class="stat t"><b>{{ hitung.ulang }}</b><span>Perlu foto ulang</span></div>
+  <div class="stat"><b>{{ total }}</b><span>Siswa aktif</span></div>
+</div>
+
+<div class="card">
+  <h3>{{ icon('lock') }}Langkah (UU Pelindungan Data Pribadi)</h3>
+  <ol class="help" style="margin:0 0 0 18px">
+    <li><b>Persetujuan orang tua</b> — orang tua menyetujui sendiri lewat Portal (masuk dengan nomor WA), atau isi
+      <a href="{{ url_for('wajah.formulir', kelas_id=kelas_id) }}" target="_blank">formulir kertas</a> lalu centang siswanya di bawah.</li>
+    <li><b>Buat data wajah</b> dari foto siswa yang sudah ada, atau <b>Rekam</b> langsung dengan kamera (wajah lurus, terang, tanpa masker).</li>
+    <li>Yang gagal (buram/gelap/miring) ditandai <b>perlu foto ulang</b>.</li>
+  </ol>
+  <p class="help">Yang disimpan hanya <b>kode angka wajah terenkripsi</b>, bukan foto baru. Mencabut persetujuan langsung menghapus data wajah.</p>
+</div>
+
+<form class="filters" method="get">
+  <div><label>Kelas</label><select name="kelas_id" onchange="this.form.submit()">
+    {% for k in kelas %}<option value="{{ k.id }}" {{ 'selected' if k.id == kelas_id }}>{{ k.nama }}</option>{% endfor %}</select></div>
+</form>
+
+<div class="card">
+  <form method="post" id="form-massal">{{ csrf() }}<input type="hidden" name="kelas_id" value="{{ kelas_id or '' }}">
+  <div class="dw-aksi" style="justify-content:flex-start;margin-bottom:10px">
+    <button class="btn sm" name="aksi" value="setuju">{{ icon('check') }}Catat persetujuan (yang dicentang)</button>
+    <button class="btn sm outline" name="aksi" value="daftar_foto">{{ icon('user-check') }}Buat data wajah dari foto siswa</button>
+  </div>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th><input type="checkbox" onclick="document.querySelectorAll('.pilih').forEach(c => c.checked = this.checked)"></th>
+      <th>Siswa</th><th>Persetujuan</th><th>Data wajah</th><th></th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+    <tr>
+      <td><input type="checkbox" class="pilih" name="siswa_id" value="{{ r.id }}"></td>
+      <td><b>{{ r.nama }}</b><div class="sub">{{ r.nis or "" }}{% if not r.foto %}{{ " · " if r.nis }}belum ada foto{% endif %}</div></td>
+      <td class="dw-status">{% if r.setuju %}<span class="badge b-ok">setuju</span><div class="sub">{{ r.setuju_oleh }} · {{ (r.setuju_waktu or '')[:10] }}</div>
+        {% elif r.setuju_oleh %}<span class="badge b-err">dicabut</span><div class="sub">{{ (r.setuju_waktu or '')[:10] }}</div>
+        {% else %}<span class="badge">belum</span>{% endif %}</td>
+      <td class="dw-status">{% if r.setuju and r.status == 'siap' %}<span class="badge b-ok">siap</span><div class="sub">{{ 'kamera' if r.sumber == 'kamera' else 'foto siswa' }} · {{ (r.diperbarui or '')[:10] }}</div>
+        {% elif r.status == 'ulang' %}<span class="badge b-warn">perlu foto ulang</span><div class="sub">{{ r.kualitas }}</div>
+        {% else %}<span class="badge">belum</span>{% endif %}</td>
+      <td><div class="dw-aksi">
+        {% if r.setuju %}
+        <button type="button" class="btn sm outline" data-rekam="{{ r.id }}" data-nama="{{ r.nama }}">{{ icon('camera') }}Rekam</button>
+        {% if r.status == 'siap' %}<button class="btn sm ghost" form="f-hapus-{{ r.id }}">Hapus data</button>{% endif %}
+        <button class="btn sm danger" form="f-cabut-{{ r.id }}">Cabut</button>
+        {% endif %}</div></td>
+    </tr>
+    {% else %}<tr><td colspan="5" class="empty">Belum ada siswa di kelas ini.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </form>
+  {% for r in rows if r.setuju %}
+  <form id="f-hapus-{{ r.id }}" method="post" data-confirm="Hapus data wajah {{ r.nama }}?">{{ csrf() }}<input type="hidden" name="aksi" value="hapus"><input type="hidden" name="siswa_id" value="{{ r.id }}"><input type="hidden" name="kelas_id" value="{{ kelas_id }}"></form>
+  <form id="f-cabut-{{ r.id }}" method="post" data-confirm="Cabut persetujuan {{ r.nama }}? Data wajahnya akan dihapus.">{{ csrf() }}<input type="hidden" name="aksi" value="cabut"><input type="hidden" name="siswa_id" value="{{ r.id }}"><input type="hidden" name="kelas_id" value="{{ kelas_id }}"></form>
+  {% endfor %}
+</div>
+
+<dialog class="dw-kamera" id="dlg">
+  <b id="dlg-nama"></b>
+  <div class="dw-video"><video id="dlg-video" playsinline autoplay muted></video><div class="bingkai"></div></div>
+  <p class="help">Wajah lurus ke kamera, cahaya dari depan, tanpa masker/kacamata hitam.</p>
+  <div class="dw-aksi"><button type="button" class="btn ghost" id="dlg-tutup">Batal</button>
+    <label class="btn outline">{{ icon('upload') }}Pilih file<input type="file" accept="image/*" id="dlg-file" hidden></label>
+    <button type="button" class="btn" id="dlg-ambil">{{ icon('camera') }}Ambil</button></div>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<script>
+  (function () {
+    var dlg = document.getElementById('dlg'), video = document.getElementById('dlg-video'), aliran = null, sid = null;
+    function stop() { if (aliran) { aliran.getTracks().forEach(function (t) { t.stop(); }); aliran = null; } }
+    function kirim(blob) {
+      var fd = new FormData();
+      fd.append('_csrf', {{ csrf_token()|tojson }}); fd.append('aksi', 'rekam'); fd.append('siswa_id', sid);
+      fd.append('kelas_id', {{ (kelas_id or '')|string|tojson }}); fd.append('foto', blob, 'wajah.jpg');
+      document.getElementById('dlg-ambil').disabled = true;
+      fetch(location.pathname, { method: 'POST', body: fd }).then(function () { stop(); location.reload(); });
+    }
+    document.querySelectorAll('[data-rekam]').forEach(function (b) {
+      b.onclick = function () {
+        sid = b.dataset.rekam; document.getElementById('dlg-nama').textContent = 'Rekam wajah: ' + b.dataset.nama;
+        document.getElementById('dlg-ambil').disabled = false; dlg.showModal();
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
+          navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 720 } }, audio: false })
+            .then(function (s) { aliran = s; video.srcObject = s; }).catch(function () {});
+      };
+    });
+    document.getElementById('dlg-tutup').onclick = function () { stop(); dlg.close(); };
+    dlg.addEventListener('close', stop);
+    document.getElementById('dlg-file').onchange = function () { if (this.files[0]) kirim(this.files[0]); };
+    document.getElementById('dlg-ambil').onclick = function () {
+      if (!aliran) { document.getElementById('dlg-file').click(); return; }
+      var c = document.createElement('canvas'); c.width = video.videoWidth; c.height = video.videoHeight;
+      c.getContext('2d').drawImage(video, 0, 0); c.toBlob(kirim, 'image/jpeg', 0.9);
+    };
+  })();
+</script>
+{% endblock %}

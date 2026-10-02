@@ -62,6 +62,7 @@ fi
 python3 -m venv "$APP/venv"
 "$APP/venv/bin/pip" install -q --upgrade pip
 "$APP/venv/bin/pip" install -q -r "$APP/requirements.txt" waitress
+"$APP/venv/bin/pip" install -q -r "$APP/requirements-wajah.txt"
 ln -sf "$APP/tools/sekolah.py" /usr/local/bin/presensi-sekolah
 chmod +x "$APP/tools/sekolah.py"
 
@@ -81,10 +82,30 @@ EOF
 systemctl enable --now mariadb
 systemctl restart mariadb
 
+echo "==> Mesin wajah (model OpenCV YuNet + SFace, Apache-2.0)"
+MODEL="$APP/models"; mkdir -p "$MODEL"
+ZOO=https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models
+unduh_model() {   # nama  sha256  jalur
+  if ! echo "$2  $MODEL/$1" | sha256sum -c --status 2>/dev/null; then
+    curl -fsSL --retry 3 -o "$MODEL/$1.tmp" "$ZOO/$3/$1"
+    echo "$2  $MODEL/$1.tmp" | sha256sum -c --status || { echo "!! Checksum $1 salah"; exit 1; }
+    mv "$MODEL/$1.tmp" "$MODEL/$1"
+  fi
+}
+unduh_model face_detection_yunet_2023mar.onnx 8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4 face_detection_yunet
+unduh_model face_recognition_sface_2021dec.onnx 0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79 face_recognition_sface
+chmod 644 "$MODEL"/*.onnx
+if [ ! -f /etc/presensi/wajah.env ]; then
+  printf 'PRESENSI_WAJAH_URL=http://127.0.0.1:7100\nPRESENSI_WAJAH_KUNCI=%s\n' "$(openssl rand -hex 24)" > /etc/presensi/wajah.env
+fi
+chown root:presensi /etc/presensi/wajah.env; chmod 640 /etc/presensi/wajah.env
+
 echo "==> systemd & Nginx"
-cp "$APP/deploy/presensi@.service" "$APP/deploy/presensi-daftar.service" \
+cp "$APP/deploy/presensi@.service" "$APP/deploy/presensi-daftar.service" "$APP/deploy/presensi-wajah.service" \
    "$APP/deploy/presensi-antrean.service" "$APP/deploy/presensi-antrean.path" /etc/systemd/system/
 systemctl daemon-reload
+systemctl enable presensi-wajah >/dev/null 2>&1
+systemctl restart presensi-wajah
 cp "$APP/deploy/nginx-presensi.conf" /etc/nginx/conf.d/presensi.conf
 cp "$APP/deploy/nginx-presensi-proxy.conf" /etc/nginx/presensi-proxy.conf
 touch /etc/nginx/presensi-sekolah.conf

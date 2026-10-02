@@ -404,6 +404,7 @@ CREATE TABLE IF NOT EXISTS absen_hp_token (
     siswa_id  INT NOT NULL,
     dibuat    DATETIME NOT NULL,
     dipakai   TINYINT NOT NULL DEFAULT 0,
+    tantangan VARCHAR(10) NULL,                         -- kiri / kanan (cek keaslian wajah)
     INDEX idx_absen_hp_token_dibuat (dibuat)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -436,8 +437,24 @@ CREATE TABLE IF NOT EXISTS absen_hp (
     periksa         TINYINT NOT NULL DEFAULT 0,
     alasan_periksa  VARCHAR(255),
     diperiksa       TINYINT NOT NULL DEFAULT 0,
+    skor_wajah      DECIMAL(4,3) NULL,                  -- kemiripan dengan data acuan
     ip              VARCHAR(45),
     ua              VARCHAR(200),
     INDEX idx_absen_hp_waktu (waktu),
+    FOREIGN KEY (siswa_id) REFERENCES siswa(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Data acuan wajah siswa (UU PDP: hanya dengan persetujuan orang tua; embedding terenkripsi,
+-- foto acuan tidak disimpan). Mencabut persetujuan = embedding dihapus.
+CREATE TABLE IF NOT EXISTS wajah_siswa (
+    siswa_id      INT PRIMARY KEY,
+    setuju        TINYINT NOT NULL DEFAULT 0,
+    setuju_oleh   VARCHAR(100),
+    setuju_waktu  DATETIME NULL,
+    embedding     TEXT NULL,
+    status        VARCHAR(10) NOT NULL DEFAULT 'kosong',  -- kosong / siap / ulang
+    sumber        VARCHAR(10),                            -- foto / kamera
+    kualitas      VARCHAR(255),
+    diperbarui    DATETIME NULL,
     FOREIGN KEY (siswa_id) REFERENCES siswa(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

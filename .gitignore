@@ -10,3 +10,4 @@ venv/
 # kunci privat vendor (JANGAN di-commit)
 /vendor/
 license_server/data/
+/models/

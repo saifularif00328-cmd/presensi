@@ -1,0 +1,4 @@
+# Pencocokan wajah absen HP (dipasang otomatis oleh deploy/install_vps.sh).
+# Model: OpenCV Zoo YuNet + SFace (Apache-2.0), diunduh ke /opt/presensi/models.
+opencv-python-headless>=4.8
+numpy>=1.24

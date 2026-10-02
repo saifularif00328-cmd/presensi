@@ -1,4 +1,5 @@
 {% extends "portal/base.html" %}
+{% from "_macros.html" import csrf with context %}
 {% block title %}{{ s.nama }}{% endblock %}
 {% block content %}
 {% if anak|length > 1 %}
@@ -51,6 +52,24 @@
     <div><b>{{ rekap.A }}</b><span>Alpha</span></div>
   </div>
   <p class="help">Dari {{ rekap.efektif }} hari sekolah efektif sampai hari ini.</p>
+</div>
+{% endif %}
+
+{% if ortu and wajah_aktif %}
+<div class="card" id="wajah">
+  <h3>{{ icon('lock') }}Persetujuan data wajah</h3>
+  <p class="help">Sekolah memakai pencocokan wajah agar <b>absen dari HP</b> benar-benar dilakukan oleh {{ s.nama.split()[0] }} sendiri.
+    Yang disimpan hanya kode angka wajah terenkripsi dari foto siswa, hanya untuk presensi, dan langsung dihapus bila persetujuan dicabut.
+    Bila tidak setuju, anak tetap bisa absen dengan kartu di sekolah.</p>
+  <form method="post" action="{{ url_for('portal.wajah', sid=s.id) }}">{{ csrf() }}
+    {% if wajah and wajah.setuju %}
+    <p><span class="badge b-ok">Sudah setuju</span> <small class="muted">{{ (wajah.setuju_waktu or '')[:10] }}</small>
+      {% if wajah.status == 'siap' %}· data wajah siap{% elif wajah.status == 'ulang' %}· sekolah perlu mengambil foto ulang{% else %}· menunggu sekolah membuat data wajah{% endif %}</p>
+    <button class="btn block outline" name="setuju" value="0" onclick="return confirm('Cabut persetujuan? Data wajah anak akan dihapus.')">Cabut persetujuan</button>
+    {% else %}
+    <button class="btn block" name="setuju" value="1">{{ icon('check') }}Saya setuju</button>
+    {% endif %}
+  </form>
 </div>
 {% endif %}
 

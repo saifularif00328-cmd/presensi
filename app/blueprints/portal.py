@@ -185,8 +185,12 @@ def siswa(sid):
     awal = data["awal"]
     sebelum = (awal - timedelta(days=1)).strftime("%Y-%m")
     sesudah = (awal + timedelta(days=32)).strftime("%Y-%m")
+    from ..services import wajah as wajah_svc
+    from ..services.absen_hp import mode_wajah
     from ..services.attendance import metode_aktif
     return render_template("portal/siswa.html", anak=anak, KODE=KODE_LABEL, sebelum=sebelum,
+                           wajah_aktif=metode_aktif("hp") and mode_wajah() != "mati",
+                           wajah=wajah_svc.data_siswa(s["id"]),
                            absen_hp=session["portal"]["jenis"] == "siswa" and metode_aktif("hp"),
                            sesudah=sesudah if sesudah <= utils.today().strftime("%Y-%m") else None,
                            ortu=session["portal"]["jenis"] == "ortu", **data)
@@ -233,6 +237,27 @@ def _simpan_surat(f, sid):
     return name
 
 
+@bp.route("/siswa/<int:sid>/wajah", methods=["POST"])
+@portal_login
+def wajah(sid):
+    """Persetujuan data wajah oleh orang tua sendiri (masuk lewat OTP WhatsApp)."""
+    from ..services import wajah as wajah_svc
+    if session["portal"]["jenis"] != "ortu":
+        abort(403)
+    s, _ = _pilih_anak(sid)
+    setuju = request.form.get("setuju") == "1"
+    wajah_svc.catat_persetujuan(s["id"], setuju, f"Orang tua (portal) {session['portal']['nomor']}")
+    if setuju:
+        try:                                     # langsung buat data wajah dari foto siswa bila ada
+            wajah_svc.daftarkan_dari_foto(s["id"])
+        except wajah_svc.TidakTersedia:
+            pass
+        flash("Terima kasih, persetujuan tersimpan.", "success")
+    else:
+        flash("Persetujuan dicabut. Data wajah anak sudah dihapus.", "success")
+    return redirect(url_for("portal.siswa", sid=s["id"]) + "#wajah")
+
+
 # ================================================================ ABSEN DARI HP (siswa)
 def _siswa_portal():
     p = session.get("portal") or {}
@@ -251,7 +276,8 @@ def absen():
     hari_ini = query("SELECT * FROM presensi WHERE siswa_id = ? AND tanggal = ?",
                      (sid, utils.today_str()), one=True)
     return render_template("portal/absen.html", s=s, boleh=ok, alasan=alasan, lokasi=lokasi,
-                           hari_ini=hari_ini, libur=not utils.is_school_day(utils.today()))
+                           hari_ini=hari_ini, libur=not utils.is_school_day(utils.today()),
+                           wajah=absen_hp.mode_wajah() != "mati", tantangan=absen_hp.pakai_tantangan())
 
 
 @bp.route("/absen/token", methods=["POST"])
@@ -264,7 +290,7 @@ def absen_token():
     ok, alasan, _ = absen_hp.boleh(absen_hp.siswa_lengkap(sid))
     if not ok:
         return jsonify({"ok": False, "pesan": alasan}), 403
-    return jsonify({"ok": True, "token": absen_hp.buat_token(sid), "berlaku": absen_hp.TOKEN_DETIK})
+    return jsonify({"ok": True, **absen_hp.buat_token(sid), "berlaku": absen_hp.TOKEN_DETIK})
 
 
 @bp.route("/absen/kirim", methods=["POST"])
@@ -275,7 +301,7 @@ def absen_kirim():
     from ..services import absen_hp
     sid = _siswa_portal()
     res = absen_hp.proses(sid, request.form, request.files.get("foto"), ip=request.remote_addr or "",
-                          ua=request.headers.get("User-Agent", ""))
+                          ua=request.headers.get("User-Agent", ""), berkas_foto2=request.files.get("foto2"))
     return jsonify({k: v for k, v in res.items() if k in ("ok", "level", "pesan", "jenis", "status",
                                                           "jam", "lokasi", "jarak")})
 

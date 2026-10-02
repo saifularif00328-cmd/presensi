@@ -51,6 +51,7 @@ MENU = [
         ("Notifikasi WA", "wa", "notifikasi.pengaturan", (), "whatsapp"),
         ("Log Notifikasi", "log", "notifikasi.log", (), "whatsapp"),
         ("Metode Absen", "user-check", "absen_hp.metode", (), "presensi"),
+        ("Data Wajah", "webcam", "wajah.halaman", (), "presensi"),
         ("Perangkat Scan", "scan", "pos.halaman", (), "presensi"),
         ("Perangkat ESP32", "perangkat", "perangkat.daftar", (), "presensi"),
         ("Portal & PIN Siswa", "portal", "master.pin", (), "presensi"),

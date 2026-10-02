@@ -39,7 +39,7 @@ def create_app(test_config=None, start_jobs=True):
 
     from . import auth
     from .blueprints import (absen_hp, ibadah, kedisiplinan, main, master_data, notifikasi, perangkat, pos,
-                             perizinan, portal, presensi, sistem)
+                             perizinan, portal, presensi, sistem, wajah)
     from .menu import build_menu
     from .license import TIER_LABEL, current_tier, has_feature, langganan, tautan_perpanjang
     from . import utils
@@ -56,6 +56,7 @@ def create_app(test_config=None, start_jobs=True):
     app.register_blueprint(perangkat.bp)
     app.register_blueprint(pos.bp)
     app.register_blueprint(absen_hp.bp)
+    app.register_blueprint(wajah.bp)
     app.register_blueprint(portal.bp)
 
     from . import security

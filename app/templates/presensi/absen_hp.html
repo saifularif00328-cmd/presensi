@@ -37,7 +37,8 @@
         {% if r.status == 'ok' %}<span class="badge b-ok">{{ r.jenis }}</span>{% elif r.status == 'batal' %}<span class="badge">dibatalkan</span>{% else %}<span class="badge b-err">ditolak</span>{% endif %}
         <small>{{ r.pesan }}</small></div>
       <div class="sub">{% if r.lokasi_nama %}{{ r.lokasi_nama }} · {% endif %}{% if r.jarak is not none %}±{{ r.jarak }} m{% endif %}{% if r.akurasi is not none %} · akurasi ±{{ r.akurasi }} m{% endif %}
-        {% if r.lat is not none %} · <a href="https://www.google.com/maps?q={{ r.lat }},{{ r.lng }}" target="_blank" rel="noopener">peta</a>{% endif %}</div>
+        {% if r.lat is not none %} · <a href="https://www.google.com/maps?q={{ r.lat }},{{ r.lng }}" target="_blank" rel="noopener">peta</a>{% endif %}
+        {% if r.skor_wajah is not none %} · wajah {{ '%.2f'|format(r.skor_wajah|float) }}{% endif %}</div>
       {% if r.periksa and not r.diperiksa and r.status == 'ok' %}<div class="tandai">⚠ Perlu diperiksa: {{ r.alasan_periksa }}</div>{% endif %}
     </div>
     <div class="aksi">

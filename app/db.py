@@ -76,6 +76,9 @@ DEFAULT_SETTINGS = {
     "hp_kelas": "",
     "hp_akurasi_maks": "100",     # meter
     "hp_foto_hari": "30",         # lama simpan foto bukti
+    "hp_wajah": "mati",           # pencocokan wajah absen HP: mati / tandai / wajib
+    "wajah_ambang": "0.42",       # skor kemiripan minimal (SFace cosine)
+    "wajah_tantangan": "1",       # minta tengok kiri/kanan (cek foto asli, bukan foto dari layar)
     "scan_jeda_ganda": "60",      # detik: scan ulang siswa yang sama diabaikan (lintas gerbang)
     "wa_tpl_otp": "Kode masuk Portal Presensi {sekolah}: *{kode}*. Berlaku 5 menit. "
                   "Ketik hanya di halaman portal sekolah. Ini BUKAN kode verifikasi WhatsApp. "
@@ -360,6 +363,10 @@ def migrate(conn):
                      "ADD INDEX idx_scan_log_siswa (siswa_id, waktu)")
     if "gerbang_id" not in _columns(conn, "perangkat"):
         conn.execute("ALTER TABLE perangkat ADD COLUMN gerbang_id INT NULL AFTER ibadah_id")
+    if "tantangan" not in _columns(conn, "absen_hp_token"):
+        conn.execute("ALTER TABLE absen_hp_token ADD COLUMN tantangan VARCHAR(10) NULL")
+    if "skor_wajah" not in _columns(conn, "absen_hp"):
+        conn.execute("ALTER TABLE absen_hp ADD COLUMN skor_wajah DECIMAL(4,3) NULL AFTER diperiksa")
 
 
 def _seed(conn):

@@ -601,7 +601,7 @@ def uji_pulih(a):
 
 # ------------------------------------------------------------------ cek kesehatan + alarm
 
-LAYANAN_INTI = ("mariadb", "nginx", "cloudflared", "presensi-daftar")
+LAYANAN_INTI = ("mariadb", "nginx", "cloudflared", "presensi-daftar", "presensi-wajah")
 
 
 def _layanan_aktif(nama):

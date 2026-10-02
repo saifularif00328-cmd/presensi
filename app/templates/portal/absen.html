@@ -10,6 +10,8 @@
   .ab-kamera video, .ab-kamera img { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
   .ab-kamera img { transform: none; }
   .ab-bingkai { position: absolute; inset: 12% 18%; border: 3px dashed #ffffffaa; border-radius: 50%; pointer-events: none; }
+  .ab-perintah { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px; background: #101828cc; color: #fff; text-align: center; font-size: 1.15rem; font-weight: 700; }
+  .ab-perintah small { display: block; font-weight: 400; font-size: .9rem; color: #e4e7ec; }
   .ab-gps { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--surface-2, #f2f4f7); margin-bottom: 12px; font-size: .92rem; }
   .ab-hasil { text-align: center; padding: 20px 12px; border-radius: 16px; }
   .ab-hasil.success { background: #dcfce7; color: #067647; } .ab-hasil.warning { background: #fef3c7; color: #92400e; }
@@ -35,6 +37,7 @@
   <div id="tahap-mulai">
     <p>Pastikan Anda berada di area: <b>{{ lokasi|map(attribute='nama')|join(', ') }}</b>.
       HP akan meminta izin <b>lokasi</b> dan <b>kamera</b> — pilih <b>Izinkan</b>.</p>
+    {% if wajah %}<p class="help">Wajah Anda akan dicocokkan dengan data sekolah{% if tantangan %}; ikuti perintah <b>menengok</b> yang muncul di layar{% endif %}.</p>{% endif %}
     <button class="btn block" id="mulai">{{ icon('camera') }}Mulai absen</button>
   </div>
 
@@ -43,10 +46,13 @@
   </div>
 
   <div id="tahap-foto" hidden>
-    <div class="ab-kamera"><video id="video" playsinline autoplay muted></video><div class="ab-bingkai"></div></div>
+    <div class="ab-kamera"><video id="video" playsinline autoplay muted></video><div class="ab-bingkai"></div>
+      <div class="ab-perintah" id="perintah" hidden></div></div>
     <button class="btn block" id="ambil">{{ icon('camera') }}Ambil foto &amp; absen</button>
-    <label class="btn block outline mt" id="cadangan" hidden>{{ icon('upload') }}Ambil foto dengan kamera HP
+    <label class="btn block outline mt" id="cadangan" hidden>{{ icon('upload') }}<span id="cadangan-teks">Ambil foto dengan kamera HP</span>
       <input type="file" accept="image/*" capture="user" id="berkas" hidden></label>
+    <label class="btn block mt" id="cadangan2" hidden>{{ icon('upload') }}<span id="cadangan2-teks"></span>
+      <input type="file" accept="image/*" capture="user" id="berkas2" hidden></label>
   </div>
 
   <div id="tahap-hasil" hidden>
@@ -130,34 +136,67 @@
       });
     }
 
-    // 3. kirim
-    function kirim(blob) {
-      $('ambil').disabled = true; $('ambil').textContent = 'Mengirim…';
-      fetch({{ url_for('portal.absen_token')|tojson }}, { method: 'POST', headers: { 'X-CSRF-Token': csrf, 'Accept': 'application/json' } })
+    // 3. token (+ tantangan tengok) lalu kirim
+    var ARAH = { kiri: 'KIRI ⬅', kanan: 'KANAN ➡' };
+    function ambilToken() {
+      return fetch({{ url_for('portal.absen_token')|tojson }}, { method: 'POST', headers: { 'X-CSRF-Token': csrf, 'Accept': 'application/json' } })
         .then(function (r) { return r.json(); })
-        .then(function (t) {
-          if (!t.ok) throw new Error(t.pesan || 'Tidak bisa memulai absen');
-          var fd = new FormData();
-          fd.append('_csrf', csrf); fd.append('token', t.token); fd.append('perangkat', idHp());
-          fd.append('lat', posisi.coords.latitude); fd.append('lng', posisi.coords.longitude);
-          fd.append('akurasi', Math.round(posisi.coords.accuracy));
-          fd.append('umur_gps', Math.max(0, Date.now() - posisi.timestamp));
-          fd.append('foto', blob, 'foto.jpg');
-          return fetch({{ url_for('portal.absen_kirim')|tojson }}, { method: 'POST', body: fd, headers: { 'Accept': 'application/json' } });
-        })
+        .then(function (t) { if (!t.ok) throw new Error(t.pesan || 'Tidak bisa memulai absen'); return t; });
+    }
+    function sibuk() { $('ambil').disabled = true; $('ambil').textContent = 'Mengirim…'; }
+    function kirim(t, blob, blob2, sumber) {
+      sibuk();
+      var fd = new FormData();
+      fd.append('_csrf', csrf); fd.append('token', t.token); fd.append('perangkat', idHp());
+      fd.append('lat', posisi.coords.latitude); fd.append('lng', posisi.coords.longitude);
+      fd.append('akurasi', Math.round(posisi.coords.accuracy));
+      fd.append('umur_gps', Math.max(0, Date.now() - posisi.timestamp));
+      fd.append('sumber', sumber);
+      fd.append('foto', blob, 'foto.jpg');
+      if (blob2) fd.append('foto2', blob2, 'foto2.jpg');
+      return fetch({{ url_for('portal.absen_kirim')|tojson }}, { method: 'POST', body: fd, headers: { 'Accept': 'application/json' } })
         .then(function (r) { return r.json(); })
         .then(function (d) {
           var judul = d.ok ? (d.jenis === 'pulang' ? 'Absen pulang berhasil' : d.jenis === 'ganda' ? 'Sudah tercatat' : 'Absen masuk berhasil')
             : (d.level === 'warning' ? 'Sudah absen' : 'Absen ditolak');
           hasil(d.level || (d.ok ? 'success' : 'error'), judul, (d.pesan || '') + (d.lokasi ? ' · ' + d.lokasi : ''), !d.ok && d.level === 'error');
-        })
-        .catch(function (e) { hasil('error', 'Gagal mengirim', e.message || 'Periksa koneksi internet lalu coba lagi.', true); });
+        });
     }
+    function gagal(e) { hasil('error', 'Gagal mengirim', e.message || 'Periksa koneksi internet lalu coba lagi.', true); }
+    function tunggu(ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); }
+    function perintah(teks, kecil) { $('perintah').hidden = !teks; $('perintah').innerHTML = teks ? teks + (kecil ? '<small>' + kecil + '</small>' : '') : ''; }
+
+    // kamera langsung: foto lurus -> (tantangan) tengok -> foto kedua, otomatis
+    $('ambil').onclick = function () {
+      $('ambil').disabled = true;
+      var t;
+      ambilToken().then(function (tok) { t = tok; return fotoDariVideo(); })
+        .then(function (f1) {
+          if (!t.tantangan) return kirim(t, f1, null, 'kamera');
+          perintah('Tengok pelan ke ' + ARAH[t.tantangan], 'tahan sebentar…');
+          return tunggu(2200).then(fotoDariVideo).then(function (f2) { perintah(''); return kirim(t, f1, f2, 'kamera'); });
+        })
+        .catch(gagal);
+    };
+    // cadangan (kamera bawaan HP): foto 1 -> token -> foto 2 bila ada tantangan
+    var tokCadangan = null, foto1 = null;
+    $('berkas').onchange = function () {
+      if (!this.files[0]) return;
+      foto1 = this.files[0];
+      ambilToken().then(function (t) {
+        tokCadangan = t;
+        if (!t.tantangan) return kirim(t, foto1, null, 'berkas');
+        $('cadangan').hidden = true; $('cadangan2').hidden = false;
+        $('cadangan2-teks').textContent = 'Foto lagi sambil menengok ke ' + ARAH[t.tantangan];
+      }).catch(gagal);
+    };
+    $('berkas2').onchange = function () { if (this.files[0]) kirim(tokCadangan, foto1, this.files[0], 'berkas').catch(gagal); };
 
     $('mulai').onclick = cariLokasi;
-    $('ambil').onclick = function () { fotoDariVideo().then(kirim); };
-    $('berkas').onchange = function () { if (this.files[0]) kirim(this.files[0]); };
-    $('ulang').onclick = function () { $('ambil').disabled = false; $('ambil').innerHTML = 'Ambil foto &amp; absen'; cariLokasi(); };
+    $('ulang').onclick = function () {
+      $('ambil').disabled = false; $('ambil').innerHTML = 'Ambil foto &amp; absen';
+      $('cadangan2').hidden = true; perintah(''); cariLokasi();
+    };
   })();
 </script>
 {% endif %}

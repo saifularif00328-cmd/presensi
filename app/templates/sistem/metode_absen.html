@@ -42,7 +42,23 @@
     <div class="field"><label>Simpan foto bukti selama (hari)</label>
       <input name="hp_foto_hari" type="number" min="1" max="365" value="{{ s.hp_foto_hari or 30 }}" style="max-width:160px">
       <small class="help">Setelah itu foto dihapus otomatis; catatan absennya tetap ada.</small></div>
-    <button class="btn">{{ icon('save') }}Simpan</button>
+    <h4 style="margin:18px 0 6px">Pencocokan wajah (absen HP)</h4>
+    <div class="grid grid-2">
+      <div class="field"><label>Mode</label>
+        <select name="hp_wajah">
+          <option value="mati" {{ 'selected' if s.hp_wajah not in ('tandai', 'wajib') }}>Mati — hanya foto bukti</option>
+          <option value="tandai" {{ 'selected' if s.hp_wajah == 'tandai' }}>Tandai — tidak cocok tetap diterima, ditandai "perlu diperiksa"</option>
+          <option value="wajib" {{ 'selected' if s.hp_wajah == 'wajib' }}>Wajib — tidak cocok / belum ada data wajah ditolak</option>
+        </select>
+        <small class="help">Mulai dengan <b>Tandai</b> selama 1–2 minggu, lalu naikkan ke <b>Wajib</b>.
+          Data wajah diatur di <a href="{{ url_for('wajah.halaman') }}">Data Wajah</a>.</small></div>
+      <div class="field"><label>Ambang kemiripan (0,30–0,70)</label>
+        <input name="wajah_ambang" type="number" step="0.01" min="0.30" max="0.70" value="{{ s.wajah_ambang or '0.42' }}">
+        <small class="help">Lebih tinggi = lebih ketat. Bawaan 0,42.</small></div>
+    </div>
+    <label class="check"><input type="checkbox" name="wajah_tantangan" value="1" {{ 'checked' if s.wajah_tantangan != '0' }}>
+      Minta siswa menengok kiri/kanan (acak) — mencegah absen memakai foto teman dari layar HP lain</label>
+    <div class="mt"><button class="btn">{{ icon('save') }}Simpan</button></div>
   </form>
 </div>
 

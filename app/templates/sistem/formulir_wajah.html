@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>Formulir Persetujuan Data Wajah{% if kelas %} — {{ kelas.nama }}{% endif %}</title>
+  <style>
+    body { font-family: "Inter", Arial, sans-serif; margin: 12mm; color: #101828; font-size: 11pt; line-height: 1.45; }
+    .bar { margin-bottom: 8mm; } .bar button { padding: 8px 16px; font-size: 14px; cursor: pointer; }
+    .lembar { break-after: page; } .lembar:last-child { break-after: auto; }
+    h2 { font-size: 13pt; text-align: center; margin: 0 0 1mm; } .sub { text-align: center; margin: 0 0 5mm; color: #475467; }
+    table.isi td { padding: 1mm 2mm 1mm 0; vertical-align: top; }
+    ol { padding-left: 5mm; } .ttd { display: flex; justify-content: space-between; margin-top: 10mm; }
+    .ttd div { width: 45%; text-align: center; } .garis { margin-top: 20mm; border-top: 1px solid #101828; }
+    .pilih { margin: 3mm 0; } .kotak { display: inline-block; width: 4mm; height: 4mm; border: 1px solid #101828; margin-right: 2mm; vertical-align: -0.5mm; }
+    @media print { .bar { display: none; } body { margin: 10mm; } }
+  </style>
+</head>
+<body>
+  <div class="bar"><button onclick="window.print()">Cetak</button> Satu lembar per siswa{% if kelas %} — kelas {{ kelas.nama }} ({{ rows|length }} siswa){% endif %}.</div>
+  {% for s in (rows or [{'nama': '', 'nis': ''}]) %}
+  <div class="lembar">
+    <h2>PERSETUJUAN PENGGUNAAN DATA WAJAH UNTUK PRESENSI</h2>
+    <p class="sub">{{ sekolah }}</p>
+    <table class="isi">
+      <tr><td>Nama siswa</td><td>: {{ s.nama or '..............................................' }}</td></tr>
+      <tr><td>NIS / Kelas</td><td>: {{ s.nis or '..........' }} / {{ kelas.nama if kelas else '..........' }}</td></tr>
+      <tr><td>Nama orang tua/wali</td><td>: ..............................................</td></tr>
+    </table>
+    <p>Sekolah menggunakan pencocokan wajah agar <b>absen dari HP</b> benar-benar dilakukan oleh siswa yang bersangkutan.
+      Sesuai UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi, data wajah adalah data pribadi yang bersifat spesifik, sehingga
+      kami meminta persetujuan Bapak/Ibu. Ketentuannya:</p>
+    <ol>
+      <li>Data wajah dibuat dari foto siswa dan disimpan sebagai <b>kode angka terenkripsi</b>; hanya dipakai untuk presensi.</li>
+      <li>Data tidak dibagikan kepada pihak lain dan tidak dipakai untuk tujuan lain.</li>
+      <li>Foto bukti absen HP dihapus otomatis setelah masa simpan yang ditetapkan sekolah.</li>
+      <li>Persetujuan ini <b>sukarela</b> dan dapat <b>dicabut kapan saja</b> (melalui Portal orang tua atau sekolah); data wajah akan langsung dihapus.
+        Bila tidak setuju, siswa tetap dapat absen dengan kartu di sekolah.</li>
+    </ol>
+    <div class="pilih"><span class="kotak"></span><b>SETUJU</b> data wajah anak saya digunakan untuk presensi.</div>
+    <div class="pilih"><span class="kotak"></span><b>TIDAK SETUJU</b>.</div>
+    <div class="ttd"><div>Mengetahui,<br>Wali Kelas<div class="garis"></div></div>
+      <div>.................., ...........................<br>Orang tua/wali<div class="garis"></div></div></div>
+  </div>
+  {% endfor %}
+</body>
+</html>
