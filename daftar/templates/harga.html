@@ -1,0 +1,110 @@
+{% extends "_dasar.html" %}
+{% from "_ikon.html" import ikon_wa %}
+{% block judul %}Harga — {{ k.nama }}{% endblock %}
+{% block kepala %}
+<style>
+  .judul-hal { text-align: center; margin: 12px auto 26px; max-width: 720px; }
+  .judul-hal p { color: #475467; font-size: 1.05rem; margin: 0; }
+  .paket { display: grid; grid-template-columns: 1.1fr .9fr; gap: 20px; align-items: start; }
+  .harga-besar { font-size: 2.2rem; font-weight: 800; line-height: 1.1; margin: 4px 0; }
+  .harga-besar small { font-size: 1rem; font-weight: 500; color: var(--m); }
+  @media (max-width: 560px) { .harga-besar { font-size: 1.75rem; } .harga-besar small { white-space: nowrap; } }
+  .label-paket { display: inline-block; background: #eff4ff; color: var(--p); border-radius: 999px; padding: 4px 12px; font-weight: 700; font-size: .82rem; }
+  .centang { list-style: none; padding: 0; margin: 14px 0 0; columns: 2; column-gap: 24px; }
+  .centang li { padding: 5px 0 5px 26px; position: relative; break-inside: avoid; font-size: .93rem; }
+  .centang li::before { content: "✓"; position: absolute; left: 0; color: var(--ok); font-weight: 800; }
+  .hitung { display: flex; gap: 10px; align-items: end; margin: 14px 0; }
+  .hitung > div { flex: 1; }
+  .rinci { font-size: .88rem; color: var(--m); margin: 6px 0 0; }
+  .aksi { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  .tambahan { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 22px 0; }
+  .tambahan div { background: #fff; border: 1px solid var(--b); border-radius: 14px; padding: 16px; font-size: .92rem; }
+  .tambahan b { display: block; margin-bottom: 4px; }
+  details { border-bottom: 1px solid var(--b); padding: 12px 0; } details summary { font-weight: 600; cursor: pointer; }
+  details p { color: #475467; margin: 8px 0 0; }
+  @media (max-width: 820px) { .paket, .tambahan { grid-template-columns: 1fr; } .centang { columns: 1; } }
+</style>
+{% endblock %}
+{% block kanan %}<a class="tombol kedua" href="/#daftar">Coba gratis</a>{% endblock %}
+{% block isi %}
+<div class="judul-hal">
+  <h1>Satu paket, semua fitur</h1>
+  <p>Tidak ada fitur yang dikunci. Coba gratis {{ k.hari_demo }} hari dulu, bayar setelah yakin.</p>
+</div>
+
+<div class="paket">
+  <div class="kartu">
+    <span class="label-paket">Paket Lengkap</span>
+    {% if tahun %}
+    <div class="harga-besar" id="harga-tahun">{{ tahun|rupiah }} <small>/ tahun</small></div>
+    {% if semester %}<div class="redup">atau <b id="harga-semester">{{ semester|rupiah }}</b> / semester</div>{% endif %}
+    <p class="rinci">{% if k.siswa_termasuk and k.harga_per_100 %}Termasuk hingga {{ k.siswa_termasuk }} siswa; tambahan {{ k.harga_per_100|rupiah }} per 100 siswa per tahun.
+      {% else %}Untuk semua jumlah siswa.{% endif %}
+      {% if k.harga_pasang %} Biaya pemasangan &amp; pelatihan {{ k.harga_pasang|rupiah }} (sekali).{% else %} Pemasangan &amp; pelatihan online gratis.{% endif %}</p>
+    {% if k.siswa_termasuk and k.harga_per_100 %}
+    <form class="hitung" method="get">
+      <div><label for="siswa">Hitung untuk jumlah siswa</label><input id="siswa" name="siswa" type="number" min="1" max="20000" value="{{ siswa }}"></div>
+      <button class="kedua" type="submit">Hitung</button>
+    </form>
+    {% endif %}
+    {% else %}
+    <div class="harga-besar" style="font-size:1.6rem">Harga menyesuaikan jumlah siswa</div>
+    <p class="rinci">Kirim jumlah siswa sekolah Anda, kami kirimkan penawaran resmi (bisa untuk administrasi / anggaran sekolah).</p>
+    {% endif %}
+    <div class="aksi">
+      <a class="tombol utama" href="/#daftar">Coba gratis {{ k.hari_demo }} hari</a>
+      {% if wa_penawaran %}<a class="tombol wa" href="{{ wa_penawaran }}" target="_blank" rel="noopener">{{ ikon_wa() }} Minta penawaran</a>{% endif %}
+    </div>
+  </div>
+  <div class="kartu">
+    <h2>Yang Anda dapatkan</h2>
+    <ul class="centang" style="columns:1">
+      <li>Aplikasi online di <b>{{ domain }}/kode-sekolah</b> — tanpa server di sekolah</li>
+      <li>Akun untuk admin/TU, guru piket, dan guru BK</li>
+      <li>Pembaruan fitur selama berlangganan</li>
+      <li>Backup harian otomatis + salinan terenkripsi di luar server</li>
+      <li>Bantuan lewat WhatsApp</li>
+    </ul>
+  </div>
+</div>
+
+<div class="kartu" style="margin-top:20px">
+  <h2>Semua fitur termasuk</h2>
+  <ul class="centang">
+    <li>Absen kartu <b>RFID</b> &amp; <b>QR</b> (reader USB, scanner, kamera)</li>
+    <li>Banyak scanner di satu PC + layar gerbang terbagi &amp; suara</li>
+    <li><b>Absen dari HP</b> dengan lokasi GPS &amp; foto bukti (mis. PKL)</li>
+    <li><b>Pencocokan wajah</b> dengan persetujuan orang tua</li>
+    <li>Notifikasi <b>WhatsApp</b> otomatis ke orang tua</li>
+    <li>Portal orang tua &amp; siswa + pengajuan izin online</li>
+    <li>Rekap harian, bulanan, semester — Excel &amp; PDF</li>
+    <li>Desain &amp; cetak kartu pelajar</li>
+    <li>Presensi ibadah &amp; poin kedisiplinan</li>
+    <li>Monitor kehadiran langsung</li>
+    <li>Kalender libur &amp; aturan jam per jenjang / kelas</li>
+    <li>Ekspor seluruh data kapan saja</li>
+  </ul>
+</div>
+
+<div class="tambahan">
+  <div><b>Alat scan (opsional)</b>Reader RFID / scanner QR USB biasa sudah cukup. Kami bantu rekomendasi alat yang murah &amp; cocok.</div>
+  <div><b>Presensiku Pos (gratis)</b>Program Windows untuk 2–3+ scanner di satu PC dan antrean saat internet putus.</div>
+  <div><b>Pembayaran</b>Transfer bank; kuitansi / invoice untuk administrasi sekolah disediakan.</div>
+</div>
+
+<div class="kartu">
+  <h2>Pertanyaan umum</h2>
+  <details><summary>Apa yang terjadi setelah demo berakhir?</summary>
+    <p>Muncul pemberitahuan perpanjang via WhatsApp. Data yang sudah Anda masukkan <b>tidak dihapus</b>; {{ k.henti_setelah or 14 }} hari setelah demo berakhir aplikasi diistirahatkan, dan bisa diaktifkan kembali lengkap dengan datanya begitu berlangganan.</p></details>
+  <details><summary>Apakah perlu komputer server atau instalasi di sekolah?</summary>
+    <p>Tidak. Cukup browser (Chrome/Edge) di PC atau HP. Scanner USB dicolok ke PC piket/gerbang.</p></details>
+  <details><summary>Bagaimana jika internet sekolah putus?</summary>
+    <p>Halaman scan dan Presensiku Pos menyimpan tap sementara lalu mengirimnya otomatis saat internet kembali, dengan jam tap aslinya.</p></details>
+  <details><summary>Siapa pemilik data siswa?</summary>
+    <p>Sekolah. Data tiap sekolah terpisah, tidak dibagikan ke pihak lain, dan bisa diekspor kapan saja. Lihat <a href="/privasi">kebijakan privasi</a> dan <a href="/syarat">syarat &amp; ketentuan</a>.</p></details>
+  <details><summary>Apakah notifikasi WhatsApp ada biaya tambahan?</summary>
+    <p>Pengiriman WhatsApp memakai layanan gateway (mis. Fonnte) milik sekolah sendiri, sehingga biaya paket WA dibayar sekolah langsung ke penyedianya.</p></details>
+  <details><summary>Bisa berhenti kapan saja?</summary>
+    <p>Bisa. Tidak ada perpanjangan otomatis. Sebelum berhenti, unduh backup / ekspor data Anda.</p></details>
+</div>
+{% endblock %}

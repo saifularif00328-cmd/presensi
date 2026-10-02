@@ -14,6 +14,17 @@
         <div><label>Maks. demo aktif</label><input name="maks_demo" type="number" min="0" max="100" value="{{ k.maks_demo }}"></div>
         <div><label>Hentikan demo setelah (hari)</label><input name="henti_setelah" type="number" min="1" max="365" value="{{ k.henti_setelah or 14 }}"></div>
       </div>
+      <h4 style="margin:18px 0 6px">Harga (tampil di {{ '/harga' }}; 0 = "minta penawaran")</h4>
+      <div class="baris-form">
+        <div><label>Per tahun (Rp)</label><input name="harga_tahun" inputmode="numeric" value="{{ k.harga_tahun or 0 }}"></div>
+        <div><label>Per semester (Rp)</label><input name="harga_semester" inputmode="numeric" value="{{ k.harga_semester or 0 }}"></div>
+        <div><label>Pemasangan, sekali (Rp)</label><input name="harga_pasang" inputmode="numeric" value="{{ k.harga_pasang or 0 }}"></div>
+      </div>
+      <div class="baris-form">
+        <div><label>Termasuk s.d. siswa</label><input name="siswa_termasuk" inputmode="numeric" value="{{ k.siswa_termasuk or 0 }}"></div>
+        <div><label>Tambahan per 100 siswa / tahun (Rp)</label><input name="harga_per_100" inputmode="numeric" value="{{ k.harga_per_100 or 0 }}"></div>
+      </div>
+      <small class="redup">Contoh: Rp1.500.000/tahun termasuk 300 siswa, tambahan Rp250.000 per 100 siswa. Biarkan 0 bila tanpa batas siswa.</small><br>
       <button class="utama" style="margin-top:14px">Simpan</button>
     </form>
   </div>

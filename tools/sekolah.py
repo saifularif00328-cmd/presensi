@@ -43,7 +43,7 @@ DOMAIN = os.environ.get("PRESENSI_DOMAIN", "presensiku.biz.id")
 NGINX_CONF = os.environ.get("PRESENSI_NGINX_CONF", "/etc/nginx/presensi-sekolah.conf")
 PORT_AWAL = 7001
 TANPA_SISTEM = os.environ.get("PRESENSI_TANPA_SISTEM") == "1"  # uji: tanpa systemctl/nginx/chown
-from daftar import KONFIGURASI_AWAL  # noqa: E402  (wa, nama, hari_demo, maks_demo, henti_setelah)
+from daftar import KONFIGURASI_AWAL, KUNCI_HARGA  # noqa: E402  (wa, nama, demo, harga)
 
 
 def konfigurasi():
@@ -773,8 +773,8 @@ def setel(a):
         if not wa:
             raise SystemExit("Nomor WA tidak valid, contoh: 081234567890")
         k["wa"] = wa
-    for kunci in ("nama", "hari_demo", "maks_demo", "henti_setelah"):
-        if getattr(a, kunci) is not None:
+    for kunci in ("nama", "hari_demo", "maks_demo", "henti_setelah") + KUNCI_HARGA:
+        if getattr(a, kunci, None) is not None:
             k[kunci] = getattr(a, kunci)
     _tulis_json(os.path.join(ROOT, "_konfigurasi.json"), k)
     if a.notif_token is not None:
@@ -858,7 +858,8 @@ def _jalankan_perintah(c):
         a = argparse.Namespace(wa=d.get("wa") or None, nama=(str(d.get("nama") or "")[:40] or None),
                                hari_demo=_angka(d.get("hari_demo"), 1, 90),
                                maks_demo=_angka(d.get("maks_demo"), 0, 100),
-                               henti_setelah=_angka(d.get("henti_setelah"), 1, 365), notif_token=None)
+                               henti_setelah=_angka(d.get("henti_setelah"), 1, 365), notif_token=None,
+                               **{x: _angka(d.get(x), 0, 1_000_000_000, 0) for x in KUNCI_HARGA if x in d})
         try:
             setel(a)
         except SystemExit as e:
@@ -1155,6 +1156,11 @@ def main(argv=None):
     p.add_argument("--maks-demo", type=int, help="batas demo aktif bersamaan (RAM VPS)")
     p.add_argument("--henti-setelah", type=int, help="hari setelah demo habis sebelum dihentikan")
     p.add_argument("--notif-token", help="token Fonnte untuk WA pemberitahuan pendaftar baru")
+    p.add_argument("--harga-tahun", type=int, help="harga langganan per tahun (Rp), 0 = minta penawaran")
+    p.add_argument("--harga-semester", type=int, help="harga per semester (Rp), 0 = tidak ditawarkan")
+    p.add_argument("--siswa-termasuk", type=int, help="jumlah siswa yang termasuk harga dasar (0 = tanpa batas)")
+    p.add_argument("--harga-per-100", type=int, help="tambahan per 100 siswa per tahun di atas batas (Rp)")
+    p.add_argument("--harga-pasang", type=int, help="biaya pemasangan & pelatihan sekali bayar (Rp), 0 = gratis")
     p.set_defaults(fn=setel)
     sub.add_parser("proses-antrean").set_defaults(fn=proses_antrean)
     sub.add_parser("rapikan").set_defaults(fn=rapikan)

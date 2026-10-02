@@ -78,9 +78,12 @@ def test_kelola_sekolah_dari_panel(panel):
     t = _csrf(c)
     # pengaturan vendor
     c.post("/vendor/pengaturan", data={"_csrf": t, "wa": "085711112222", "nama": "Presensiku",
-                                       "hari_demo": "10", "maks_demo": "4", "henti_setelah": "21"})
+                                       "hari_demo": "10", "maks_demo": "4", "henti_setelah": "21",
+                                       "harga_tahun": "1.500.000", "harga_semester": "800000",
+                                       "siswa_termasuk": "300", "harga_per_100": "250.000", "harga_pasang": "0"})
     k = sk.konfigurasi()
     assert k["wa"] == "6285711112222" and k["hari_demo"] == 10 and k["henti_setelah"] == 21
+    assert k["harga_tahun"] == 1500000 and k["harga_per_100"] == 250000 and k["siswa_termasuk"] == 300
     # tambah sekolah berlangganan
     r = c.post("/vendor/tambah", data={
         "_csrf": t, "nama_sekolah": "SMP Negeri 7 Uji", "kode": "smpn7uji", "jenjang": "SMP / MTs",

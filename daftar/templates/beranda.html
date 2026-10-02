@@ -42,6 +42,7 @@
       rekap otomatis siap cetak. Tanpa instalasi di sekolah — cukup buka <b>{{ domain }}/kode-sekolah</b>.</p>
     <div class="aksi">
       <a class="tombol utama" href="#daftar">Coba gratis {{ k.hari_demo }} hari</a>
+      <a class="tombol kedua" href="/harga">Lihat harga</a>
       {% if wa_tanya %}<a class="tombol wa" href="{{ wa_tanya }}" target="_blank" rel="noopener">{{ ikon_wa() }} Tanya via WhatsApp</a>{% endif %}
     </div>
   </div>
@@ -64,8 +65,9 @@
   <div><b>WhatsApp orang tua</b><span>Pesan otomatis saat siswa datang, pulang, atau tidak hadir.</span></div>
   <div><b>Portal orang tua</b><span>Kehadiran harian, rekap semester, dan pengajuan izin online.</span></div>
   <div><b>Rekap otomatis</b><span>Harian, bulanan, semester — ekspor Excel &amp; PDF.</span></div>
-  <div><b>Kartu pelajar</b><span>Desain &amp; cetak kartu siswa langsung dari aplikasi.</span></div>
-  <div><b>Aman</b><span>Data tiap sekolah terpisah, HTTPS, backup harian otomatis.</span></div>
+  <div><b>Banyak scanner, satu PC</b><span>2–3+ scanner di gerbang, layar terbagi &amp; suara, tetap jalan saat internet putus.</span></div>
+  <div><b>Absen dari HP</b><span>Untuk PKL &amp; kegiatan luar: lokasi GPS, foto bukti, dan pencocokan wajah (dengan izin orang tua).</span></div>
+  <div><b>Aman</b><span>Data tiap sekolah terpisah, HTTPS, backup harian otomatis &amp; terenkripsi.</span></div>
 </div>
 
 <section id="daftar" class="kartu">
@@ -147,8 +149,9 @@
       </div>
       <div class="penuh">
         <label class="cek"><input type="checkbox" name="setuju" value="1" {{ 'checked' if nilai.setuju }}>
-          <span>Saya mewakili sekolah ini dan setuju data pendaftaran dipakai untuk menghubungi saya terkait demo &amp; langganan.
-          Data siswa yang saya masukkan tetap milik sekolah dan tidak dibagikan ke pihak lain.</span></label>
+          <span>Saya mewakili sekolah ini dan menyetujui <a href="/syarat" target="_blank">Syarat &amp; ketentuan</a> serta
+          <a href="/privasi" target="_blank">Kebijakan privasi</a>. Data pendaftaran dipakai untuk menghubungi saya terkait demo &amp; langganan;
+          data siswa yang saya masukkan tetap milik sekolah dan tidak dibagikan ke pihak lain.</span></label>
         {% if galat.setuju %}<div class="galat">{{ galat.setuju }}</div>{% endif %}
       </div>
       {% if turnstile %}<div class="penuh"><div class="cf-turnstile" data-sitekey="{{ turnstile }}"></div></div>{% endif %}

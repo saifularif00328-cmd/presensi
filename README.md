@@ -15,6 +15,7 @@ ESP32 di gerbang.
 | [`TUTORIAL_RFID.md`](TUTORIAL_RFID.md) · [`firmware/README.md`](firmware/README.md) | Kartu RFID, reader USB, perakitan ESP32 |
 | [`TUTORIAL_PORTAL.md`](TUTORIAL_PORTAL.md) | Panduan portal untuk orang tua & siswa |
 | [`TUTORIAL_MULTICABANG.md`](TUTORIAL_MULTICABANG.md) | Dashboard beberapa sekolah/cabang |
+| [`PANDUAN_JUAL_PILOT.md`](PANDUAN_JUAL_PILOT.md) | **Vendor:** menyiapkan server, harga, menjalankan pilot di sekolah, evaluasi, sampai berlangganan |
 
 ## Fitur
 

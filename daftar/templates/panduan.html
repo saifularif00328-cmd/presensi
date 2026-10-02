@@ -1,0 +1,69 @@
+{% extends "_dasar.html" %}
+{% from "_ikon.html" import ikon_wa %}
+{% block judul %}Panduan memulai — {{ k.nama }}{% endblock %}
+{% block kepala %}
+<style>
+  .isi h2 { margin: 0 0 6px; font-size: 1.12rem; } .isi p, .isi li { color: #344054; }
+  .langkah { counter-reset: n; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin: 18px 0; }
+  .langkah > div { counter-increment: n; position: relative; padding: 18px 18px 18px 64px; background: #fff; border: 1px solid var(--b); border-radius: 14px; }
+  .langkah > div::before { content: counter(n); position: absolute; left: 18px; top: 16px; width: 32px; height: 32px; border-radius: 50%;
+    background: var(--p); color: #fff; font-weight: 700; display: grid; place-items: center; }
+  .langkah ul { margin: 6px 0 0; padding-left: 20px; } .menu { background: #f2f4f7; border-radius: 6px; padding: 1px 6px; font-weight: 600; white-space: nowrap; }
+  .opsional > div::before { background: #98a2b3; }
+  @media (max-width: 560px) { .langkah > div { padding: 16px 14px 16px 54px; } .langkah > div::before { left: 12px; width: 30px; height: 30px; }
+    .menu { white-space: normal; } }
+</style>
+{% endblock %}
+{% block kanan %}<a class="tombol kedua" href="/#daftar">Coba gratis</a>{% endblock %}
+{% block isi %}
+<div class="isi" style="max-width:820px;margin:8px auto">
+  <h1 style="font-size:1.6rem">Panduan memulai untuk sekolah</h1>
+  <p class="redup">Aplikasi bisa dipakai hari ini juga. Ikuti urutan berikut setelah masuk sebagai admin di
+    <b>{{ domain }}/kode-sekolah/login</b>. Nama menu ditulis <span class="menu">seperti ini</span>.</p>
+
+  <div class="langkah">
+    <div><h2>Amankan akun admin</h2>
+      <p>Saat pertama masuk, ganti password awal. Buat akun terpisah untuk guru piket dan BK di <span class="menu">Sistem → Akses User</span>
+        — jangan berbagi akun admin.</p></div>
+    <div><h2>Isi identitas &amp; jam sekolah</h2>
+      <ul><li><span class="menu">Sistem → Pengaturan</span>: nama sekolah, logo, alamat, zona waktu.</li>
+        <li><span class="menu">Data Master → Tahun Ajaran</span>: aktifkan tahun ajaran &amp; semester berjalan.</li>
+        <li><span class="menu">Kedisiplinan → Aturan Jam</span>: jam masuk, batas telat, jam pulang (bisa berbeda per jenjang / kelas).</li>
+        <li><span class="menu">Sistem → Kalender Libur</span>: tanggal merah &amp; libur sekolah.</li></ul></div>
+    <div><h2>Masukkan kelas &amp; siswa</h2>
+      <ul><li><span class="menu">Data Kelas</span>: buat semua kelas.</li>
+        <li><span class="menu">Data Siswa → Import Excel/CSV</span>: unduh templat Excel, isi NIS, nama, kelas, nomor WA orang tua, lalu unggah.</li>
+        <li>Foto siswa (opsional) untuk kartu dan layar gerbang.</li></ul></div>
+    <div><h2>Siapkan kartu</h2>
+      <ul><li><b>Kartu QR</b>: <span class="menu">Cetak Kartu</span> → cetak PDF, laminasi.</li>
+        <li><b>Kartu RFID</b>: <span class="menu">Kartu RFID</span> → tap kartu kosong di reader lalu pilih siswanya.</li></ul></div>
+    <div><h2>Pasang scan di gerbang</h2>
+      <ul><li>Satu scanner: buka <span class="menu">Scan Kartu</span> di Chrome pada PC/laptop piket, colok scanner USB, langsung bisa dipakai.</li>
+        <li>2–3 scanner di satu PC, atau internet sering putus: pasang <b>Presensiku Pos</b> dari <span class="menu">Sistem → Perangkat Scan</span>, lalu tampilkan <span class="menu">Layar Gerbang</span> di monitor.</li>
+        <li>Uji dengan 3–5 kartu dan pastikan nama &amp; jam muncul di <span class="menu">Monitor Live</span>.</li></ul></div>
+    <div><h2>Hubungkan WhatsApp orang tua</h2>
+      <p>Daftar di layanan gateway WA (mis. Fonnte) dengan nomor WA sekolah, lalu tempel token-nya di <span class="menu">Sistem → Notifikasi WA</span>
+        dan kirim pesan uji. Pakai nomor khusus sekolah, bukan nomor pribadi.</p></div>
+    <div><h2>Bagikan portal ke orang tua &amp; siswa</h2>
+      <ul><li>Orang tua masuk di <b>{{ domain }}/kode-sekolah/portal</b> dengan nomor WA yang terdaftar (kode dikirim via WA).</li>
+        <li>Siswa masuk dengan NIS + PIN: cetak slip PIN per kelas di <span class="menu">Sistem → Portal &amp; PIN Siswa</span>.</li></ul></div>
+  </div>
+
+  <h2 style="margin-top:26px">Opsional</h2>
+  <div class="langkah opsional">
+    <div><h2>Absen dari HP (PKL, kegiatan luar)</h2>
+      <p><span class="menu">Sistem → Metode Absen</span>: aktifkan absen HP, tentukan titik lokasi &amp; radius, mulai dari 1–2 kelas.</p></div>
+    <div><h2>Pencocokan wajah</h2>
+      <p>Minta persetujuan orang tua (lewat portal atau formulir di <span class="menu">Sistem → Data Wajah</span>), buat data wajah,
+        lalu aktifkan mode <b>Tandai</b> dulu sebelum <b>Wajib</b>.</p></div>
+    <div><h2>Rutin bulanan</h2>
+      <p>Unduh rekap di <span class="menu">Rekap Presensi</span> / <span class="menu">SMT Presensi</span>. Backup harian berjalan otomatis;
+        Anda juga bisa mengunduh salinan sendiri di <span class="menu">Sistem → Pengaturan</span>.</p></div>
+  </div>
+
+  <div class="kartu" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between">
+    <span>Butuh bantuan memasang? Kami bantu lewat WhatsApp atau panggilan video.</span>
+    {% if wa_tanya %}<a class="tombol wa" href="{{ wa_tanya }}" target="_blank" rel="noopener">{{ ikon_wa() }} Hubungi kami</a>{% endif %}
+  </div>
+</div>
+{% endblock %}

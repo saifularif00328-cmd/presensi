@@ -28,11 +28,15 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[a-z]{2,}$", re.I)
 CADANGAN = {"daftar", "cek-kode", "aset", "static", "api", "admin", "www", "demo", "login",
             "logout", "portal", "masuk", "beranda", "presensi", "presensiku", "app", "mail",
             "status", "bantuan", "harga", "kontak", "favicon-ico", "robots-txt", "sekolah",
-            "vendor", "privasi", "tentang", "syarat", "sehat"}
+            "vendor", "privasi", "tentang", "syarat", "sehat", "panduan", "unduh"}
 JENJANG = ["SD / MI", "SMP / MTs", "SMA / MA", "SMK", "Pesantren", "Lainnya"]
 ZONA = {"Asia/Jakarta": "WIB", "Asia/Makassar": "WITA", "Asia/Jayapura": "WIT"}
 KONFIGURASI_AWAL = {"wa": "", "nama": "Presensiku", "hari_demo": 7, "maks_demo": 5,
-                    "henti_setelah": 14}
+                    "henti_setelah": 14,
+                    # harga (Rupiah; 0 = tidak ditampilkan -> "minta penawaran")
+                    "harga_tahun": 0, "harga_semester": 0, "siswa_termasuk": 0, "harga_per_100": 0,
+                    "harga_pasang": 0}
+KUNCI_HARGA = ("harga_tahun", "harga_semester", "siswa_termasuk", "harga_per_100", "harga_pasang")
 MAKS_PER_IP = 3          # pendaftaran per alamat IP per 24 jam
 
 
@@ -82,6 +86,26 @@ def normal_wa(teks):
     elif d.startswith("8"):
         d = "62" + d
     return d if re.fullmatch(r"628\d{7,12}", d) else None
+
+
+def hitung_harga(k, siswa, periode="tahun"):
+    """Perkiraan harga langganan untuk jumlah siswa tertentu (None bila harga belum diatur).
+    Harga dasar mencakup `siswa_termasuk` siswa; kelebihannya dikenai `harga_per_100` per 100
+    siswa per tahun (separuhnya untuk semester)."""
+    dasar = int(k.get(f"harga_{periode}") or 0)
+    if not dasar:
+        return None
+    termasuk, per_100 = int(k.get("siswa_termasuk") or 0), int(k.get("harga_per_100") or 0)
+    lebih = max(0, int(siswa or 0) - termasuk) if termasuk and per_100 else 0
+    tambahan = -(-lebih // 100) * per_100
+    return dasar + (tambahan if periode == "tahun" else tambahan // 2)
+
+
+def rupiah(n):
+    try:
+        return "Rp" + f"{int(n):,}".replace(",", ".")
+    except (TypeError, ValueError):
+        return "-"
 
 
 def tautan_wa(nomor, pesan):
@@ -254,6 +278,30 @@ def create_app(test_config=None):
                                   mimetype="text/plain")
         resp.headers["Cache-Control"] = "no-store"
         return resp
+
+    @app.get("/harga")
+    def harga():
+        k = konfigurasi()
+        siswa = request.args.get("siswa", type=int) or 300
+        siswa = max(1, min(siswa, 20000))
+        return render_template(
+            "harga.html", k=k, domain=domain(), siswa=siswa,
+            tahun=hitung_harga(k, siswa, "tahun"), semester=hitung_harga(k, siswa, "semester"),
+            wa_penawaran=tautan_wa(k["wa"], f"Halo {k['nama']}, kami ingin penawaran harga aplikasi "
+                                            f"Presensi Siswa Digital untuk sekolah kami (±{siswa} siswa). "
+                                            "Nama sekolah: ... Terima kasih."))
+
+    @app.get("/syarat")
+    def syarat():
+        k = konfigurasi()
+        return render_template("syarat.html", k=k, domain=domain())
+
+    @app.get("/panduan")
+    def panduan():
+        k = konfigurasi()
+        return render_template("panduan.html", k=k, domain=domain(),
+                               wa_tanya=tautan_wa(k["wa"], f"Halo {k['nama']}, saya butuh bantuan "
+                                                           "memakai aplikasi presensi."))
 
     @app.get("/privasi")
     def privasi():

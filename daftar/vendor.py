@@ -328,9 +328,12 @@ def pengaturan():
     from . import konfigurasi
     if request.method == "POST":
         f = request.form
+        from . import KUNCI_HARGA
         _flash_hasil(kirim_perintah("setel", wa=f.get("wa"), nama=f.get("nama"),
                                     hari_demo=f.get("hari_demo"), maks_demo=f.get("maks_demo"),
-                                    henti_setelah=f.get("henti_setelah")))
+                                    henti_setelah=f.get("henti_setelah"),
+                                    **{x: (f.get(x) or "0").replace(".", "").replace(",", "")
+                                       for x in KUNCI_HARGA}))
         return redirect(url_for("vendor.pengaturan"))
     from . import kesehatan
     return render_template("vendor/pengaturan.html", k=konfigurasi(), sistem=_ram_disk(),
@@ -345,12 +348,8 @@ def pasang(app):
                       SESSION_COOKIE_SECURE=not app.config.get("TESTING"))
     app.register_blueprint(bp)
 
-    @app.template_filter("rupiah")
-    def rupiah(n):
-        try:
-            return "Rp" + f"{int(n):,}".replace(",", ".")
-        except (TypeError, ValueError):
-            return "-"
+    from . import rupiah
+    app.template_filter("rupiah")(rupiah)
 
     @app.context_processor
     def _vendor_ctx():

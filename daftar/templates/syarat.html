@@ -1,0 +1,68 @@
+{% extends "_dasar.html" %}
+{% block judul %}Syarat & ketentuan — {{ k.nama }}{% endblock %}
+{% block kepala %}<style>.isi h2{margin:26px 0 8px;font-size:1.15rem}.isi p,.isi li{color:#344054}.isi ol,.isi ul{padding-left:22px}.isi li{margin:4px 0}</style>{% endblock %}
+{% block isi %}
+<div class="kartu isi" style="max-width:820px;margin:8px auto">
+  <h1 style="font-size:1.6rem">Syarat &amp; ketentuan layanan</h1>
+  <p class="redup">Berlaku untuk penggunaan aplikasi <b>Presensi Siswa Digital</b> di {{ domain }} yang disediakan oleh <b>{{ k.nama }}</b>
+    ("kami") bagi sekolah ("Sekolah"). Dengan mendaftar demo atau berlangganan, Sekolah menyetujui ketentuan ini.</p>
+
+  <h2>1. Layanan</h2>
+  <ol>
+    <li>Kami menyediakan aplikasi presensi berbasis web yang berjalan di server kami, dapat diakses Sekolah di alamat <b>{{ domain }}/kode-sekolah</b>.</li>
+    <li>Fitur yang tersedia adalah fitur yang tercantum di halaman <a href="/harga">Harga</a> pada saat berlangganan. Kami dapat menambah atau memperbaiki fitur tanpa biaya tambahan.</li>
+    <li>Alat scan (reader RFID, scanner QR, ESP32, komputer, HP) dan koneksi internet disediakan oleh Sekolah, kecuali disepakati lain secara tertulis.</li>
+    <li>Pengiriman WhatsApp memakai layanan gateway pihak ketiga yang didaftarkan dan dibayar oleh Sekolah. Kami tidak bertanggung jawab atas pemblokiran nomor atau gangguan dari penyedia tersebut.</li>
+  </ol>
+
+  <h2>2. Demo gratis</h2>
+  <ol>
+    <li>Demo berlaku {{ k.hari_demo }} hari dengan semua fitur, satu kali per sekolah.</li>
+    <li>Setelah demo berakhir, aplikasi meminta perpanjangan. {{ k.henti_setelah or 14 }} hari setelahnya aplikasi diistirahatkan, tetapi data tidak dihapus.</li>
+    <li>Data demo yang tidak dilanjutkan dapat kami hapus setelah 90 hari sejak demo berakhir, dengan pemberitahuan lebih dulu melalui WhatsApp kontak pendaftar.</li>
+  </ol>
+
+  <h2>3. Langganan &amp; pembayaran</h2>
+  <ol>
+    <li>Harga mengikuti penawaran tertulis / halaman <a href="/harga">Harga</a> yang berlaku saat pembayaran. Perubahan harga tidak berlaku untuk masa langganan yang sudah dibayar.</li>
+    <li>Pembayaran di muka melalui transfer ke rekening yang kami sebutkan secara tertulis. Kami menerbitkan kuitansi / invoice.</li>
+    <li>Tidak ada perpanjangan atau penagihan otomatis. Kami mengingatkan menjelang masa langganan berakhir.</li>
+    <li>Setelah masa langganan berakhir, ada masa tenggang 7 hari dengan fungsi normal. Setelah itu aplikasi masuk mode <b>baca saja</b>: data masih dapat dilihat dan diekspor, tetapi presensi baru tidak dicatat.</li>
+    <li>Biaya yang sudah dibayar tidak dapat dikembalikan, kecuali layanan tidak dapat digunakan karena kesalahan kami lebih dari 7 hari berturut-turut; dalam hal itu kami mengembalikan biaya secara proporsional untuk sisa masa langganan.</li>
+  </ol>
+
+  <h2>4. Data &amp; privasi</h2>
+  <ol>
+    <li>Seluruh data yang dimasukkan Sekolah (siswa, kehadiran, foto, dsb.) adalah <b>milik Sekolah</b>. Kami memprosesnya hanya untuk menjalankan layanan, sesuai <a href="/privasi">Kebijakan privasi</a>.</li>
+    <li>Data tiap sekolah dipisahkan, diakses melalui HTTPS, dan dibackup harian. Salinan backup disimpan terenkripsi.</li>
+    <li>Sekolah dapat mengekspor datanya kapan saja. Setelah berhenti berlangganan, data disimpan paling lama 90 hari lalu dihapus, atau lebih cepat bila Sekolah memintanya secara tertulis.</li>
+    <li>Sekolah bertanggung jawab memberi tahu orang tua/siswa tentang penggunaan data presensi, dan <b>wajib memperoleh persetujuan orang tua</b> sebelum mengaktifkan pencocokan wajah (UU No. 27 Tahun 2022 tentang Pelindungan Data Pribadi). Aplikasi menyediakan pencatatan persetujuan dan formulirnya.</li>
+    <li>Fitur absen dari HP memakai lokasi dan foto. Sekolah memutuskan apakah fitur ini diaktifkan dan berapa lama foto disimpan.</li>
+  </ol>
+
+  <h2>5. Kewajiban Sekolah</h2>
+  <ul>
+    <li>Menjaga kerahasiaan password akun admin/guru dan PIN siswa, serta segera mengganti password awal.</li>
+    <li>Memastikan kebenaran data yang dimasukkan.</li>
+    <li>Tidak memakai layanan untuk tujuan yang melanggar hukum, mengirim pesan spam, atau mencoba membobol sistem / data sekolah lain.</li>
+  </ul>
+
+  <h2>6. Ketersediaan &amp; batas tanggung jawab</h2>
+  <ol>
+    <li>Kami berupaya layanan tersedia setiap hari sekolah dan memantau server secara otomatis, tetapi tidak menjamin bebas gangguan 100% (mis. gangguan internet, penyedia server, atau pemeliharaan). Pemeliharaan terjadwal diusahakan di luar jam sekolah.</li>
+    <li>Saat internet terputus, tap kartu disimpan sementara di perangkat scan dan dikirim kemudian; kehilangan data akibat perangkat milik Sekolah rusak atau dimatikan sebelum terkirim di luar tanggung jawab kami.</li>
+    <li>Tanggung jawab kami atas kerugian apa pun dibatasi paling banyak sebesar biaya langganan yang dibayar Sekolah untuk 12 bulan terakhir.</li>
+    <li>Absen dari HP (lokasi &amp; wajah) adalah alat bantu. Keputusan akhir tentang kehadiran tetap berada pada Sekolah.</li>
+  </ol>
+
+  <h2>7. Penghentian</h2>
+  <p>Sekolah dapat berhenti kapan saja dengan tidak memperpanjang. Kami dapat menangguhkan akses bila terjadi pelanggaran berat atas ketentuan ini setelah pemberitahuan tertulis, kecuali untuk mencegah kerusakan atau kebocoran data yang mendesak.</p>
+
+  <h2>8. Perubahan &amp; hukum yang berlaku</h2>
+  <p>Kami dapat memperbarui ketentuan ini; perubahan penting diberitahukan kepada Sekolah sebelum berlaku. Ketentuan ini tunduk pada hukum Republik Indonesia,
+    dan perselisihan diselesaikan terlebih dahulu secara musyawarah.</p>
+
+  <h2>Kontak</h2>
+  <p>{{ k.nama }}{% if k.wa %} · WhatsApp <a href="https://wa.me/{{ k.wa }}">+{{ k.wa }}</a>{% endif %} · {{ domain }}</p>
+</div>
+{% endblock %}

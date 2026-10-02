@@ -68,7 +68,7 @@
         <small class="redup">Menyambung dari tanggal berakhir (bila belum lewat).</small></div>
       <div id="kotak-tgl" hidden><label for="sampai">Sampai tanggal</label><input id="sampai" name="sampai" type="date" min="{{ hari_ini }}"></div>
       <div><label for="maks">Batas siswa <span class="redup" style="font-weight:400">(0 = tanpa batas)</span></label><input id="maks" name="maks_siswa" type="number" min="0" value="{{ s.maks_siswa or 0 }}"></div>
-      <div><label for="nominal">Pembayaran (Rp)</label><input id="nominal" name="nominal" inputmode="numeric" placeholder="1500000"></div>
+      <div><label for="nominal">Pembayaran (Rp)</label><input id="nominal" name="nominal" inputmode="numeric" placeholder="{{ k.harga_tahun or 1500000 }}"></div>
       <div style="grid-column:1/-1"><label for="catatan">Catatan</label><input id="catatan" name="catatan" maxlength="200" placeholder="mis. transfer BRI 12/10, paket 1 tahun"></div>
     </div>
     <button class="utama" style="margin-top:12px">Perpanjang sekarang</button>

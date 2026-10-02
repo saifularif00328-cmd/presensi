@@ -186,3 +186,34 @@ def test_popup_menjelang_berakhir_bisa_ditutup(client, monkeypatch, tmp_path):
                   wa_vendor="")
     html = client.get("/").get_data(as_text=True)
     assert "modal-perpanjang" not in html and "Masa langganan berakhir" in html
+
+
+def test_hitung_harga():
+    from daftar import hitung_harga
+    k = {"harga_tahun": 1500000, "harga_semester": 800000, "siswa_termasuk": 300, "harga_per_100": 250000}
+    assert hitung_harga(k, 250) == 1500000
+    assert hitung_harga(k, 301) == 1750000                # dibulatkan ke atas per 100 siswa
+    assert hitung_harga(k, 450) == 2000000
+    assert hitung_harga(k, 450, "semester") == 1050000    # tambahan separuh untuk semester
+    assert hitung_harga({**k, "siswa_termasuk": 0}, 5000) == 1500000
+    assert hitung_harga({"harga_tahun": 0}, 100) is None
+
+
+def test_halaman_harga_syarat_panduan(web, srv):
+    _tulis(srv / "_konfigurasi.json", {"wa": "6285700001111", "nama": "Presensiku"})
+    h = web.get("/harga").get_data(as_text=True)
+    assert "Harga menyesuaikan jumlah siswa" in h and "Minta penawaran" in h and "wa.me/6285700001111" in h
+    _tulis(srv / "_konfigurasi.json", {"wa": "6285700001111", "nama": "Presensiku", "harga_tahun": 1500000,
+                                       "harga_semester": 800000, "siswa_termasuk": 300,
+                                       "harga_per_100": 250000})
+    h = web.get("/harga?siswa=450").get_data(as_text=True)
+    assert "Rp2.000.000" in h and "Rp1.050.000" in h and "hingga 300 siswa" in h
+    assert "%C2%B1450%20siswa" in h                         # jumlah siswa ikut di pesan WA
+    assert web.get("/harga?siswa=abc").status_code == 200
+    s = web.get("/syarat").get_data(as_text=True)
+    assert "Syarat &amp; ketentuan layanan" in s and "baca saja" in s and "Pelindungan Data Pribadi" in s
+    p = web.get("/panduan").get_data(as_text=True)
+    assert "Panduan memulai" in p and "Presensiku Pos" in p
+    b = web.get("/").get_data(as_text=True)
+    for tautan in ('href="/harga"', 'href="/panduan"', 'href="/syarat"', 'href="/privasi"'):
+        assert tautan in b
