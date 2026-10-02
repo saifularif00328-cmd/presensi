@@ -1,6 +1,7 @@
 {% extends "vendor/_v.html" %}
 {% block judul_v %}Sekolah{% endblock %}
 {% block isi_v %}
+{% if not sehat or sehat.masalah %}{% include "vendor/_sehat.html" %}{% endif %}
 <div class="kotak">
   {% for kunci, label in (('semua', 'Semua sekolah'), ('demo', 'Demo berjalan'), ('aktif', 'Berlangganan'), ('akan_habis', 'Habis ≤ 14 hari'), ('habis', 'Habis / nonaktif')) %}
   <a href="?f={{ kunci }}" class="{{ 'aktif' if filt == kunci }}"><b>{{ hitung[kunci] + (hitung.nonaktif + hitung.berhenti if kunci == 'habis' else 0) }}</b><span>{{ label }}</span></a>

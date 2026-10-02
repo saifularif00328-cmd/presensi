@@ -232,9 +232,9 @@ def dasbor():
             baris.append({"kode": kode, "s": s, "keadaan": k, "sisa": sisa_hari(s)})
     urut = {"habis": 0, "akan_habis": 1, "demo": 2, "aktif": 3, "nonaktif": 4, "berhenti": 5}
     baris.sort(key=lambda b: (urut.get(b["keadaan"], 9), b["sisa"] if b["sisa"] is not None else 9999))
-    from . import konfigurasi
+    from . import kesehatan, konfigurasi
     return render_template("vendor/dasbor.html", baris=baris, hitung=hitung, filt=filt, cari=cari,
-                           dibuat=dibuat, sistem=_ram_disk(), k=konfigurasi())
+                           dibuat=dibuat, sistem=_ram_disk(), k=konfigurasi(), sehat=kesehatan())
 
 
 @bp.get("/sekolah/<kode>")
@@ -332,7 +332,9 @@ def pengaturan():
                                     hari_demo=f.get("hari_demo"), maks_demo=f.get("maks_demo"),
                                     henti_setelah=f.get("henti_setelah")))
         return redirect(url_for("vendor.pengaturan"))
-    return render_template("vendor/pengaturan.html", k=konfigurasi(), sistem=_ram_disk())
+    from . import kesehatan
+    return render_template("vendor/pengaturan.html", k=konfigurasi(), sistem=_ram_disk(),
+                           sehat=kesehatan())
 
 
 def pasang(app):

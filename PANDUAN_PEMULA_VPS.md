@@ -199,6 +199,52 @@ menambah sekolah — tanpa perintah SSH.
 > **HP hilang:** jalankan lagi `presensi-sekolah akun-vendor` lewat SSH. Akun lama dan semua sesi
 > login lama langsung tidak berlaku.
 
+## TAHAP 6d — Backup ke Google Drive & alarm (sangat disarankan)
+Backup harian sudah otomatis, tapi tersimpan di VPS yang sama. Supaya aman bila VPS rusak, salin juga ke
+Google Drive (gratis 15 GB) — **terenkripsi**, jadi Google pun tidak bisa membaca isinya.
+
+**A. Hubungkan Google Drive** (±10 menit, sekali saja)
+1. Di VPS ketik `rclone config`, lalu jawab:
+   | Pertanyaan | Ketik |
+   |---|---|
+   | `n) New remote` | `n` |
+   | `name>` | `gdrive` |
+   | `Storage>` | `drive` |
+   | `client_id>` dan `client_secret>` | Enter saja |
+   | `scope>` | `1` |
+   | `service_account_file>` | Enter |
+   | `Edit advanced config?` | `n` |
+   | `Use web browser to automatically authenticate?` | `n` |
+   Muncul baris berisi `rclone authorize "drive" "eyJ..."`. **Biarkan jendela ini terbuka.**
+2. Di laptop: buka **rclone.org/downloads** → unduh **Windows – AMD64** → ekstrak (klik kanan → Extract All).
+3. Buka folder hasil ekstrak, klik kolom alamat folder, ketik `powershell`, Enter.
+4. Ketik `.\rclone.exe ` lalu tempel bagian `authorize "drive" "eyJ..."` dari VPS, Enter.
+   Browser terbuka → pilih akun Google → **Allow** / **Izinkan**.
+5. Di PowerShell laptop muncul kode panjang di antara `--->` dan `<---`. Salin kode itu (tanpa panahnya),
+   tempel ke jendela VPS yang menunggu `config_token>`, Enter.
+6. `Configure this as a Shared Drive?` → `n`, lalu `y` (simpan), lalu `q` (keluar).
+
+**B. Aktifkan backup terenkripsi**
+```
+presensi-sekolah backup-drive --pasang
+```
+Muncul **sandi 1** dan **sandi 2** — **tulis di kertas / simpan di password manager**. Tanpa kedua sandi
+ini backup di Drive tidak bisa dibuka. (Boleh difoto, tapi jangan kirim ke siapa pun.)
+
+Uji sekarang:
+```
+presensi-sekolah backup --semua
+presensi-sekolah uji-pulih
+```
+Berhasil bila muncul `OK` untuk tiap sekolah.
+
+**C. Alarm bila server bermasalah**
+- WA otomatis ke HP Anda (butuh token Fonnte milik Anda): `presensi-sekolah setel --notif-token TOKEN_FONNTE`
+- **UptimeRobot** (gratis, juga memberi tahu bila VPS mati total): daftar di **uptimerobot.com** → **Add New
+  Monitor** → Monitor Type **HTTP(s)** → URL `https://presensiku.biz.id/sehat` → Interval **5 minutes** →
+  centang email Anda → **Create Monitor**. Pasang juga aplikasi UptimeRobot di HP agar dapat notifikasi.
+- Kondisi server juga tampil di panel vendor (menu **Pengaturan** → kotak *Server sehat*).
+
 ## TAHAP 7 — Tambah sekolah pertama
 Di VPS:
 ```
@@ -237,7 +283,9 @@ presensi-sekolah perpanjang smpn1 --hari 365
 | `presensi-sekolah status` | Cek RAM/disk. **RAM > 80% terus** → upgrade ke Paket M |
 | `presensi-sekolah perpanjang smpn1 --hari 365` | Perpanjang langganan |
 | `presensi-sekolah nonaktif smpn1` | Belum bayar → mode baca-saja |
-| `presensi-sekolah backup --semua` | Backup sekarang |
+| `presensi-sekolah backup --semua` | Backup sekarang (lokal + Google Drive) |
+| `presensi-sekolah cek-kesehatan` | Cek disk, RAM, layanan, backup |
+| `presensi-sekolah uji-pulih` | Buktikan backup bisa dipulihkan |
 | `exit` | Keluar dari VPS |
 
 ## Bila ada masalah

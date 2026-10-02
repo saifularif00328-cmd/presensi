@@ -1,0 +1,14 @@
+{% set st = sehat.status or {} %}
+{% set kritis = (sehat.masalah or [])|selectattr('tingkat', 'equalto', 'kritis')|list %}
+<div class="kartu" style="margin-bottom:16px;border-color:{{ '#fecdca' if kritis else ('#fedf89' if sehat.masalah else '#abefc6') }}">
+  <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
+    <h3 style="margin:0">{% if not sehat %}Pemeriksaan server belum berjalan{% elif kritis %}⚠️ Server bermasalah{% elif sehat.masalah %}Server berjalan — ada peringatan{% else %}✅ Server sehat{% endif %}</h3>
+    <small class="redup">Diperiksa {{ sehat.waktu or '-' }}</small>
+  </div>
+  {% if sehat.masalah %}<ul style="margin:10px 0 0;padding-left:20px">{% for x in sehat.masalah %}<li style="color:{{ 'var(--er)' if x.tingkat == 'kritis' else '#b54708' }}">{{ x.pesan }}</li>{% endfor %}</ul>{% endif %}
+  <dl class="kv" style="margin-top:12px">
+    <dt>Backup harian</dt><dd>{% if st.backup %}{{ 'OK' if st.backup.ok else 'GAGAL' }} · {{ st.backup.waktu }} · {{ st.backup.jumlah }} sekolah{% else %}-{% endif %}</dd>
+    <dt>Google Drive</dt><dd>{% if not sehat.drive %}belum dipasang{% elif st.drive %}{{ 'OK' if st.drive.ok else 'GAGAL' }} · {{ st.drive.waktu }}{% if st.drive.jumlah_berkas %} · {{ st.drive.jumlah_berkas }} berkas{% endif %}{% else %}belum berjalan{% endif %}</dd>
+    <dt>Uji pulih</dt><dd>{% if st.uji_pulih %}{{ 'OK' if st.uji_pulih.ok else 'GAGAL' }} · {{ st.uji_pulih.waktu }} (dari {{ st.uji_pulih.dari }}){% else %}belum pernah{% endif %}</dd>
+  </dl>
+</div>

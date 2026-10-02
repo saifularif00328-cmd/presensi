@@ -28,7 +28,7 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[a-z]{2,}$", re.I)
 CADANGAN = {"daftar", "cek-kode", "aset", "static", "api", "admin", "www", "demo", "login",
             "logout", "portal", "masuk", "beranda", "presensi", "presensiku", "app", "mail",
             "status", "bantuan", "harga", "kontak", "favicon-ico", "robots-txt", "sekolah",
-            "vendor", "privasi", "tentang", "syarat"}
+            "vendor", "privasi", "tentang", "syarat", "sehat"}
 JENJANG = ["SD / MI", "SMP / MTs", "SMA / MA", "SMK", "Pesantren", "Lainnya"]
 ZONA = {"Asia/Jakarta": "WIB", "Asia/Makassar": "WITA", "Asia/Jayapura": "WIT"}
 KONFIGURASI_AWAL = {"wa": "", "nama": "Presensiku", "hari_demo": 7, "maks_demo": 5,
@@ -59,6 +59,11 @@ def konfigurasi():
 def publik():
     return {"kode": [], "demo_aktif": 0,
             **_baca_json(os.path.join(akar(), "_publik.json"), {})}
+
+
+def kesehatan():
+    """Hasil `presensi-sekolah cek-kesehatan` terakhir (tiap 10 menit)."""
+    return _baca_json(os.path.join(akar(), "_kesehatan.json"), {})
 
 
 def dir_masuk():
@@ -232,6 +237,23 @@ def create_app(test_config=None):
     @app.get("/")
     def beranda():
         return tampil_beranda()
+
+    @app.get("/sehat")
+    def sehat():
+        """Untuk UptimeRobot: 200 bila pemeriksaan berjalan & tanpa masalah kritis, selain itu 503.
+        Sengaja tanpa rincian (tidak membocorkan nama layanan)."""
+        k = kesehatan()
+        segar = False
+        try:
+            segar = (datetime.now() - datetime.fromisoformat(k.get("waktu", ""))).total_seconds() < 1800
+        except ValueError:
+            pass
+        kritis = any(m.get("tingkat") == "kritis" for m in k.get("masalah", []))
+        ok = segar and not kritis
+        resp = app.response_class("ok" if ok else "masalah", status=200 if ok else 503,
+                                  mimetype="text/plain")
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
 
     @app.get("/privasi")
     def privasi():

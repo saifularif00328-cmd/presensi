@@ -220,15 +220,45 @@ curl -fsSL https://raw.githubusercontent.com/saifularif00328-cmd/presensi/claude
 systemctl restart 'presensi@*'
 ```
 
-## 9. Backup ke luar VPS (disarankan)
-```bash
-apt install -y rclone && rclone config        # tambahkan remote "gdrive" (Google Drive)
-echo '30 3 * * * root rclone copy /srv/presensi/_backup gdrive:presensi-backup' > /etc/cron.d/presensi-rclone
-```
+## 9. Keamanan data: backup Google Drive, uji pulih, alarm
+Berjalan otomatis setelah `install_vps.sh`:
+
+| Jadwal | Pekerjaan |
+|---|---|
+| 03.00 tiap hari | Backup semua sekolah ke `/srv/presensi/_backup` (14 terakhir) → lalu ke Google Drive **terenkripsi** (30 hari) + `daftar-sekolah.json` |
+| 04.00 tiap Minggu | **Uji pulih**: backup terbaru (dari Drive bila terpasang) dipulihkan ke database sementara, dicek, lalu dihapus |
+| Tiap 10 menit | **Cek kesehatan**: disk, RAM, layanan, tiap sekolah, backup, Drive, uji pulih → `_kesehatan.json`, panel vendor, `/sehat`, WA ke Anda |
+
+### Pasang Google Drive (sekali)
+1. Di VPS: `rclone config` → `n` (new) → nama `gdrive` → Storage `drive` → client_id/secret Enter → scope `1`
+   → service account Enter → advanced `n` → **Use web browser? `n`**. Muncul perintah `rclone authorize "drive" "eyJ..."`.
+2. Di laptop Windows: unduh rclone (rclone.org/downloads → Windows AMD64), ekstrak, buka PowerShell di folder itu,
+   jalankan `.\rclone.exe authorize "drive" "eyJ..."` (salin persis dari VPS) → pilih akun Google → **Allow**.
+   Salin token yang muncul (antara `--->` dan `<---`) → tempel di VPS → team drive `n` → `y` → `q`.
+3. `presensi-sekolah backup-drive --pasang` → **simpan sandi 1 & sandi 2** yang tampil (kertas / password manager).
+   Tanpa kedua sandi ini backup di Drive tidak bisa dibuka.
+4. Uji: `presensi-sekolah backup --semua` lalu `presensi-sekolah uji-pulih`.
+
+### Alarm
+- WA ke nomor vendor saat ada masalah kritis (pengingat tiap 6 jam, kabar saat normal): butuh
+  `presensi-sekolah setel --notif-token TOKEN_FONNTE`.
+- **UptimeRobot** (gratis, juga menangkap VPS mati total): uptimerobot.com → Add New Monitor → HTTP(s) →
+  URL `https://presensiku.biz.id/sehat` → interval 5 menit → kontak email/aplikasi. `/sehat` menjawab 503 bila
+  ada masalah kritis atau pemeriksaan berhenti.
+- Manual: `presensi-sekolah cek-kesehatan`.
+
+### Pemulihan bencana (VPS hilang / pindah VPS)
+1. VPS baru → `install_vps.sh` → `cloudflared tunnel login` + `tunnel_vps.sh` (bagian 3–4).
+2. `rclone config` (gdrive, seperti di atas) → `presensi-sekolah backup-drive --pasang --sandi <sandi 1> --sandi2 <sandi 2>`.
+3. `presensi-sekolah ambil-drive` → berkas di `/srv/presensi/_pulih/` (+ `daftar-sekolah.json` berisi nama, tanggal
+   langganan, kontak).
+4. Tiap sekolah: `presensi-sekolah pindah <kode> /srv/presensi/_pulih/<kode>-<tanggal>.zip --nama "..." --sampai <tanggal>`.
+5. `presensi-sekolah setel --wa ...` dan `presensi-sekolah akun-vendor`.
 
 ## Bila ada masalah
 | Gejala | Periksa |
 |---|---|
 | `presensiku.biz.id` error 1033 / 502 | `systemctl status cloudflared` · `systemctl status nginx` |
+| Alarm "Backup ke Google Drive gagal" | `presensi-sekolah backup-drive` (lihat pesan); token Drive kedaluwarsa → `rclone config reconnect gdrive:` |
 | "Server sedang dimulai ulang" | `systemctl status presensi@smpn1` · `journalctl -u presensi@smpn1 -n 50` |
 | `/kode` 404 | Kode salah, atau sekolah belum ditambah (`presensi-sekolah daftar`) |

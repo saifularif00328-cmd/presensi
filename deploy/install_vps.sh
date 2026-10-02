@@ -10,7 +10,9 @@
 #   - user sistem "presensi", data sekolah di /srv/presensi/<kode>/
 #   - firewall: hanya SSH yang terbuka; web masuk lewat Cloudflare Tunnel
 #   - fail2ban untuk SSH, update keamanan otomatis, zona waktu Asia/Jakarta
-#   - backup harian semua sekolah (03.00) ke /srv/presensi/_backup
+#   - backup harian semua sekolah (03.00) ke /srv/presensi/_backup (+ Google Drive terenkripsi bila
+#     dipasang dengan `presensi-sekolah backup-drive --pasang`), uji pulih mingguan, cek kesehatan
+#     tiap 10 menit dengan alarm WA
 #  Setelah itu: tambahkan sekolah dengan  presensi-sekolah tambah <kode> --nama "..."
 # ============================================================================
 set -euo pipefail
@@ -123,10 +125,17 @@ if ! command -v cloudflared >/dev/null; then
   dpkg -i /tmp/cloudflared.deb
 fi
 
-echo "==> Backup harian 03.00"
+echo "==> rclone (backup ke Google Drive)"
+if ! command -v rclone >/dev/null; then
+  curl -fsSL https://rclone.org/install.sh | bash >/dev/null || apt-get install -y -q rclone
+fi
+
+echo "==> Backup harian 03.00, uji pulih mingguan, cek kesehatan tiap 10 menit"
 cat > /etc/cron.d/presensi-backup <<'EOF'
 0 3 * * * root /usr/local/bin/presensi-sekolah backup --semua >> /var/log/presensi-backup.log 2>&1
 30 3 * * * root /usr/local/bin/presensi-sekolah rapikan >> /var/log/presensi-backup.log 2>&1
+0 4 * * 0 root /usr/local/bin/presensi-sekolah uji-pulih >> /var/log/presensi-backup.log 2>&1
+*/10 * * * * root /usr/local/bin/presensi-sekolah cek-kesehatan --diam >> /var/log/presensi-kesehatan.log 2>&1
 */5 * * * * root /usr/local/bin/presensi-sekolah proses-antrean >> /var/log/presensi-antrean.log 2>&1
 EOF
 
