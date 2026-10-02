@@ -148,4 +148,4 @@ Installer lalu tersedia di `https://presensiku.biz.id/unduh/presensiku-pos-setup
 di **Sistem → Perangkat Scan**. Cara manual tetap bisa: `presensi-sekolah pasang-pos berkas.exe --versi 1.0.0`.
 Untuk versi baru, naikkan `VERSI` di `pos/presensiku_pos/__init__.py` dan `AppVersion` di
 `installer/presensiku_pos.iss`.
-   Pos lama akan menampilkan pemberitahuan "versi baru tersedia".
+Pos yang sudah terpasang di sekolah akan menampilkan pemberitahuan "versi baru tersedia".
