@@ -69,7 +69,8 @@ def api_monitor():
     if kelas_id:
         kf = " AND s.kelas_id = ?"
         args.append(kelas_id)
-    feed = query("SELECT l.id, l.waktu, l.jenis, l.status, l.pesan, l.metode, s.id AS siswa_id, "
+    feed = query("SELECT l.id, l.waktu, l.jenis, l.status, l.pesan, l.metode, l.gerbang, "
+                 "s.id AS siswa_id, "
                  "s.nama, s.foto, k.nama AS kelas FROM scan_log l "
                  "LEFT JOIN siswa s ON s.id = l.siswa_id LEFT JOIN kelas k ON k.id = s.kelas_id "
                  f"WHERE date(l.waktu) = ? {kf} "
@@ -179,6 +180,10 @@ def rekap():
         args.append(ket)
     elif ket == "T":
         where.append("p.status_masuk = 'Telat'")
+    gerbang = request.args.get("gerbang", "")
+    if gerbang:
+        where.append("(p.gerbang_masuk = ? OR p.gerbang_pulang = ?)")
+        args += [gerbang, gerbang]
     rows = query("SELECT p.*, s.nama, s.nis, k.nama AS kelas FROM presensi p "
                  "JOIN siswa s ON s.id = p.siswa_id LEFT JOIN kelas k ON k.id = p.kelas_id "
                  f"WHERE {' AND '.join(where)} ORDER BY p.tanggal DESC, k.nama, s.nama", args)
@@ -186,15 +191,20 @@ def rekap():
     if fmt in ("xlsx", "pdf"):
         data = [(r["tanggal"], r["nis"] or "", r["nama"], r["kelas"] or "", r["keterangan"],
                  (r["jam_masuk"] or "")[:5], r["status_masuk"] or "", (r["jam_pulang"] or "")[:5],
-                 r["status_pulang"] or "", r["sumber"], r["catatan"] or "") for r in rows]
+                 r["status_pulang"] or "", r["gerbang_masuk"] or "", r["gerbang_pulang"] or "",
+                 r["sumber"], r["catatan"] or "") for r in rows]
         return send_export(fmt, f"rekap-presensi-{dari}-{sampai}", "Rekap Presensi",
                            ["Tanggal", "NIS", "Nama", "Kelas", "Ket", "Masuk", "Status Masuk",
-                            "Pulang", "Status Pulang", "Sumber", "Catatan"], data,
+                            "Pulang", "Status Pulang", "Gerbang Masuk", "Gerbang Pulang", "Sumber",
+                            "Catatan"], data,
                            f"{get_setting('nama_sekolah')} — {dari} s.d. {sampai}")
     ringkas = {k: sum(1 for r in rows if r["keterangan"] == k) for k in utils.KETERANGAN}
     ringkas["T"] = sum(1 for r in rows if r["status_masuk"] == "Telat")
     return render_template("presensi/rekap.html", rows=rows, dari=dari, sampai=sampai,
-                           kelas=kelas_options(), kelas_id=kelas_id, ket=ket, ringkas=ringkas)
+                           kelas=kelas_options(), kelas_id=kelas_id, ket=ket, ringkas=ringkas,
+                           gerbang=gerbang,
+                           daftar_gerbang=[g["nama"] for g in query(
+                               "SELECT nama FROM gerbang ORDER BY urutan, nama")])
 
 
 @bp.route("/smt")

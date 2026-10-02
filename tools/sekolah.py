@@ -20,6 +20,7 @@
     presensi-sekolah ambil-drive [--tanggal 2026-10-01]     (unduh backup dari Drive, mis. VPS baru)
     presensi-sekolah uji-pulih [smpn1]                      (uji backup bisa dipulihkan; mingguan)
     presensi-sekolah cek-kesehatan                          (disk, RAM, layanan, backup + alarm WA)
+    presensi-sekolah pasang-pos presensiku-pos-setup.exe --versi 1.0.0  (unduhan /unduh/ untuk sekolah)
 
 Setiap sekolah = database MySQL sendiri + folder /srv/presensi/<kode> + layanan
 presensi@<kode> + satu blok Nginx (https://<domain>/<kode>/ -> port).
@@ -1040,6 +1041,23 @@ def rapikan(_a=None):
                 os.remove(os.path.join(hasil, f))
 
 
+def pasang_pos(a):
+    """Taruh installer Presensiku Pos di https://<domain>/unduh/ + catat versinya (Pos yang sudah
+    terpasang akan menampilkan pemberitahuan 'versi baru tersedia')."""
+    if not os.path.exists(a.berkas):
+        raise SystemExit(f"File tidak ada: {a.berkas}")
+    if not re.fullmatch(r"\d+\.\d+\.\d+", a.versi):
+        raise SystemExit("Versi harus seperti 1.0.0")
+    tujuan = os.path.join(ROOT, "_unduh")
+    os.makedirs(tujuan, exist_ok=True)
+    shutil.copyfile(a.berkas, os.path.join(tujuan, "presensiku-pos-setup.exe.tmp"))
+    os.replace(os.path.join(tujuan, "presensiku-pos-setup.exe.tmp"),
+               os.path.join(tujuan, "presensiku-pos-setup.exe"))
+    _tulis_json(os.path.join(tujuan, "pos-versi.json"),
+                {"versi": a.versi, "tanggal": date.today().isoformat()})
+    print(f"Presensiku Pos {a.versi}: https://{DOMAIN}/unduh/presensiku-pos-setup.exe")
+
+
 def akun_vendor(a):
     """Buat/ganti akun panel vendor https://<domain>/vendor (password + kode Google Authenticator)."""
     import base64
@@ -1159,6 +1177,10 @@ def main(argv=None):
     p = sub.add_parser("cek-kesehatan")
     p.add_argument("--diam", action="store_true")
     p.set_defaults(fn=cek_kesehatan)
+    p = sub.add_parser("pasang-pos")
+    p.add_argument("berkas")
+    p.add_argument("--versi", required=True)
+    p.set_defaults(fn=pasang_pos)
     p = sub.add_parser("akun-vendor")
     p.add_argument("--username", default="vendor")
     p.add_argument("--password", help=argparse.SUPPRESS)       # untuk pengujian

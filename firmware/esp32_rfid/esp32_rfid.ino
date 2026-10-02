@@ -1,5 +1,5 @@
 /*
-  Presensi Siswa Digital — perangkat tap RFID (ESP32 + RC522 + LCD 16x2 I2C)
+  Presensi Siswa Digital — perangkat tap RFID / scan QR (ESP32 + RC522 + modul QR + LCD 16x2 I2C)
   ---------------------------------------------------------------------------
   - Tap kartu MIFARE 13,56 MHz -> dikirim ke server lewat HTTPS (ditandatangani HMAC-SHA256)
   - Hasil tampil di LCD + bunyi buzzer + LED hijau/merah
@@ -16,6 +16,10 @@
     RC522  SDA(SS)->GPIO5  SCK->GPIO18  MOSI->GPIO23  MISO->GPIO19  RST->GPIO4  3.3V->3V3  GND->GND
     LCD    SDA->GPIO21  SCL->GPIO22  VCC->5V(VIN)  GND->GND   (alamat I2C 0x27, atau 0x3F)
     Buzzer (+)->GPIO25   LED hijau->GPIO26 (via resistor 220 ohm)   LED merah->GPIO27 (220 ohm)
+    Modul scanner QR UART (opsional, GM65 / GM861 / sejenis, mode keluaran Serial-TTL 9600):
+           TX modul->GPIO16   RX modul->GPIO17   VCC->5V   GND->GND
+           (PAKAI_QR 1 di bawah; tanpa modul QR biarkan 1 juga tidak apa-apa)
+  Gerbang perangkat (mis. "Gerbang Belakang") diatur di aplikasi: Perangkat ESP32 -> Edit -> Gerbang.
 */
 #include <Arduino.h>
 #include <WiFi.h>
@@ -31,7 +35,7 @@
 #include <time.h>
 #include "mbedtls/md.h"
 
-#define VERSI        "1.0.0"
+#define VERSI        "1.1.0"
 #define PIN_SS       5
 #define PIN_RST      4
 #define PIN_BUZZER   25
@@ -41,9 +45,17 @@
 #define LCD_ADDR     0x27   // ganti 0x3F bila LCD tidak tampil
 #define ANTREAN_FILE "/antrean.txt"
 #define MAKS_ANTREAN 1000
+#define PAKAI_QR     1      // modul scanner QR di UART2
+#define PIN_QR_RX    16
+#define PIN_QR_TX    17
+#define QR_BAUD      9600
 
 MFRC522 rfid(PIN_SS, PIN_RST);
 LiquidCrystal_I2C lcd(LCD_ADDR, 16, 2);
+#if PAKAI_QR
+HardwareSerial QR(2);
+String qrBuf;
+#endif
 Preferences pref;
 WebServer web(80);
 
@@ -312,6 +324,9 @@ void setup() {
   LittleFS.begin(true);
   SPI.begin();
   rfid.PCD_Init();
+#if PAKAI_QR
+  QR.begin(QR_BAUD, SERIAL_8N1, PIN_QR_RX, PIN_QR_TX);
+#endif
   muatSetelan();
 
   // tahan tombol BOOT 5 detik saat menyala = masuk mode setelan
@@ -357,6 +372,26 @@ void loop() {
       prosesTap(uid);
     }
   }
+
+#if PAKAI_QR
+  // modul QR mengirim isi QR lalu CR/LF; hanya karakter isi kartu yang diterima
+  while (QR.available()) {
+    char c = QR.read();
+    if (c == '\r' || c == '\n') {
+      if (qrBuf.length() >= 6) {
+        String kode = qrBuf;
+        if (kode != uidTerakhir || ms - msTerakhir > 3000) {
+          uidTerakhir = kode;
+          msTerakhir = ms;
+          prosesTap(kode);
+        }
+      }
+      qrBuf = "";
+    } else if (isalnum(c) || c == '.' || c == '-' || c == ':') {
+      if (qrBuf.length() < 120) qrBuf += c;
+    }
+  }
+#endif
 
   if (ms - msKirimAntrean > 15000) {
     msKirimAntrean = ms;

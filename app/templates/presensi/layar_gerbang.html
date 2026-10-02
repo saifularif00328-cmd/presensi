@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Layar Gerbang · {{ nama_sekolah }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/layar_gerbang.css') }}">
+</head>
+<body>
+{% include "presensi/_layar_isi.html" %}
+<script>window.LAYAR = { sumber: {{ sumber|tojson }}, aksi: null, jeda: 2000 };</script>
+<script src="{{ url_for('static', filename='js/layar_gerbang.js') }}"></script>
+</body>
+</html>

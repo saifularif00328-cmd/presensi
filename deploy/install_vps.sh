@@ -45,7 +45,7 @@ apt-get install -y -q mariadb-server nginx python3-venv python3-pip git ufw curl
 
 echo "==> User & folder"
 id presensi >/dev/null 2>&1 || useradd --system --home /srv/presensi --shell /usr/sbin/nologin presensi
-mkdir -p /srv/presensi/_backup /srv/presensi/_antrean/masuk /srv/presensi/_antrean/hasil /srv/presensi/_antrean/perintah \
+mkdir -p /srv/presensi/_unduh /srv/presensi/_backup /srv/presensi/_antrean/masuk /srv/presensi/_antrean/hasil /srv/presensi/_antrean/perintah \
   /srv/presensi/_daftar /etc/presensi
 chown presensi:presensi /srv/presensi /srv/presensi/_backup /srv/presensi/_daftar
 chown -R presensi:presensi /srv/presensi/_antrean

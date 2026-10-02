@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% from "_macros.html" import csrf with context %}
-{% block title %}Perangkat RFID{% endblock %}
+{% block title %}Perangkat ESP32{% endblock %}
 {% block content %}
-<div class="page-head"><h1>Perangkat RFID</h1></div>
+<div class="page-head"><h1>Perangkat ESP32 (RFID / QR)</h1></div>
 
 {% if lihat %}
 <div class="card">
@@ -34,7 +34,7 @@
           <div class="title"><span class="dot {{ 'on' if p.online }}"></span>{{ p.nama }}
             {% if not p.aktif %}<span class="badge b-err">nonaktif</span>{% endif %}</div>
           <div class="sub">{{ MODES[p.mode] }}{% if p.mode == 'ibadah' %} · {{ p.ibadah or 'jadwal berlangsung' }}{% endif %}
-            · <code>{{ p.kode }}</code> · {% if p.terakhir_aktif %}aktif {{ p.terakhir_aktif[:16] }}{% else %}belum pernah terhubung{% endif %}
+            {% if p.gerbang %} · {{ p.gerbang }}{% endif %} · <code>{{ p.kode }}</code> · {% if p.terakhir_aktif %}aktif {{ p.terakhir_aktif[:16] }}{% else %}belum pernah terhubung{% endif %}
             {% if p.versi %} · v{{ p.versi }}{% endif %}</div></div>
         <a class="btn sm ghost" href="{{ url_for('perangkat.daftar', lihat=p.id) }}">Isian</a>
         <a class="btn sm ghost" href="{{ url_for('perangkat.daftar', edit=p.id) }}">Edit</a>
@@ -55,6 +55,10 @@
       <div class="field" id="f-ibadah"><label>Jadwal ibadah</label>
         <select name="ibadah_id"><option value="">Otomatis: jadwal yang sedang berlangsung</option>
           {% for i in ibadah %}<option value="{{ i.id }}" {{ 'selected' if edit and edit.ibadah_id == i.id }}>{{ i.nama }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Gerbang</label>
+        <select name="gerbang_id"><option value="">— pakai nama perangkat —</option>
+          {% for g in gerbang %}<option value="{{ g.id }}" {{ 'selected' if edit and edit.gerbang_id == g.id }}>{{ g.nama }}</option>{% endfor %}</select>
+        <small class="help">Dicatat di presensi & tampil di Layar Gerbang. Kelola gerbang di <a href="{{ url_for('pos.halaman') }}">Perangkat Scan</a>.</small></div>
       <label class="check"><input type="checkbox" name="aktif" value="1" {{ 'checked' if not edit or edit.aktif }}>Aktif</label>
       <div class="btn-row mt"><button class="btn">{{ icon('save') }}Simpan</button>
         {% if edit %}<a class="btn outline" href="{{ url_for('perangkat.daftar') }}">Batal</a>{% endif %}</div>

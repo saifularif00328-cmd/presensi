@@ -19,6 +19,7 @@ MENU = [
     ("Presensi", [
         ("Scan Kartu", "scan", "presensi.scan", ("piket",), "presensi"),
         ("Monitor Live", "monitor", "presensi.monitor", ("piket", "bk"), "presensi"),
+        ("Layar Gerbang", "dashboard", "pos.layar", ("piket",), "presensi"),
         ("Presensi Manual", "manual", "presensi.manual", ("piket",), "presensi"),
         ("Rekap Presensi", "rekap", "presensi.rekap", ("piket", "bk"), "rekap"),
         ("SMT Presensi", "smt", "presensi.smt", ("piket", "bk"), "rekap"),
@@ -48,7 +49,8 @@ MENU = [
         ("Pengaturan", "pengaturan", "sistem.pengaturan", (), "presensi"),
         ("Notifikasi WA", "wa", "notifikasi.pengaturan", (), "whatsapp"),
         ("Log Notifikasi", "log", "notifikasi.log", (), "whatsapp"),
-        ("Perangkat RFID", "perangkat", "perangkat.daftar", (), "presensi"),
+        ("Perangkat Scan", "scan", "pos.halaman", (), "presensi"),
+        ("Perangkat ESP32", "perangkat", "perangkat.daftar", (), "presensi"),
         ("Portal & PIN Siswa", "portal", "master.pin", (), "presensi"),
         ("Akses Online", "cloud", "sistem.akses_online", (), "presensi"),
         ("Multi-Cabang", "cabang", "sistem.cabang", (), "multicabang"),

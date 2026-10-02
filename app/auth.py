@@ -71,7 +71,8 @@ def csrf_token():
 
 
 # API perangkat memakai tanda tangan HMAC sendiri (bukan sesi browser)
-CSRF_BEBAS = {"static", "perangkat.api_ping", "perangkat.api_tap"}
+CSRF_BEBAS = {"static", "perangkat.api_ping", "perangkat.api_tap", "pos.api_pasang",
+              "pos.api_sinkron", "pos.api_scanner", "pos.api_siswa", "pos.api_foto", "pos.api_scan"}
 
 
 def csrf_protect():

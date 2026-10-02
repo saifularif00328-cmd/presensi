@@ -39,7 +39,7 @@
     el.innerHTML = feed.map(f => '<li' + (f.id > lastId && lastId ? ' style="animation:flashin 1.5s"' : '') + '>' +
       '<span class="feed-ic ' + f.jenis + '">' + iconHtml(ic[f.jenis] || 'alert') + '</span>' +
       '<div class="grow"><div class="title">' + escapeHtml(f.nama || 'Kartu tidak dikenal') + '</div>' +
-      '<div class="sub">' + escapeHtml(f.kelas || '') + ' · ' + escapeHtml(f.pesan || '') + (f.metode ? ' · ' + escapeHtml(f.metode) : '') + '</div></div>' +
+      '<div class="sub">' + escapeHtml(f.kelas || '') + ' · ' + escapeHtml(f.pesan || '') + (f.gerbang ? ' · ' + escapeHtml(f.gerbang) : (f.metode ? ' · ' + escapeHtml(f.metode) : '')) + '</div></div>' +
       '<span class="muted nowrap">' + f.waktu.slice(11, 16) + '</span></li>').join('');
     lastId = newest;
   }

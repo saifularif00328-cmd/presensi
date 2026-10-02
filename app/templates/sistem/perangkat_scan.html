@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}Perangkat Scan{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Perangkat Scan</h1>
+  <a class="btn outline" href="{{ url_for('pos.layar') }}">{{ icon('dashboard') }}Layar Gerbang</a></div>
+
+<div class="card">
+  <h3>{{ icon('info') }}Cara kerja</h3>
+  <p class="help">Satu PC pos dengan aplikasi <b>Presensiku Pos</b> bisa membaca <b>banyak scanner</b> sekaligus — scanner USB biasa
+    (mode keyboard), scanner mode COM, maupun scanner nirkabel — tanpa saling tercampur. Tiap scanner dipetakan ke satu
+    <b>gerbang</b>; layar Pos menampilkan panel per gerbang dan tetap berjalan saat internet putus.
+    Perangkat ESP32 diatur di menu <a href="{{ url_for('perangkat.daftar') }}">Perangkat ESP32</a>.</p>
+  <p class="help">Unduh aplikasi: <a href="{{ server.split('/')[:3]|join('/') }}/unduh/presensiku-pos-setup.exe">Presensiku Pos untuk Windows</a> ·
+    panduan lengkap di TUTORIAL_MULTI_SCANNER.</p>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h3>{{ icon('keluar') }}Gerbang</h3>
+    <ul class="list">
+      {% for g in gerbang %}
+      <li><div class="grow"><div class="title">{{ g.nama }}{% if not g.aktif %} <span class="badge b-err">nonaktif</span>{% endif %}</div>
+          <div class="sub">{{ MODES[g.mode] }} · urutan {{ g.urutan }}</div></div>
+        <a class="btn sm ghost" href="{{ url_for('pos.halaman', edit_gerbang=g.id) }}">Edit</a>
+        <form class="inline" method="post" data-confirm="Hapus gerbang {{ g.nama }}? Scanner di gerbang ini perlu dipetakan ulang.">{{ csrf() }}
+          <input type="hidden" name="aksi" value="gerbang_hapus"><input type="hidden" name="gerbang_id" value="{{ g.id }}">
+          <button class="btn sm danger">{{ icon('trash') }}</button></form></li>
+      {% else %}<li class="empty">Belum ada gerbang. Contoh: Gerbang Depan, Gerbang Belakang.</li>{% endfor %}
+    </ul>
+    {% set eg = (gerbang|selectattr('id', 'equalto', edit_gerbang)|list|first) if edit_gerbang else none %}
+    <form method="post" class="mt">{{ csrf() }}<input type="hidden" name="aksi" value="gerbang_simpan">
+      {% if eg %}<input type="hidden" name="gerbang_id" value="{{ eg.id }}">{% endif %}
+      <div class="field"><label>{{ 'Edit' if eg else 'Tambah' }} gerbang</label><input name="nama" value="{{ eg.nama if eg }}" placeholder="Gerbang Depan" maxlength="60" required></div>
+      <div class="field"><label>Mode</label><select name="mode">{% for k, v in MODES.items() %}<option value="{{ k }}" {{ 'selected' if eg and eg.mode == k }}>{{ v }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Urutan tampil</label><input name="urutan" type="number" min="0" value="{{ eg.urutan if eg else 0 }}"></div>
+      {% if eg %}<label class="check"><input type="checkbox" name="aktif" value="1" {{ 'checked' if eg.aktif }}>Aktif</label>{% endif %}
+      <div class="btn-row mt"><button class="btn">{{ icon('save') }}Simpan</button>
+        {% if eg %}<a class="btn outline" href="{{ url_for('pos.halaman') }}">Batal</a>{% endif %}</div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>{{ icon('pengaturan') }}Pengaturan scan</h3>
+    <form method="post">{{ csrf() }}<input type="hidden" name="aksi" value="pengaturan">
+      <div class="field"><label>Abaikan scan ganda dalam (detik)</label>
+        <input name="scan_jeda_ganda" type="number" min="0" max="3600" value="{{ jeda }}">
+        <small class="help">Siswa yang sama di-scan lagi dalam waktu ini (di gerbang mana pun) tidak dicatat dua kali. 0 = nonaktif.</small></div>
+      <button class="btn">{{ icon('save') }}Simpan</button>
+    </form>
+    <h3 class="mt">{{ icon('plus') }}Tambah PC Pos</h3>
+    <form method="post">{{ csrf() }}<input type="hidden" name="aksi" value="pos_tambah">
+      <div class="field"><label>Nama PC / lokasi</label><input name="nama" placeholder="PC Pos Satpam" maxlength="100"></div>
+      <button class="btn">{{ icon('plus') }}Buat kode pasang</button>
+    </form>
+  </div>
+</div>
+
+{% for p in pos %}
+<div class="card">
+  <div class="card-head"><h3><span class="dot {{ 'on' if p.online }}"></span>{{ p.nama }}
+      {% if not p.aktif %}<span class="badge b-err">nonaktif</span>{% elif not p.terpasang %}<span class="badge b-info">menunggu dipasangkan</span>{% endif %}</h3>
+    <div class="btn-row">
+      <form class="inline" method="post" data-confirm="Buat kode pasang baru? PC lama akan terputus.">{{ csrf() }}
+        <input type="hidden" name="aksi" value="pos_pasang_ulang"><input type="hidden" name="pos_id" value="{{ p.id }}">
+        <button class="btn sm outline">{{ icon('refresh') }}Kode pasang baru</button></form>
+      <form class="inline" method="post">{{ csrf() }}<input type="hidden" name="aksi" value="pos_aktif"><input type="hidden" name="pos_id" value="{{ p.id }}">
+        <button class="btn sm ghost">{{ 'Nonaktifkan' if p.aktif else 'Aktifkan' }}</button></form>
+      <form class="inline" method="post" data-confirm="Hapus PC Pos {{ p.nama }} beserta daftar scannernya?">{{ csrf() }}
+        <input type="hidden" name="aksi" value="pos_hapus"><input type="hidden" name="pos_id" value="{{ p.id }}">
+        <button class="btn sm danger">{{ icon('trash') }}</button></form>
+    </div></div>
+  {% if p.kode_berlaku %}
+  <dl class="config-box">
+    <dt>Alamat server</dt><dd>{{ server }}</dd>
+    <dt>Kode pasang</dt><dd style="font-size:1.4rem;letter-spacing:.1em">{{ p.kode_pasang }}</dd>
+  </dl>
+  <p class="help">Buka aplikasi <b>Presensiku Pos</b> di PC → isi alamat server &amp; kode pasang. Kode sekali pakai, berlaku sampai {{ p.pasang_sampai[11:16] }}.</p>
+  {% endif %}
+  <p class="sub">{% if p.terakhir_aktif %}Terhubung {{ p.terakhir_aktif[:16] }}{% else %}Belum pernah terhubung{% endif %}
+    {% if p.versi %} · v{{ p.versi }}{% endif %}{% if p.antrean %} · <b>{{ p.antrean }} scan menunggu dikirim</b>{% endif %}</p>
+  <table class="table">
+    <thead><tr><th>Scanner</th><th>Jenis</th><th>Nama</th><th>Gerbang</th><th>Aktif</th><th>Terakhir</th><th></th></tr></thead>
+    <tbody>
+    {% for sc in p.scanner %}
+      {% set f = 'sc-' ~ sc.id %}
+      <tr>
+        <td><small>{{ sc.label or sc.kunci }}</small></td>
+        <td>{{ 'COM' if sc.jenis == 'com' else 'USB' }}</td>
+        <td><input form="{{ f }}" name="nama" value="{{ sc.nama or '' }}" placeholder="Scanner 1" maxlength="60"></td>
+        <td><select form="{{ f }}" name="gerbang"><option value="">— belum —</option>{% for g in gerbang %}<option value="{{ g.id }}" {{ 'selected' if sc.gerbang_id == g.id }}>{{ g.nama }}</option>{% endfor %}</select></td>
+        <td><input form="{{ f }}" type="checkbox" name="aktif" value="1" {{ 'checked' if sc.aktif }}></td>
+        <td><small>{{ (sc.terakhir or '-')[:16] }}</small></td>
+        <td class="nowrap"><form id="{{ f }}" class="inline" method="post">{{ csrf() }}<input type="hidden" name="aksi" value="scanner_simpan"><input type="hidden" name="scanner_id" value="{{ sc.id }}"><button class="btn sm">{{ icon('save') }}</button></form>
+          <form class="inline" method="post" data-confirm="Hapus scanner ini?">{{ csrf() }}<input type="hidden" name="aksi" value="scanner_hapus"><input type="hidden" name="scanner_id" value="{{ sc.id }}"><button class="btn sm danger">{{ icon('trash') }}</button></form></td>
+      </tr>
+    {% else %}<tr><td colspan="7" class="empty">Belum ada scanner. Scan satu kartu dengan tiap scanner di PC Pos — Pos akan menanyakan gerbangnya.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endfor %}
+{% endblock %}

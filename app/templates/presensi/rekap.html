@@ -8,6 +8,7 @@
   <div><label>Sampai</label><input type="date" name="sampai" value="{{ sampai }}"></div>
   <div><label>Kelas</label>{{ kelas_select(kelas, kelas_id) }}</div>
   <div><label>Keterangan</label><select name="ket"><option value="">Semua</option>{% for k, v in KET.items() %}<option value="{{ k }}" {{ 'selected' if ket == k }}>{{ k }} · {{ v }}</option>{% endfor %}<option value="T" {{ 'selected' if ket == 'T' }}>Telat</option></select></div>
+  {% if daftar_gerbang %}<div><label>Gerbang</label><select name="gerbang"><option value="">Semua</option>{% for g in daftar_gerbang %}<option {{ 'selected' if gerbang == g }}>{{ g }}</option>{% endfor %}</select></div>{% endif %}
   <button class="btn">Tampilkan</button>
 </form>
 <div class="stats card">
@@ -20,8 +21,8 @@
   {% for r in rows %}
   <tr><td class="nowrap">{{ r.tanggal }}</td><td><a href="{{ url_for('main.siswa_detail', sid=r.siswa_id) }}">{{ r.nama }}</a></td><td>{{ r.kelas or '-' }}</td>
     <td class="num">{{ ket_badge(r.keterangan) }}</td>
-    <td class="nowrap">{{ r.jam_masuk|jam }} {{ status_badge(r.status_masuk) if r.status_masuk }}</td>
-    <td class="nowrap">{{ r.jam_pulang|jam }} {{ status_badge(r.status_pulang) if r.status_pulang }}</td>
+    <td class="nowrap">{{ r.jam_masuk|jam }} {{ status_badge(r.status_masuk) if r.status_masuk }}{% if r.gerbang_masuk %}<br><small class="muted">{{ r.gerbang_masuk }}</small>{% endif %}</td>
+    <td class="nowrap">{{ r.jam_pulang|jam }} {{ status_badge(r.status_pulang) if r.status_pulang }}{% if r.gerbang_pulang %}<br><small class="muted">{{ r.gerbang_pulang }}</small>{% endif %}</td>
     <td class="hide-sm">{{ r.sumber }}</td><td class="hide-sm">{{ r.catatan or '' }}</td></tr>
   {% else %}<tr><td colspan="8" class="empty">Tidak ada data pada filter ini.</td></tr>{% endfor %}
   </tbody></table></div>

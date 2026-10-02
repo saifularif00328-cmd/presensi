@@ -103,6 +103,8 @@ CREATE TABLE IF NOT EXISTS presensi (
     keterangan    VARCHAR(1) NOT NULL DEFAULT 'H',  -- H / I / S / A / D
     sumber        VARCHAR(20) NOT NULL DEFAULT 'scan', -- scan / manual / izin / otomatis
     catatan       TEXT,
+    gerbang_masuk  VARCHAR(60) NULL,                -- nama gerbang saat scan masuk / pulang
+    gerbang_pulang VARCHAR(60) NULL,
     updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_presensi (siswa_id, tanggal),
     INDEX idx_presensi_tanggal (tanggal),
@@ -118,7 +120,9 @@ CREATE TABLE IF NOT EXISTS scan_log (
     status     VARCHAR(50),
     pesan      TEXT,
     metode     VARCHAR(20),                         -- kamera / scanner / rfid / webcam / manual
+    gerbang    VARCHAR(60) NULL,
     INDEX idx_scan_log_waktu (waktu),
+    INDEX idx_scan_log_siswa (siswa_id, waktu),
     FOREIGN KEY (siswa_id) REFERENCES siswa(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -297,6 +301,7 @@ CREATE TABLE IF NOT EXISTS perangkat (
     rahasia         VARCHAR(80) NOT NULL,           -- kunci HMAC (diisikan ke perangkat)
     mode            VARCHAR(10) NOT NULL DEFAULT 'auto', -- auto / masuk / pulang / ibadah
     ibadah_id       INT NULL,                       -- mode ibadah: NULL = jadwal yang sedang berlangsung
+    gerbang_id      INT NULL,
     aktif           TINYINT NOT NULL DEFAULT 1,
     terakhir_aktif  DATETIME NULL,
     versi           VARCHAR(20),
@@ -325,4 +330,54 @@ CREATE TABLE IF NOT EXISTS portal_otp (
     dipakai      TINYINT NOT NULL DEFAULT 0,
     ip           VARCHAR(45),
     INDEX idx_portal_otp_nomor (nomor, dibuat)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ===================== GERBANG & PRESENSIKU POS (multi-scanner) =====================
+CREATE TABLE IF NOT EXISTS gerbang (
+    id      INT AUTO_INCREMENT PRIMARY KEY,
+    nama    VARCHAR(60) NOT NULL UNIQUE,
+    mode    VARCHAR(10) NOT NULL DEFAULT 'auto',    -- auto / masuk / pulang
+    aktif   TINYINT NOT NULL DEFAULT 1,
+    urutan  INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Aplikasi Presensiku Pos di PC sekolah (membaca banyak scanner USB/COM)
+CREATE TABLE IF NOT EXISTS pos (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    nama            VARCHAR(100) NOT NULL,
+    kode            VARCHAR(40) NOT NULL UNIQUE,
+    rahasia         VARCHAR(80) NOT NULL,
+    kode_pasang     VARCHAR(12) NULL UNIQUE,       -- sekali pakai, berlaku 30 menit
+    pasang_sampai   DATETIME NULL,
+    terpasang       TINYINT NOT NULL DEFAULT 0,
+    aktif           TINYINT NOT NULL DEFAULT 1,
+    terakhir_aktif  DATETIME NULL,
+    versi           VARCHAR(20),
+    ip              VARCHAR(45),
+    antrean         INT NOT NULL DEFAULT 0           -- scan tertunda di PC (laporan terakhir)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Scanner yang terhubung ke Pos (kunci = identitas alat dari Windows / nama port COM)
+CREATE TABLE IF NOT EXISTS pos_scanner (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    pos_id      INT NOT NULL,
+    kunci       VARCHAR(64) NOT NULL,
+    jenis       VARCHAR(10) NOT NULL DEFAULT 'keyboard',  -- keyboard / com
+    label       VARCHAR(150),
+    nama        VARCHAR(60),
+    gerbang_id  INT NULL,
+    aktif       TINYINT NOT NULL DEFAULT 1,
+    terakhir    DATETIME NULL,
+    UNIQUE KEY uq_pos_scanner (pos_id, kunci),
+    FOREIGN KEY (pos_id) REFERENCES pos(id) ON DELETE CASCADE,
+    FOREIGN KEY (gerbang_id) REFERENCES gerbang(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Scan dari Pos yang sudah diproses (idempoten: kiriman ulang tidak dicatat dua kali)
+CREATE TABLE IF NOT EXISTS pos_scan (
+    uuid    VARCHAR(40) PRIMARY KEY,
+    pos_id  INT NOT NULL,
+    hasil   TEXT,
+    waktu   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_pos_scan_waktu (waktu)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

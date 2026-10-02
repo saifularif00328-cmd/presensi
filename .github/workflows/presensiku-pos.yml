@@ -1,0 +1,52 @@
+# Membangun & menguji Presensiku Pos di Windows, menghasilkan presensiku-pos-setup.exe (artifact).
+name: Presensiku Pos (Windows)
+
+on:
+  push:
+    paths: ["pos/**", "app/static/js/layar_gerbang.js", "app/static/css/layar_gerbang.css",
+            "app/templates/presensi/_layar_isi.html", "installer/presensiku_pos.iss",
+            "tests/test_pos_windows.py", ".github/workflows/presensiku-pos.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Pasang dependensi
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r pos/requirements.txt pyinstaller pytest
+      - name: Uji Raw Input (Windows sungguhan)
+        run: python -m pytest -q -rs -p no:cacheprovider --noconftest tests/test_pos_windows.py
+      - name: Uji cepat modul Pos
+        run: python -c "import sys; sys.path.insert(0,'pos'); from presensiku_pos import masukan_windows as M, perakit, web, mesin, masukan_serial; print(M.daftar_alat())"
+      - name: Build exe (PyInstaller)
+        run: pyinstaller --noconfirm pos/presensiku_pos.spec
+      - name: Uji exe menyala
+        shell: pwsh
+        run: |
+          $env:PRESENSIKU_POS_DATA = "$env:RUNNER_TEMP\posdata"
+          $p = Start-Process dist\PresensikuPos\PresensikuPos.exe -ArgumentList "--tanpa-layar" -PassThru
+          Start-Sleep -Seconds 8
+          $r = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8765/
+          if ($r.Content -notmatch "Pasang Presensiku Pos") { throw "halaman pasang tidak tampil" }
+          $s = Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8765/api/status
+          Write-Output $s.Content
+          Stop-Process -Id $p.Id
+      - name: Installer (Inno Setup)
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; }
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\presensiku_pos.iss
+      - uses: actions/upload-artifact@v4
+        with:
+          name: presensiku-pos-setup
+          path: installer/Output/presensiku-pos-setup.exe

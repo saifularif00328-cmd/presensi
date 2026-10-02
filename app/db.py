@@ -69,6 +69,7 @@ DEFAULT_SETTINGS = {
                        "Bagi yang menemukan kartu ini, mohon dikembalikan ke alamat sekolah.",
     "kartu_berlaku": "Berlaku selama pemegang kartu masih berstatus siswa aktif.",
     "portal_aktif": "1",
+    "scan_jeda_ganda": "60",      # detik: scan ulang siswa yang sama diabaikan (lintas gerbang)
     "wa_tpl_otp": "Kode masuk Portal Presensi {sekolah}: *{kode}*. Berlaku 5 menit. "
                   "Ketik hanya di halaman portal sekolah. Ini BUKAN kode verifikasi WhatsApp. "
                   "Jangan berikan kode ini kepada siapa pun, termasuk petugas sekolah.",
@@ -344,6 +345,14 @@ def migrate(conn):
                      "ADD COLUMN pin_wajib_ganti TINYINT NOT NULL DEFAULT 1")
     if "pengaju" not in _columns(conn, "izin"):
         conn.execute("ALTER TABLE izin ADD COLUMN pengaju VARCHAR(100) NULL AFTER catatan_proses")
+    if "gerbang_masuk" not in _columns(conn, "presensi"):
+        conn.execute("ALTER TABLE presensi ADD COLUMN gerbang_masuk VARCHAR(60) NULL, "
+                     "ADD COLUMN gerbang_pulang VARCHAR(60) NULL")
+    if "gerbang" not in _columns(conn, "scan_log"):
+        conn.execute("ALTER TABLE scan_log ADD COLUMN gerbang VARCHAR(60) NULL, "
+                     "ADD INDEX idx_scan_log_siswa (siswa_id, waktu)")
+    if "gerbang_id" not in _columns(conn, "perangkat"):
+        conn.execute("ALTER TABLE perangkat ADD COLUMN gerbang_id INT NULL AFTER ibadah_id")
 
 
 def _seed(conn):

@@ -57,14 +57,14 @@ def daftar():
                 flash("Nama dan mode perangkat wajib diisi.", "error")
                 return redirect(url_for("perangkat.daftar"))
             vals = (nama, mode, form_int("ibadah_id") if mode == "ibadah" else None,
-                    1 if request.form.get("aktif") else 0)
+                    1 if request.form.get("aktif") else 0, form_int("gerbang_id"))
             if pid:
-                execute("UPDATE perangkat SET nama = ?, mode = ?, ibadah_id = ?, aktif = ? "
-                        "WHERE id = ?", vals + (pid,))
+                execute("UPDATE perangkat SET nama = ?, mode = ?, ibadah_id = ?, aktif = ?, "
+                        "gerbang_id = ? WHERE id = ?", vals + (pid,))
             else:
                 try:
-                    pid = execute("INSERT INTO perangkat(nama, mode, ibadah_id, aktif, kode, "
-                                  "rahasia) VALUES (?,?,?,?,?,?)",
+                    pid = execute("INSERT INTO perangkat(nama, mode, ibadah_id, aktif, gerbang_id, "
+                                  "kode, rahasia) VALUES (?,?,?,?,?,?,?)",
                                   vals + (_kode(), _rahasia()))
                 except IntegrityError:
                     flash("Gagal membuat kode perangkat, coba lagi.", "error")
@@ -72,8 +72,9 @@ def daftar():
             flash("Perangkat disimpan.", "success")
             return redirect(url_for("perangkat.daftar", lihat=pid))
         return redirect(url_for("perangkat.daftar"))
-    rows = query("SELECT p.*, i.nama AS ibadah FROM perangkat p LEFT JOIN ibadah i "
-                 "ON i.id = p.ibadah_id ORDER BY p.nama")
+    rows = query("SELECT p.*, i.nama AS ibadah, g.nama AS gerbang FROM perangkat p "
+                 "LEFT JOIN ibadah i ON i.id = p.ibadah_id LEFT JOIN gerbang g ON g.id = p.gerbang_id "
+                 "ORDER BY p.nama")
     lihat = next((r for r in rows if r["id"] == request.args.get("lihat", type=int)), None)
     edit = next((r for r in rows if r["id"] == request.args.get("edit", type=int)), None)
     now = utils.now()
@@ -82,6 +83,8 @@ def daftar():
         r["online"] = t is not None and (now - t).total_seconds() < 180
     return render_template("sistem/perangkat.html", rows=rows, lihat=lihat, edit=edit, MODES=MODES,
                            ibadah=query("SELECT id, nama FROM ibadah ORDER BY jam_mulai"),
+                           gerbang=query("SELECT id, nama FROM gerbang WHERE aktif = 1 "
+                                         "ORDER BY urutan, nama"),
                            server=get_setting("alamat_publik") or request.url_root.rstrip("/"))
 
 
@@ -103,15 +106,16 @@ def _tolak(kode, pesan, status=401, **extra):
                     "baris2": pesan[:16], "nada": "err", **extra}), status
 
 
-def _verifikasi():
-    """(perangkat, body_dict, respons_error)."""
-    kode = request.headers.get("X-Perangkat", "")
+def verifikasi_tanda(tabel, header_kode="X-Perangkat"):
+    """Periksa permintaan bertanda tangan HMAC dari perangkat (`perangkat`) atau Presensiku Pos
+    (`pos`). Mengembalikan (baris, body_dict, respons_error)."""
+    kode = request.headers.get(header_kode, "")
     waktu = request.headers.get("X-Waktu", "")
     nonce = request.headers.get("X-Nonce", "")
     tanda = request.headers.get("X-Tanda", "")
     body = request.get_data() or b""
-    p = query("SELECT * FROM perangkat WHERE kode = ?", (kode,), one=True)
-    if p is None or not p["aktif"]:
+    p = query(f"SELECT * FROM {tabel} WHERE kode = ?", (kode,), one=True)
+    if p is None or not p["aktif"] or (tabel == "pos" and not p["terpasang"]):
         return None, None, _tolak("perangkat", "Perangkat tidak terdaftar/nonaktif")
     pesan = f"{kode}\n{waktu}\n{nonce}\n".encode() + body
     harap = hmac.new(p["rahasia"].encode(), pesan, hashlib.sha256).hexdigest()
@@ -134,10 +138,35 @@ def _verifikasi():
         data = json.loads(body.decode("utf-8") or "{}")
     except ValueError:
         data = {}
-    execute("UPDATE perangkat SET terakhir_aktif = ?, ip = ?, versi = ? WHERE id = ?",
+    execute(f"UPDATE {tabel} SET terakhir_aktif = ?, ip = ?, versi = ? WHERE id = ?",
             (utils.now().strftime("%Y-%m-%d %H:%M:%S"), request.remote_addr,
              (request.headers.get("X-Versi") or "")[:20], p["id"]))
     return p, data, None
+
+
+def _verifikasi():
+    return verifikasi_tanda("perangkat")
+
+
+def tap_tertunda(data):
+    """Jam tap asli (`ts` epoch) untuk tap yang tertunda, None = sekarang."""
+    try:
+        ts = int(data.get("ts") or 0)
+    except (TypeError, ValueError):
+        ts = 0
+    if ts:
+        t = _epoch_ke_lokal(ts)
+        umur = (utils.now() - t).total_seconds()
+        if -60 <= umur <= MAKS_TERTUNDA:
+            return t
+    return None
+
+
+def nama_gerbang(gerbang_id):
+    if not gerbang_id:
+        return None
+    g = query("SELECT nama FROM gerbang WHERE id = ?", (gerbang_id,), one=True)
+    return g["nama"] if g else None
 
 
 def _ascii(teks):
@@ -182,17 +211,9 @@ def api_tap():
     p, data, err = _verifikasi()
     if err:
         return err
-    uid = str(data.get("uid") or "")
-    waktu = None
-    try:
-        ts = int(data.get("ts") or 0)
-    except (TypeError, ValueError):
-        ts = 0
-    if ts:
-        t = _epoch_ke_lokal(ts)
-        umur = (utils.now() - t).total_seconds()
-        if -60 <= umur <= MAKS_TERTUNDA:
-            waktu = t
+    # "uid" = kartu RFID; "kode" = isi QR dari modul scanner QR (GM65/GM861) di ESP32
+    uid = str(data.get("uid") or data.get("kode") or "")[:200]
+    waktu = tap_tertunda(data)
     db = get_db()
     if p["mode"] == "ibadah":
         ib = None
@@ -202,7 +223,9 @@ def api_tap():
             ib = ibadah_svc.jadwal_sekarang(waktu, db=db)
         res = ibadah_svc.tap(uid, ib, db, waktu=waktu, metode="rfid")
     else:
-        res = process_scan(uid, p["mode"], "rfid", db=db, waktu=waktu)
+        from ..qr import jenis_kartu
+        res = process_scan(uid, p["mode"], "qr" if jenis_kartu(uid) == "qr" else "rfid", db=db,
+                           waktu=waktu, gerbang=nama_gerbang(p["gerbang_id"]) or p["nama"])
     if not res.get("ok") and res.get("pesan") == "Kartu RFID belum terdaftar":
         from ..rfid import candidates, catat_tak_dikenal
         c = candidates(uid)

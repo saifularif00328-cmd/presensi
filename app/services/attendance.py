@@ -47,28 +47,46 @@ def _siswa_dict(s):
             "nis": s["nis"] or "", "foto": s["foto"]}
 
 
-def _log(db, siswa_id, jenis, status, pesan, metode, waktu=None):
-    execute("INSERT INTO scan_log(siswa_id, waktu, jenis, status, pesan, metode) "
-            "VALUES (?,?,?,?,?,?)",
+def _log(db, siswa_id, jenis, status, pesan, metode, waktu=None, gerbang=None):
+    execute("INSERT INTO scan_log(siswa_id, waktu, jenis, status, pesan, metode, gerbang) "
+            "VALUES (?,?,?,?,?,?,?)",
             (siswa_id, (waktu or utils.now()).strftime("%Y-%m-%d %H:%M:%S"), jenis, status, pesan,
-             metode), db=db, commit=False)
+             metode, gerbang), db=db, commit=False)
 
 
-def process_scan(text, mode="auto", metode="scanner", db=None, waktu=None):
+def _scan_ganda(db, siswa_id, now):
+    """Scan berhasil siswa yang sama dalam `scan_jeda_ganda` detik terakhir (lintas gerbang)."""
+    from ..db import get_setting
+    try:
+        jeda = int(get_setting("scan_jeda_ganda", db=db) or 0)
+    except ValueError:
+        jeda = 0
+    if jeda <= 0:
+        return None
+    return query("SELECT jenis, waktu, gerbang FROM scan_log WHERE siswa_id = ? "
+                 "AND jenis IN ('masuk', 'pulang') AND waktu BETWEEN ? AND ? "
+                 "ORDER BY waktu DESC LIMIT 1",
+                 (siswa_id, (now - timedelta(seconds=jeda)).strftime("%Y-%m-%d %H:%M:%S"),
+                  now.strftime("%Y-%m-%d %H:%M:%S")), one=True, db=db)
+
+
+def process_scan(text, mode="auto", metode="scanner", db=None, waktu=None, gerbang=None):
     """Proses satu scan QR / tap kartu RFID. Selalu mengembalikan dict hasil untuk UI.
 
     `waktu`: jam tap sebenarnya untuk tap yang tertunda (antrian offline perangkat/browser);
-    None = sekarang. Notifikasi WA hanya dikirim untuk tap hari ini."""
+    None = sekarang. Notifikasi WA hanya dikirim untuk tap hari ini.
+    `gerbang`: nama gerbang/scanner asal (dicatat di presensi & log)."""
     from ..db import get_db
     from ..qr import jenis_kartu
     db = db or get_db()
+    gerbang = (gerbang or "").strip()[:60] or None
     mode = mode if mode in MODES else "auto"
     if metode in ("scanner", "kamera") and jenis_kartu(text) == "rfid":
         metode = "rfid"
     now = waktu or utils.now()
     siswa, err = find_siswa(text, db=db)
     if siswa is None:
-        _log(db, None, "gagal", None, err, metode, now)
+        _log(db, None, "gagal", None, err, metode, now, gerbang)
         db.commit()
         return {"ok": False, "level": "error", "pesan": err}
 
@@ -80,6 +98,13 @@ def process_scan(text, mode="auto", metode="scanner", db=None, waktu=None):
                 "pesan": f"Presensi dilewati: hari ini libur ({ket})"}
 
     jam = now.strftime("%H:%M:%S")
+    ganda = _scan_ganda(db, siswa["id"], now)
+    if ganda:
+        w = utils.parse_datetime(ganda["waktu"])
+        return {"siswa": _siswa_dict(siswa), "jam": jam[:5], "ok": True, "level": "info",
+                "jenis": "ganda", "pesan": f"Sudah tercatat {ganda['jenis']} pukul "
+                f"{w.strftime('%H:%M') if w else ''}"
+                + (f" di {ganda['gerbang']}" if ganda["gerbang"] else "") + " — scan ganda diabaikan"}
     aturan = aturan_for(siswa["kelas_id"], siswa["jenjang"], db=db)
     rec = query("SELECT * FROM presensi WHERE siswa_id = ? AND tanggal = ?",
                 (siswa["id"], tgl.isoformat()), one=True, db=db)
@@ -101,13 +126,13 @@ def process_scan(text, mode="auto", metode="scanner", db=None, waktu=None):
             pesan = f"Sudah absen pulang pukul {rec['jam_pulang'][:5]}"
         else:
             pesan = f"Sudah absen masuk pukul {rec['jam_masuk'][:5]}"
-        _log(db, siswa["id"], "peringatan", None, pesan, metode, now)
+        _log(db, siswa["id"], "peringatan", None, pesan, metode, now, gerbang)
         db.commit()
         return {**base, "ok": False, "level": "warning", "jenis": "ulang", "pesan": pesan}
 
     if mode == "pulang" and not sudah_masuk:
         pesan = "Belum absen masuk hari ini — tidak bisa absen pulang"
-        _log(db, siswa["id"], "peringatan", None, pesan, metode, now)
+        _log(db, siswa["id"], "peringatan", None, pesan, metode, now, gerbang)
         db.commit()
         return {**base, "ok": False, "level": "warning", "jenis": "pulang", "pesan": pesan}
 
@@ -115,15 +140,16 @@ def process_scan(text, mode="auto", metode="scanner", db=None, waktu=None):
         st = status_masuk(jam, aturan)
         if rec is None:
             execute("INSERT INTO presensi(siswa_id, kelas_id, tanggal, jam_masuk, status_masuk, "
-                    "keterangan, sumber) VALUES (?,?,?,?,?, 'H', 'scan')",
-                    (siswa["id"], siswa["kelas_id"], tgl.isoformat(), jam, st), db=db, commit=False)
+                    "keterangan, sumber, gerbang_masuk) VALUES (?,?,?,?,?, 'H', 'scan', ?)",
+                    (siswa["id"], siswa["kelas_id"], tgl.isoformat(), jam, st, gerbang),
+                    db=db, commit=False)
         else:
             # Sebelumnya tercatat I/S/A tetapi siswa ternyata datang → jadi Hadir
             execute("UPDATE presensi SET jam_masuk = ?, status_masuk = ?, keterangan = 'H', "
-                    "sumber = 'scan', updated_at = NOW() WHERE id = ?",
-                    (jam, st, rec["id"]), db=db, commit=False)
+                    "sumber = 'scan', gerbang_masuk = ?, updated_at = NOW() WHERE id = ?",
+                    (jam, st, gerbang, rec["id"]), db=db, commit=False)
         pesan = f"Absen masuk berhasil — {st}"
-        _log(db, siswa["id"], "masuk", st, pesan, metode, now)
+        _log(db, siswa["id"], "masuk", st, pesan, metode, now, gerbang)
         if kirim_wa:
             notify.enqueue(db, siswa, "masuk", {"jam": jam[:5], "status": st})
         db.commit()
@@ -132,11 +158,11 @@ def process_scan(text, mode="auto", metode="scanner", db=None, waktu=None):
 
     # mode == "pulang"
     st = status_pulang(jam, aturan)
-    execute("UPDATE presensi SET jam_pulang = ?, status_pulang = ?, "
+    execute("UPDATE presensi SET jam_pulang = ?, status_pulang = ?, gerbang_pulang = ?, "
             "updated_at = NOW() WHERE id = ?",
-            (jam, st, rec["id"]), db=db, commit=False)
+            (jam, st, gerbang, rec["id"]), db=db, commit=False)
     pesan = f"Absen pulang berhasil — {st}"
-    _log(db, siswa["id"], "pulang", st, pesan, metode, now)
+    _log(db, siswa["id"], "pulang", st, pesan, metode, now, gerbang)
     if kirim_wa:
         notify.enqueue(db, siswa, "pulang", {"jam": jam[:5], "status": st})
     db.commit()

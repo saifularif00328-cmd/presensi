@@ -1,4 +1,4 @@
-# Firmware perangkat tap RFID (ESP32 + RC522)
+# Firmware perangkat tap RFID / scan QR (ESP32 + RC522 + modul QR opsional)
 
 Perangkat mandiri untuk gerbang / musala: siswa menempelkan kartu, hasil tampil di LCD,
 bunyi buzzer, dan data langsung masuk ke aplikasi Presensi (lewat internet / WiFi sekolah).
@@ -33,6 +33,24 @@ bunyi buzzer, dan data langsung masuk ke aplikasi Presensi (lewat internet / WiF
 | Buzzer | + | GPIO 25 (− ke GND) |
 | LED hijau | kaki panjang (via 220 Ω) | GPIO 26 |
 | LED merah | kaki panjang (via 220 Ω) | GPIO 27 |
+
+## Opsional: modul scanner QR (gerbang jauh tanpa PC)
+
+Tambahkan modul scanner QR UART, misalnya **GM65** atau **GM861** (kata kunci: *GM65 barcode scanner module*,
+±Rp150–250 rb). Perangkat lalu bisa membaca **kartu RFID dan QR kartu pelajar** sekaligus.
+
+| Modul QR | Pin ESP32 |
+|---|---|
+| TX | GPIO 16 |
+| RX | GPIO 17 |
+| VCC | VIN / 5V |
+| GND | GND |
+
+- Atur modul ke **mode keluaran Serial/UART 9600 baud** dengan akhiran **CR** (bawaan GM65). Kalau perlu
+  diubah, pindai barcode pengaturan di manual modul.
+- Firmware sudah menyalakan pembacaan QR (`PAKAI_QR 1`).
+- Gerbang perangkat diatur di aplikasi: **Perangkat ESP32 → Edit → Gerbang**. Nama gerbang ini tampil
+  di Layar Gerbang dan rekap.
 
 ## Memasang firmware (sekali per perangkat)
 
