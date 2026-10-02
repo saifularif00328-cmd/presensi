@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write     # menerbitkan GitHub Release pos-vX.Y.Z (unduhan publik untuk VPS)
 
 jobs:
   windows:
@@ -50,3 +50,16 @@ jobs:
         with:
           name: presensiku-pos-setup
           path: installer/Output/presensiku-pos-setup.exe
+      - name: Terbitkan GitHub Release (pos-vX.Y.Z)
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = (Select-String -Path pos/presensiku_pos/__init__.py -Pattern 'VERSI = "(.+)"').Matches[0].Groups[1].Value
+          $tag = "pos-v$v"
+          gh release view $tag 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --target $env:GITHUB_SHA --title "Presensiku Pos $v" --notes "Installer Windows Presensiku Pos $v. Di VPS: presensi-sekolah pasang-pos --github"
+          }
+          gh release upload $tag installer/Output/presensiku-pos-setup.exe --clobber

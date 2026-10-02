@@ -89,3 +89,31 @@ def test_vps_pindah_dari_server_sekolah(vps, app, client, seed, monkeypatch):
     assert _vendor(sk, "uji-b")["berlaku_sampai"] == "2031-01-01"
     sk.main(["backup", "uji-b"])
     assert any(f.startswith("uji-b-") for f in os.listdir(os.path.join(sk.ROOT, "_backup")))
+
+
+def test_pasang_pos_dari_github(vps, tmp_path, monkeypatch):
+    """`pasang-pos --github`: rilis pos-vX.Y.Z terbaru diunduh lalu dipasang di /unduh/."""
+    import argparse
+    import io
+    import json
+    import urllib.request
+    sk, _ = vps
+    rilis = [{"tag_name": "v9-lain", "assets": [{"name": "lain.zip", "browser_download_url": "x"}]},
+             {"tag_name": "pos-v1.2.0", "draft": False,
+              "assets": [{"name": "presensiku-pos-setup.exe", "browser_download_url": "https://contoh/setup.exe"}]}]
+    monkeypatch.setattr(urllib.request, "urlopen", lambda req, timeout=0: io.BytesIO(json.dumps(rilis).encode()))
+    diunduh = []
+
+    def palsu_retrieve(url, path):
+        diunduh.append(url)
+        with open(path, "wb") as f:
+            f.write(b"MZ-installer")
+    monkeypatch.setattr(urllib.request, "urlretrieve", palsu_retrieve)
+    sk.pasang_pos(argparse.Namespace(berkas=None, versi=None, github=True))
+    assert diunduh == ["https://contoh/setup.exe"]
+    with open(os.path.join(sk.ROOT, "_unduh", "presensiku-pos-setup.exe"), "rb") as f:
+        assert f.read() == b"MZ-installer"
+    with open(os.path.join(sk.ROOT, "_unduh", "pos-versi.json")) as f:
+        assert json.load(f)["versi"] == "1.2.0"
+    with pytest.raises(SystemExit):
+        sk.pasang_pos(argparse.Namespace(berkas=None, versi=None, github=False))

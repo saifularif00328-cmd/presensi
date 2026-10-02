@@ -139,8 +139,13 @@ Catatan log ada di `C:\ProgramData\PresensikuPos\pos.log`.
 ---
 
 ### Untuk vendor: menerbitkan versi Pos baru
-1. Buka GitHub → **Actions → Presensiku Pos (Windows)** → run terbaru → unduh artifact
-   `presensiku-pos-setup`.
-2. Kirim ke VPS: `scp presensiku-pos-setup.exe root@IP-VPS:/root/`
-3. Di VPS: `presensi-sekolah pasang-pos /root/presensiku-pos-setup.exe --versi 1.0.0`.
+Setiap perubahan di folder `pos/` otomatis dibangun GitHub Actions dan diterbitkan sebagai
+**GitHub Release** `pos-vX.Y.Z` (versi dari `pos/presensiku_pos/__init__.py`). Di VPS cukup:
+```bash
+presensi-sekolah pasang-pos --github
+```
+Installer lalu tersedia di `https://presensiku.biz.id/unduh/presensiku-pos-setup.exe` dan tombol unduh
+di **Sistem → Perangkat Scan**. Cara manual tetap bisa: `presensi-sekolah pasang-pos berkas.exe --versi 1.0.0`.
+Untuk versi baru, naikkan `VERSI` di `pos/presensiku_pos/__init__.py` dan `AppVersion` di
+`installer/presensiku_pos.iss`.
    Pos lama akan menampilkan pemberitahuan "versi baru tersedia".

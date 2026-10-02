@@ -32,8 +32,7 @@ Halaman publik yang sudah tersedia:
 - [ ] Jalankan `presensi-sekolah uji-pulih`, hasilnya harus sukses.
 - [ ] **UptimeRobot**: pantau `https://presensiku.biz.id/sehat` tiap 5 menit, dengan pemberitahuan
       ke email/WA Anda.
-- [ ] **Presensiku Pos**: unggah installer terbaru dengan `presensi-sekolah pasang-pos` (file dari
-      GitHub Actions).
+- [ ] **Presensiku Pos**: pasang installer terbaru di VPS dengan `presensi-sekolah pasang-pos --github`.
 - [ ] **Panel vendor** `/vendor` → **Pengaturan**:
   - nomor WA, lama demo, kuota demo;
   - **harga** per tahun / semester, jumlah siswa yang termasuk harga dasar, tambahan per 100

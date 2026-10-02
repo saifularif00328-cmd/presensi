@@ -40,6 +40,7 @@ sys.path.insert(0, APP_DIR)
 
 ROOT = os.environ.get("PRESENSI_SRV", "/srv/presensi")
 DOMAIN = os.environ.get("PRESENSI_DOMAIN", "presensiku.biz.id")
+GITHUB_REPO = os.environ.get("PRESENSI_GITHUB_REPO", "saifularif00328-cmd/presensi")
 NGINX_CONF = os.environ.get("PRESENSI_NGINX_CONF", "/etc/nginx/presensi-sekolah.conf")
 PORT_AWAL = 7001
 TANPA_SISTEM = os.environ.get("PRESENSI_TANPA_SISTEM") == "1"  # uji: tanpa systemctl/nginx/chown
@@ -1042,9 +1043,35 @@ def rapikan(_a=None):
                 os.remove(os.path.join(hasil, f))
 
 
+def _unduh_pos_github():
+    """Ambil installer Presensiku Pos terbaru dari GitHub Release (tag pos-vX.Y.Z, dibuat CI).
+    Mengembalikan (path_sementara, versi)."""
+    import tempfile
+    import urllib.request
+    req = urllib.request.Request(f"https://api.github.com/repos/{GITHUB_REPO}/releases?per_page=20",
+                                 headers={"Accept": "application/vnd.github+json", "User-Agent": "presensi-sekolah"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        rilis = json.load(r)
+    for rl in rilis:
+        tag = rl.get("tag_name", "")
+        aset = next((x for x in rl.get("assets", []) if x.get("name") == "presensiku-pos-setup.exe"), None)
+        if tag.startswith("pos-v") and aset and not rl.get("draft"):
+            versi = tag[5:]
+            tmp = os.path.join(tempfile.gettempdir(), "presensiku-pos-setup.exe")
+            print(f"Mengunduh Presensiku Pos {versi} dari GitHub ...")
+            urllib.request.urlretrieve(aset["browser_download_url"], tmp)
+            return tmp, versi
+    raise SystemExit(f"Belum ada rilis Presensiku Pos di github.com/{GITHUB_REPO}/releases")
+
+
 def pasang_pos(a):
     """Taruh installer Presensiku Pos di https://<domain>/unduh/ + catat versinya (Pos yang sudah
-    terpasang akan menampilkan pemberitahuan 'versi baru tersedia')."""
+    terpasang akan menampilkan pemberitahuan 'versi baru tersedia').
+    `--github`: ambil otomatis dari GitHub Release terbaru (tanpa lewat laptop)."""
+    if getattr(a, "github", False):
+        a.berkas, a.versi = _unduh_pos_github()
+    if not a.berkas or not a.versi:
+        raise SystemExit("Pakai: presensi-sekolah pasang-pos --github   atau   pasang-pos <berkas.exe> --versi 1.0.0")
     if not os.path.exists(a.berkas):
         raise SystemExit(f"File tidak ada: {a.berkas}")
     if not re.fullmatch(r"\d+\.\d+\.\d+", a.versi):
@@ -1184,8 +1211,9 @@ def main(argv=None):
     p.add_argument("--diam", action="store_true")
     p.set_defaults(fn=cek_kesehatan)
     p = sub.add_parser("pasang-pos")
-    p.add_argument("berkas")
-    p.add_argument("--versi", required=True)
+    p.add_argument("berkas", nargs="?")
+    p.add_argument("--versi")
+    p.add_argument("--github", action="store_true", help="unduh installer terbaru dari GitHub Release")
     p.set_defaults(fn=pasang_pos)
     p = sub.add_parser("akun-vendor")
     p.add_argument("--username", default="vendor")
